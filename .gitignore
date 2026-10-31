@@ -1,0 +1,18 @@
+node_modules/
+out/
+dist/
+coverage/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets and local data: never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.p12

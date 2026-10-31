@@ -1,0 +1,161 @@
+.shell {
+  display: flex;
+  height: 100%;
+}
+
+.sidebar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  width: var(--sidebar-width);
+  padding: 0 var(--s3) var(--s3);
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 60px;
+  padding: var(--s3) var(--s2) 0;
+  font-size: 15.5px;
+  font-weight: 680;
+  letter-spacing: -0.015em;
+  -webkit-app-region: drag;
+}
+
+.brand-mark {
+  flex: none;
+}
+
+.sidebar ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font: 520 13.5px/1 var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms var(--ease), color 120ms var(--ease);
+}
+.nav-item:hover {
+  background: rgb(120 115 100 / 12%);
+  color: var(--text);
+}
+.nav-item[aria-current='page'] {
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
+  font-weight: 620;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Draggable area that also leaves room for the Windows caption buttons. */
+.titlebar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: var(--titlebar);
+  padding: 0 var(--s2);
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* First-run screen: no sidebar */
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.onboarding-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s6);
+  overflow-y: auto;
+}
+.onboarding-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  width: min(520px, 100%);
+}
+.onboarding-steps {
+  display: flex;
+  gap: 6px;
+}
+.onboarding-steps span {
+  width: 28px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+}
+.onboarding-steps span.on {
+  background: var(--primary);
+}
+.feature-line {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+}
+.feature-line svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--primary);
+}
+.choice {
+  display: flex;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s4);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.choice:hover {
+  border-color: var(--border-strong);
+}
+.choice[aria-checked='true'] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.choice svg {
+  flex: none;
+  margin-top: 2px;
+}

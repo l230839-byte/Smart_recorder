@@ -1,0 +1,26 @@
+.settings {
+  max-width: 760px;
+}
+.setting-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  min-height: 44px;
+  min-width: 0;
+}
+.setting-line + .setting-line,
+.setting-line + .switch-row,
+.switch-row + .setting-line,
+.switch-row + .switch-row {
+  margin-top: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
+}
+.setting-input {
+  flex: none;
+  width: 240px;
+}
+.setting-select {
+  flex: none;
+  width: 240px;
+}

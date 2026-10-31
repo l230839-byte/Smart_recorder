@@ -1,0 +1,14 @@
+.studio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--s3);
+}
+.studio-tool {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  color: var(--text-muted);
+}
+.studio-tool h3 {
+  color: var(--text);
+}

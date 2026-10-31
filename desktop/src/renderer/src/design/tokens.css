@@ -1,0 +1,101 @@
+/* Design tokens. Components use only these, so both themes stay consistent. */
+:root {
+  color-scheme: light;
+
+  /* Brand: ink indigo, with teal for AI and ember for bookmarks */
+  --primary: #4338ca;
+  --primary-hover: #3730a3;
+  --on-primary: #ffffff;
+  --primary-soft: #e8e6fb;
+  --on-primary-soft: #2a2380;
+  --teal: #0f766e;
+  --teal-soft: #d5f2ec;
+  --ember: #c2410c;
+  --ember-soft: #fde8db;
+  --record: #dc2626;
+  --record-hover: #b91c1c;
+  --record-soft: #fde4e4;
+  --success: #15803d;
+  --success-soft: #dcf5e4;
+  --warning: #a16207;
+  --warning-soft: #fbf0cf;
+  --danger: #b91c1c;
+  --danger-soft: #fde4e4;
+
+  /* Warm neutrals */
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-sunken: #efeee9;
+  --surface-hover: #f1f0eb;
+  --sidebar: #efeee8;
+  --border: #e3e1da;
+  --border-strong: #cfccc3;
+  --text: #1c1b18;
+  --text-muted: #63605a;
+  --text-faint: #8a877f;
+
+  --shadow-sm: 0 1px 2px rgb(28 27 24 / 6%);
+  --shadow-md: 0 4px 14px rgb(28 27 24 / 9%), 0 1px 3px rgb(28 27 24 / 6%);
+  --shadow-lg: 0 18px 50px rgb(28 27 24 / 20%), 0 4px 12px rgb(28 27 24 / 10%);
+
+  /* Spacing: 4 px grid */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --font: 'Inter Variable', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --titlebar: 44px;
+  --sidebar-width: 224px;
+  --content-max: 1120px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --primary: #8f88f5;
+    --primary-hover: #a5a0f8;
+    --on-primary: #16123f;
+    --primary-soft: #2a2755;
+    --on-primary-soft: #d9d7ff;
+    --teal: #5eead4;
+    --teal-soft: #113a37;
+    --ember: #fdba8c;
+    --ember-soft: #43240f;
+    --record: #ef4444;
+    --record-hover: #f87171;
+    --record-soft: #451a1a;
+    --success: #86efac;
+    --success-soft: #12351f;
+    --warning: #fcd34d;
+    --warning-soft: #3d2f0b;
+    --danger: #fca5a5;
+    --danger-soft: #451a1a;
+
+    --bg: #14131a;
+    --surface: #1d1c24;
+    --surface-sunken: #111016;
+    --surface-hover: #26252e;
+    --sidebar: #0f0e14;
+    --border: #2c2b35;
+    --border-strong: #403f4b;
+    --text: #efedea;
+    --text-muted: #a7a4ae;
+    --text-faint: #7f7c87;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-md: 0 4px 14px rgb(0 0 0 / 35%);
+    --shadow-lg: 0 18px 50px rgb(0 0 0 / 55%);
+  }
+}

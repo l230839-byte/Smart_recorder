@@ -1,0 +1,92 @@
+ECHOMIND DESKTOP: PHASE 01, FOUNDATION
+================================================================================
+Status:      COMPLETE (implemented, tested, reviewed, documented)
+Prompt refs: §0 free-stack rules, §2 stack, §16 design, §19 database (base),
+             §21 privacy (base), §26 structure, §27 docs
+Date:        2026-10-31
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+A runnable, secure and well-structured desktop app that every later phase builds on.
+
+
+2. WHAT THIS PHASE INCLUDES
+--------------------------------------------------------------------------------
+- Electron + React + TypeScript project with strict type checking and linting.
+- Three-process model: sandboxed UI, main process that owns data, hidden media
+  worker (filled in by Phase 2).
+- SQLite with transactional migrations and the library schema (see DATABASE_SCHEMA).
+- Design system: tokens for light and dark, buttons, cards, chips, fields, switch,
+  segmented control, dialog, menu, toast, empty and loading states.
+- Sidebar navigation with the five required sections, custom title bar, typed route
+  stack with Back (button, mouse back button, Alt+Left).
+- Three-step onboarding: welcome, optional name, privacy choice.
+- Settings: theme, local name, offline-only, version and data folder.
+- AI Studio overview: every prompt §10 tool, each labelled with the phase that
+  delivers it, none clickable until it works (§28: no fake controls).
+- All required documents, plus the implementation plan that divides the prompt into
+  phases.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Desktop first and a fresh codebase, per the owner's request. The new prompt also
+    replaces the OpenAI + Docker design. Old code stays on branch legacy/android-v1
+    and remote "legacy".
+D2  Electron over Tauri and Compose Desktop. See ARCHITECTURE.md.
+D3  node:sqlite. A spike confirmed FTS5, including Urdu matching, works inside
+    Electron 45 with no native module to compile.
+D4  Mediabunny instead of FFmpeg. Downloading and running FFmpeg's prebuilt .exe was
+    refused by this environment's safety check. A spike then showed Mediabunny plus
+    Chromium's codecs covers Opus, AAC, MP3, FLAC, WAV, Ogg, WebM, MP4 and video audio
+    with no binaries at all, and rejects garbage and corrupt files. It also keeps the
+    licence position simple. AMR is the one gap; Phase 2 addresses it.
+D5  Offline-only starts ON. The prompt asks for consent before anything is uploaded.
+D6  The onboarding key step is deferred to Phase 3, when providers exist. Showing a
+    key field with nothing behind it would break prompt §16.
+
+
+4. TESTING (all passing on 2026-10-31)
+--------------------------------------------------------------------------------
+Automated:
+- Unit (Vitest), 7 tests: migrations run and re-run, a failed migration rolls back
+  fully, a newer database is refused, foreign keys are enforced, FTS5 finds Urdu,
+  settings defaults (offline on), unknown settings keys are ignored.
+- End to end (Playwright, real app), 2 tests: full first run, every sidebar section,
+  theme switch, cancelling the "allow cloud" dialog leaves offline on, name and theme
+  survive a restart, no console errors. The renderer has no require or process, and
+  injected inline script does not run.
+- TypeScript strict: 0 errors. ESLint: 0 errors. Licence check: 10 production
+  packages, none GPL or AGPL. npm audit (production): 0 vulnerabilities.
+- npm audit (all): 24 moderate, in development-only build tools, not shipped.
+
+Manual review: screenshots of onboarding (light) and settings (dark).
+
+
+5. REVIEW FINDINGS AND FIXES
+--------------------------------------------------------------------------------
+F1  [Test environment] VS Code terminals set ELECTRON_RUN_AS_NODE, which stops Electron
+    starting as an app. Fixed: scripts/run.mjs clears it for dev, start and e2e.
+F2  [Test accuracy] Playwright pins pages to light mode, which hid real theme switching.
+    Fixed: the override is disabled, so the test checks real behavior.
+F3  [Test accuracy] Temp-folder cleanup errors hid real test failures. Cleanup is now
+    best effort.
+F4  [Design] Forward arrow sat before the button label. Moved after it, with a new
+    trailingIcon option.
+F5  [Design] An autofocus ring showed on the first screen for mouse users. Removed
+    where it did not help; kept on text inputs.
+
+
+6. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+- No installer or app icon yet (Phase 8).
+- Not tested on a second Windows machine or at high display scaling.
+- A screen-reader pass with NVDA is scheduled for Phase 8. Semantics (roles, labels,
+  focus handling) are built in now.
+
+
+7. HOW TO RUN
+--------------------------------------------------------------------------------
+cd desktop; npm install; npm run dev
+Checks: npm run check; npm run test:e2e
