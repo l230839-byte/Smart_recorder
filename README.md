@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-To use the real transcription provider, add a free key under Settings > AI providers. To try everything with no key, choose the Demo provider there.
+To use real transcription and summaries, add a free key under Settings > AI providers. To try everything with no key, choose the Demo provider there.
 
 Optional: `npm run fetch:ffmpeg` installs the LGPL FFmpeg add-on, which lets EchoMind import AMR, WMA and other less common formats.
 

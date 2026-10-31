@@ -49,6 +49,32 @@ function amr() {
   return new Blob([new TextEncoder().encode('#!AMR\n'), ...Array(500).fill(frame)]);
 }
 
+async function phoneVideo() {
+  if (!(await M.canEncodeVideo('avc')) || !(await M.canEncodeAudio('aac'))) return null;
+  const target = new M.BufferTarget();
+  const output = new M.Output({ format: new M.Mp4OutputFormat(), target });
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const videoSource = new M.CanvasSource(canvas, { codec: 'avc', bitrate: 200_000 });
+  const audioSource = new M.AudioBufferSource({ codec: 'aac', bitrate: 96_000 });
+  output.addVideoTrack(videoSource);
+  output.addAudioTrack(audioSource);
+  await output.start();
+  const buffer = new AudioBuffer({ length: 44100 * 3, sampleRate: 44100, numberOfChannels: 1 });
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.sin((i / 44100) * 2 * Math.PI * 330) * 0.4;
+  await audioSource.add(buffer);
+  for (let f = 0; f < 30; f++) {
+    ctx.fillStyle = `hsl(${f * 12} 80% 50%)`;
+    ctx.fillRect(0, 0, 64, 64);
+    await videoSource.add(f / 10, 0.1);
+  }
+  await output.finalize();
+  return new Blob([target.buffer]);
+}
+
 async function video() {
   const target = new M.BufferTarget();
   const output = new M.Output({ format: new M.WebMOutputFormat(), target });
@@ -89,6 +115,12 @@ try {
   await write('silent.mp3', new Blob(Array(200).fill(frame)));
 
   await write('lecture-video.webm', await video());
+  try {
+    const mp4 = await phoneVideo();
+    if (mp4) await write('phone-video.mp4', mp4);
+  } catch {
+    // This machine has no H.264 encoder. The test that uses this file then skips that part.
+  }
 
   const bytes = new Uint8Array(await aac.arrayBuffer());
   await write('truncated.m4a', new Blob([bytes.slice(0, Math.floor(bytes.length / 2))]));

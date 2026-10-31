@@ -19,7 +19,10 @@ Only what is implemented and verified is listed as **Working**.
 | Transcript viewer: six views, editing with preserved original, versions, find, synced playback, export to TXT, SRT, VTT | Working |
 | Speaker labels | Display works. Whisper providers supply none. |
 | Usage and limits | Working |
-| Summaries | Phase 4 |
+| Summaries: formats, lengths, tones, languages, scope, focus, templates, versions | Working (tested with a local server following the documented format) |
+| Citations checked against the transcript | Working |
+| Chapters, suggested titles and tags | Working |
+| Summaries on live Groq or Gemini | Written, not yet run. Needs a key. |
 | Documents and export | Phase 5 |
 | AI chat, global search with snippets | Phase 6 |
 | AI Studio, study tools, tasks | Phase 7 |

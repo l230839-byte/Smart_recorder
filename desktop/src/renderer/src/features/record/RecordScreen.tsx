@@ -222,6 +222,16 @@ function ActiveRecording() {
         </Button>
       </div>
 
+      <textarea
+        className="textarea record-description"
+        aria-label="Description"
+        dir="auto"
+        placeholder="Add a description (optional)"
+        rows={2}
+        value={state.description}
+        onChange={(e) => recorder.setDetails({ description: e.target.value })}
+      />
+
       <div className="muted small record-help">
         {state.bookmarkCount > 0 ? `${plural(state.bookmarkCount, 'bookmark')} so far. ` : ''}
         You can use other screens while recording. Audio is saved to disk every second.

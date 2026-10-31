@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Phase 4: Summaries, and an audit of earlier phases
+
+- Summaries: 14 formats, 6 lengths, 8 tones, any language, selected chapters, time ranges, selected text, focus and exclusion controls, custom instructions, saved templates and versions.
+- Citations are checked against the transcript. Real ones play the source; invented ones are removed and reported.
+- Topic chapters, and suggested titles and tags that wait for your choice.
+- Providers: Groq, Google Gemini, any OpenAI-compatible service, and a demo model. Separate consent for text and audio.
+- Fixed: duplicate race on import, video detection by extension, jobs running after trash, temp file build-up, MP3 trim, an error on quit.
+- Hardened: per-window IPC checks, settings validation, recovery screen for render errors, smoother long transcripts.
+- Added: description while recording, status and language in details, Select all, running jobs in the sidebar.
+
 ### Phase 3: Transcription
 
 - Provider layer with Groq Whisper, any OpenAI-compatible service, and a labelled demo provider.

@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, CircleSlash, Clock, ListChecks, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import { formatRelative } from '@shared/format';
-import type { ProcessingJob } from '@shared/models';
-import { PROVIDER_INFO } from '@shared/providers';
+import { JOB_KIND_LABEL, type ProcessingJob } from '@shared/models';
+import { providerLabel } from '@shared/providers';
 import { Button, EmptyState, IconButton, Loading, PageHeader, ProgressBar } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { useRouter } from '../../lib/router';
@@ -38,7 +38,7 @@ export function JobsScreen() {
         }
       />
       {jobs.data.length === 0 ? (
-        <EmptyState icon={ListChecks} title="Nothing is processing" message="Transcriptions you start will appear here." />
+        <EmptyState icon={ListChecks} title="Nothing is processing" message="AI work you start will appear here." />
       ) : (
         <div className="rec-list">
           {jobs.data.map((job) => {
@@ -51,7 +51,7 @@ export function JobsScreen() {
                     {job.recordingTitle}
                   </button>
                   <div className="muted small">
-                    {job.status === 'waiting' ? `Waiting until about ${formatRetryTime(job.nextAttemptAt)}` : job.stage} · {PROVIDER_INFO[job.provider].label} · {formatRelative(job.createdAt)}
+                    {JOB_KIND_LABEL[job.kind]} · {job.status === 'waiting' ? `Waiting until about ${formatRetryTime(job.nextAttemptAt)}` : job.stage} · {providerLabel(job.provider)} · {formatRelative(job.createdAt)}
                   </div>
                   {job.error && <div className="small import-error" style={{ color: job.status === 'failed' ? 'var(--danger)' : 'var(--warning)' }}>{job.error}</div>}
                   {active && <div style={{ marginTop: 6 }}><ProgressBar value={job.progress} label={`Progress for ${job.recordingTitle}`} /></div>}

@@ -1,24 +1,30 @@
-import { copyFile, mkdir, rm, statfs, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises';
 import { mkdirSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell, type BrowserWindow } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
 import type { EchoApi, EchoEvents } from '@shared/api';
-import type { RecordingMode } from '@shared/models';
-import { PROVIDER_INFO, SPEECH_BITRATE, validateBaseUrl, type TranscriptionProviderId } from '@shared/providers';
+import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
+import { markdownToClipboard } from '@shared/markdown';
+import { LLM_PROVIDER_INFO, PROVIDER_INFO, SPEECH_BITRATE, validateBaseUrl, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
 import { toPlainText, toSrt, toVtt } from '@shared/transcript';
+import { ChatHttpProvider } from './ai/chat-http';
+import { FakeChatProvider } from './ai/fake-chat';
 import { FakeProvider } from './ai/fake-provider';
 import { WhisperHttpProvider } from './ai/whisper-http';
 import { openDatabase } from './db/database';
 import { ImportRepository, LibraryRepository, SessionRepository } from './db/library';
+import { SummaryRepository } from './db/summaries';
 import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, UsageRepository, type Cipher } from './db/transcripts';
 import { hardenContents, hardenSession } from './security';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
 import { IngestPipeline } from './services/ingest';
+import { JobQueue } from './services/job-queue';
 import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol';
 import { MediaWorker } from './services/media-worker';
 import { RecorderService } from './services/recorder';
 import { SettingsStore } from './services/settings';
+import { SummaryService, textConsentKey } from './services/summaries';
 import { keyName, TranscriptionService } from './services/transcription';
 import { createMainWindow } from './window';
 
@@ -30,7 +36,6 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac', 'amr', 'webm', 'mka'];
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'mkv', 'm4v', 'ts'];
-const VIDEO_SUFFIXES = new Set(VIDEO_EXTENSIONS.map((e) => `.${e}`));
 
 let mainWindow: BrowserWindow | null = null;
 let closeConfirmed = false;
@@ -41,7 +46,11 @@ function emit<E extends keyof EchoEvents>(event: E, payload: EchoEvents[E]): voi
 
 function registerApi(api: EchoApi): void {
   for (const method of Object.keys(api) as (keyof EchoApi)[]) {
-    ipcMain.handle(`api:${method}`, (_e, ...args: unknown[]) => (api[method] as (...a: unknown[]) => unknown)(...args));
+    ipcMain.handle(`api:${method}`, (event: IpcMainInvokeEvent, ...args: unknown[]) => {
+      // Only the main window may use the app's API, not the media worker or anything else.
+      if (event.sender !== mainWindow?.webContents) throw new Error('Not allowed.');
+      return (api[method] as (...a: unknown[]) => unknown)(...args);
+    });
   }
 }
 
@@ -66,6 +75,9 @@ async function start(): Promise<void> {
   const tempDir = join(dataDir, 'tmp');
   const sessionDir = join(dataDir, 'sessions');
   await Promise.all([mediaDir, tempDir, sessionDir].map((d) => mkdir(d, { recursive: true })));
+
+  // Anything here was left by an interrupted run; imports restart from their originals.
+  for (const name of await readdir(tempDir)) await rm(join(tempDir, name), { force: true, recursive: true });
 
   const db = openDatabase(join(dataDir, 'echomind.db'));
   const settings = new SettingsStore(db);
@@ -97,7 +109,20 @@ async function start(): Promise<void> {
   const usage = new UsageRepository(db);
   const consents = new ConsentRepository(db);
   const secrets = new SecretStore(db, cipher);
+  const summaries = new SummaryRepository(db);
   const jobsChanged = () => emit('data:changed', 'jobs');
+  const queue = new JobQueue(jobs, jobsChanged);
+
+  const notifyReady = (recordingId: string, title: string, what: string) => {
+    if (Notification.isSupported() && !mainWindow?.isFocused()) {
+      const note = new Notification({ title: `${what} ready`, body: title });
+      note.on('click', () => {
+        mainWindow?.show();
+        emit('recording:open', recordingId);
+      });
+      note.show();
+    }
+  };
 
   const makeProvider = (id: TranscriptionProviderId) => {
     if (id === 'fake') return new FakeProvider();
@@ -126,18 +151,40 @@ async function start(): Promise<void> {
     transcriptReady: (recordingId, title) => {
       emit('data:changed', 'transcripts');
       libraryChanged();
-      if (Notification.isSupported() && !mainWindow?.isFocused()) {
-        const note = new Notification({ title: 'Transcript ready', body: title });
-        note.on('click', () => {
-          mainWindow?.show();
-          emit('recording:open', recordingId);
-        });
-        note.show();
-      }
+      notifyReady(recordingId, title, 'Transcript');
+    },
+    queue,
+  });
+
+  const makeChatProvider = (id: LlmProviderId) => {
+    if (id === 'fake') return new FakeChatProvider();
+    const baseUrl = id === 'custom-chat' ? settings.get().llmBaseUrl : LLM_PROVIDER_INFO[id].baseUrl;
+    if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
+    return new ChatHttpProvider(baseUrl, secrets.get(keyName(id)));
+  };
+
+  const summaryService = new SummaryService({
+    jobs,
+    queue,
+    transcripts,
+    library,
+    summaries,
+    usage,
+    consents,
+    secrets,
+    settings: () => settings.get(),
+    makeProvider: makeChatProvider,
+    changed: jobsChanged,
+    ready: (recordingId, title, kind) => {
+      emit('data:changed', 'summaries');
+      notifyReady(recordingId, title, JOB_KIND_LABEL[kind]);
     },
   });
 
+  const consentKey = (provider: string, purpose: AiPurpose) => (purpose === 'text' ? textConsentKey(provider) : provider);
+
   const deleteFiles = async (ids: string[]) => {
+    queue.cancelForRecordings(ids);
     const files = library.deleteForever(ids);
     await Promise.all(files.map((f) => rm(join(mediaDir, f), { force: true })));
     libraryChanged();
@@ -152,23 +199,17 @@ async function start(): Promise<void> {
     libraryChanged();
   };
 
-  const kindFor = (path: string) => (VIDEO_SUFFIXES.has(extname(path).toLowerCase()) ? 'video' : 'dropped') as 'video' | 'dropped';
-  const enqueueMixed = async (paths: string[], mode: RecordingMode, base: 'picker' | 'dropped' | 'opened') => {
-    const videos = paths.filter((p) => kindFor(p) === 'video');
-    const audio = paths.filter((p) => kindFor(p) !== 'video');
-    const batch = audio.length ? await imports.enqueue(audio, base, mode) : null;
-    const videoBatch = videos.length ? await imports.enqueue(videos, 'video', mode) : null;
-    return (batch ?? videoBatch)!;
-  };
 
   const sqlite = db.prepare('SELECT sqlite_version() AS v').get() as { v: string };
   registerApi({
     getSettings: () => settings.get(),
     updateSettings: (patch) => {
-      if (patch.customBaseUrl) {
-        const url = validateBaseUrl(patch.customBaseUrl);
+      for (const field of ['customBaseUrl', 'llmBaseUrl'] as const) {
+        const value = patch[field];
+        if (!value) continue;
+        const url = validateBaseUrl(value);
         if (!url) throw new Error('Use an https:// address. Plain http:// is only allowed on this computer.');
-        patch = { ...patch, customBaseUrl: url };
+        patch = { ...patch, [field]: url };
       }
       const next = settings.update(patch);
       nativeTheme.themeSource = next.theme;
@@ -198,7 +239,10 @@ async function start(): Promise<void> {
     setFavorite: mutate((ids, value) => library.setManyFlag(ids, 'favorite', value)),
     setArchived: mutate((ids, value) => library.setManyFlag(ids, 'archived', value)),
     moveToCollection: mutate((ids, collectionId) => library.moveToCollection(ids, collectionId)),
-    trashRecordings: mutate((ids) => library.trash(ids)),
+    trashRecordings: mutate((ids) => {
+      queue.cancelForRecordings(ids);
+      library.trash(ids);
+    }),
     restoreRecordings: mutate((ids) => library.restore(ids)),
     deleteForever: (ids) => deleteFiles(ids),
     emptyTrash: () => deleteFiles(library.trashedIds()),
@@ -220,7 +264,9 @@ async function start(): Promise<void> {
       const workFile = join(tempDir, `trim-${Date.now()}`);
       const container = extname(file.fileName).slice(1) as 'ogg' | 'm4a' | 'mp3' | 'flac' | 'wav';
       try {
-        await media.convert(join(mediaDir, file.fileName), workFile, { container, transcode: false, startMs, endMs });
+        const source = join(mediaDir, file.fileName);
+        // Lossless when the format allows it. MP3 and some others cannot be cut that way, so those are re-encoded.
+        await media.convert(source, workFile, { container, transcode: false, startMs, endMs }).catch(() => media.convert(source, workFile, { container: 'ogg', transcode: true, startMs, endMs }));
         const { recordingId } = await pipeline.ingest({
           workFile,
           title: `${recording.title} (trimmed)`,
@@ -266,9 +312,9 @@ async function start(): Promise<void> {
       };
       const result = mainWindow ? await dialog.showOpenDialog(mainWindow, options) : await dialog.showOpenDialog(options);
       if (result.canceled || result.filePaths.length === 0) return null;
-      return enqueueMixed(result.filePaths, mode, 'picker');
+      return imports.enqueue(result.filePaths, 'picker', mode);
     },
-    importPaths: (paths, mode) => enqueueMixed(paths, mode, 'dropped'),
+    importPaths: (paths, mode) => imports.enqueue(paths, 'dropped', mode),
     listImports: () => importJobs.list().map(({ sourcePath: _path, sourceKind: _kind, ...job }) => job),
     retryImport: (id) => imports.retry(id),
     removeImport: (id) => {
@@ -290,7 +336,7 @@ async function start(): Promise<void> {
       return fs.bavail * fs.bsize;
     },
 
-    getProviderStatus: (provider) => ({ hasKey: secrets.has(keyName(provider)), consented: consents.has(provider), secureStorage: cipher.available() }),
+    getProviderStatus: (provider, purpose) => ({ hasKey: secrets.has(keyName(provider)), consented: consents.has(consentKey(provider, purpose)), secureStorage: cipher.available() }),
     saveProviderKey: (provider, key) => {
       const clean = key.trim();
       if (!clean) throw new Error('Enter a key first.');
@@ -301,13 +347,13 @@ async function start(): Promise<void> {
       secrets.clear(keyName(provider));
       emit('data:changed', 'settings');
     },
-    testProvider: async (provider) => {
-      if (PROVIDER_INFO[provider].local) return;
+    testProvider: async (provider, purpose) => {
+      if (provider === 'fake') return;
       if (settings.get().offlineOnly) throw new Error('Offline only is on, so EchoMind did not contact the service.');
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 20_000);
       try {
-        await makeProvider(provider).testConnection(controller.signal);
+        await (purpose === 'text' ? makeChatProvider(provider as LlmProviderId) : makeProvider(provider as TranscriptionProviderId)).testConnection(controller.signal);
       } catch (e) {
         if (controller.signal.aborted) throw new Error('The service did not answer in time.');
         throw e;
@@ -315,26 +361,26 @@ async function start(): Promise<void> {
         clearTimeout(timer);
       }
     },
-    acceptConsent: (provider) => {
-      consents.accept(provider);
+    acceptConsent: (provider, purpose) => {
+      consents.accept(consentKey(provider, purpose));
       emit('data:changed', 'settings');
     },
-    revokeConsent: (provider) => {
-      consents.revoke(provider);
+    revokeConsent: (provider, purpose) => {
+      consents.revoke(consentKey(provider, purpose));
       emit('data:changed', 'settings');
     },
     getUsage: () => usage.summary(),
 
     requestTranscription: (recordingId, language) => transcription.request(recordingId, language),
-    listJobs: () => jobs.list().map(({ attempts, model, language, ...job }) => job),
-    latestJob: (recordingId) => {
-      const job = jobs.latestFor(recordingId);
+    listJobs: () => jobs.list().map(({ attempts, model, language, options, ...job }) => job),
+    latestJob: (recordingId, kind) => {
+      const job = jobs.latestFor(recordingId, kind);
       if (!job) return null;
-      const { attempts, model, language, ...rest } = job;
+      const { attempts, model, language, options, ...rest } = job;
       return rest;
     },
-    cancelJob: (id) => transcription.cancel(id),
-    retryJob: (id) => transcription.retry(id),
+    cancelJob: (id) => queue.cancel(id),
+    retryJob: (id) => queue.retry(id),
     removeJob: (id) => {
       jobs.remove(id);
       jobsChanged();
@@ -375,9 +421,44 @@ async function start(): Promise<void> {
       await writeFile(result.filePath, `\uFEFF${text}`, 'utf8');
       return true;
     },
+    requestSummary: (recordingId, options) => summaryService.request(recordingId, 'summarize', { summary: options }),
+    requestChapters: (recordingId, language) => summaryService.request(recordingId, 'chapters', { language }),
+    requestSuggestions: (recordingId) => summaryService.request(recordingId, 'suggest'),
+    listSummaries: (recordingId) => summaries.list(recordingId),
+    deleteSummary: (id) => {
+      summaries.delete(id);
+      emit('data:changed', 'summaries');
+    },
+    exportSummary: async (id, format) => {
+      const summary = summaries.get(id);
+      const recording = summary && library.getRecording(summary.recordingId);
+      if (!summary || !recording) throw new Error('This summary no longer exists.');
+      const options = { defaultPath: `${recording.title.replace(/[<>:"/\\|?*]+/g, ' ').trim() || 'summary'} summary.${format}`, filters: [{ name: format.toUpperCase(), extensions: [format] }] };
+      const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) return false;
+      await writeFile(result.filePath, `\uFEFF${markdownToClipboard(summary.markdown)}`, 'utf8');
+      return true;
+    },
+    listChapters: (recordingId) => summaries.chapters(recordingId),
+    getSuggestions: (recordingId) => summaries.suggestions(recordingId),
+    dismissSuggestions: (recordingId) => {
+      summaries.dismissSuggestions(recordingId);
+      emit('data:changed', 'summaries');
+    },
+    listTemplates: () => summaries.templates(),
+    saveTemplate: (name, options) => {
+      const id = summaries.saveTemplate(name, options);
+      emit('data:changed', 'summaries');
+      return id;
+    },
+    deleteTemplate: (id) => {
+      summaries.deleteTemplate(id);
+      emit('data:changed', 'summaries');
+    },
+
     openExternal: (url) => {
       // Only the provider pages listed in configuration, never an address from content.
-      const known = Object.values(PROVIDER_INFO).flatMap((p) => [p.keyUrl, p.limitsUrl]);
+      const known = [...Object.values(PROVIDER_INFO), ...Object.values(LLM_PROVIDER_INFO)].flatMap((p) => [p.keyUrl, p.limitsUrl]);
       if (known.includes(url)) void shell.openExternal(url);
     },
   });
@@ -385,7 +466,7 @@ async function start(): Promise<void> {
   const openFiles = (argv: string[]) => {
     const files = filesFromArgs(argv);
     if (!files.length) return;
-    void enqueueMixed(files, settings.get().defaultMode, 'opened').then((batch) => emit('imports:opened', batch));
+    void imports.enqueue(files, 'opened', settings.get().defaultMode).then((batch) => emit('imports:opened', batch));
   };
 
   const window = createMainWindow();
@@ -430,10 +511,12 @@ async function start(): Promise<void> {
   app.on('before-quit', () => {
     if (closed) return;
     closed = true;
+    queue.stop();
     void recorder.stopForQuit();
     media.destroy();
+    // The database is deliberately left open: background work may still be unwinding, and WAL mode is
+    // safe across any exit, so closing it here could only cause errors.
   });
-  app.on('will-quit', () => db.close());
 
   await new Promise<void>((done) => window.webContents.once('did-finish-load', () => done()));
   // Background work starts after the first paint, so launch stays quick.
@@ -441,7 +524,7 @@ async function start(): Promise<void> {
     if (count > 0) emit('recordings:recovered', count);
   });
   imports.resume();
-  transcription.resume();
+  queue.resume();
   void purgeTrash();
   openFiles(process.argv.slice(1));
 }

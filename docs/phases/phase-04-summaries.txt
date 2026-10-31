@@ -1,0 +1,150 @@
+ECHOMIND DESKTOP: PHASE 04, SUMMARIES (AND AUDIT OF PHASES 1-3)
+================================================================================
+Status:      COMPLETE for everything testable here. Not yet run against live Groq or
+             Gemini, because that needs the owner's key (section 7).
+Prompt refs: §6 modes, §8 summaries, §15.1 chapters, §15.5 templates, §15.10 titles
+             and tags, §12 search, §21 privacy, §22 reliability
+Date:        2026-10-31
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Grounded, customizable summaries of any recording, without transcribing twice. The owner
+also asked that everything built before be improved while advancing, so this phase
+includes a full audit of Phases 1-3 (section 4).
+
+
+2. WHAT THIS PHASE INCLUDES
+--------------------------------------------------------------------------------
+Summary generator
+- 14 formats, 6 lengths including a custom word count, 8 tones including custom, any output
+  language.
+- Cover the whole recording, selected chapters, a time range, or selected transcript text.
+- Focus topics, leave out, only definitions, only examples, exam or business emphasis,
+  custom instructions.
+- Each recording mode has its own guidance and default format (prompt §6). Same for every
+  source.
+- Saved templates. Versions with labels, copy, save as Markdown, delete.
+
+Honesty and grounding
+- Every line sent to the model has an id. The model must cite ids. EchoMind then checks each
+  citation against the real transcript: real ones become buttons that play that moment, and
+  invented ones are removed and reported to the user.
+- The transcript is declared to be data, not instructions, as a defense against text in a
+  recording trying to steer the model.
+- Warnings for: demo text, a transcript edited since, a reply cut off at the length limit,
+  invented citations.
+- AI text is shown through a small parser into real elements. No HTML is injected, and links
+  other than citations become plain text, so nothing a model writes can run or load.
+
+Long recordings
+- Too long for one request: notes on each piece, stored as they finish, then one result from
+  the notes. A 429 or a crash continues without repeating finished pieces.
+- A service that says "too large" (HTTP 413) is retried automatically with smaller pieces.
+
+Chapters and suggestions
+- Topic chapters, validated against real transcript lines. Select one to play it.
+- Suggested title, tags and topics wait for the user. Nothing changes until they choose it.
+
+Providers
+- Groq, Google Gemini, any OpenAI-compatible service (including Ollama), and a labelled demo
+  model. One tested client covers all of them, because Groq and Gemini both offer this API.
+- Consent is separate for text and audio: agreeing to send audio is not agreeing to send text.
+- Tokens now appear in Usage and Limits.
+
+AI Studio: Smart Summarizer and Lecture Notes are live, with a recording picker.
+Library search now also finds summary text.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  One shared JobQueue for all AI work, extracted from the transcription service. Retry,
+    backoff, resume and cancel now behave identically for every kind of job.
+D2  Default model checked against Groq's docs on 2026-10-31. Gemini default is Flash-Lite,
+    which user reports suggest has the higher free daily allowance.
+D3  JSON replies use json_object, which Groq lists as available on all its models, plus
+    validation and one automatic retry, rather than strict schema mode, which only some
+    models support.
+D4  Gemini carries a stronger disclosure, because its free tier may use submissions to
+    improve Google's products. It says so plainly and suggests alternatives.
+D5  Request size is conservative for Groq (12,000 characters) because free plans limit tokens
+    per minute. Exact free limits are account-specific, so too-large handling adapts.
+D6  Chapters on very long recordings use an evenly spread sample of lines to stay inside
+    free limits. Lines keep their real ids, so results are still verified.
+
+
+4. AUDIT OF EARLIER PHASES: WHAT WAS WRONG AND IS NOW FIXED
+--------------------------------------------------------------------------------
+A1  [Bug] Identical files imported at the same moment could both get in, because the duplicate
+    check ran before either finished. Now serialized by hash. Tested.
+A2  [Rule] "From video" was decided by file extension, against the prompt's rule. Now decided
+    from the file's content. Tested with WebM and MP4.
+A3  [Bug, cost] Trashing or deleting a recording left its job running, using quota. Now canceled.
+    Tested.
+A4  [Security] IPC handlers accepted calls from any window. API calls now require the main
+    window, and file handles require the media worker.
+A5  [Reliability] Temp files from an interrupted run stayed forever. Now cleared at startup.
+A6  [Performance] Long transcripts redrew every line several times a second during playback.
+    Lines are now memoized, and off-screen rows skip layout. Measured in section 6.
+A7  [UX] A render bug left a blank window. Now a recovery screen appears inside the app, and
+    other screens keep working. Tested by corrupting a row.
+A8  [Prompt §5, §4] Description can now be added while recording. Details now show processing
+    status and detected language.
+A9  [UX] Daily reminder now appears on the recording, not just the usage screen. Select all in
+    the Library. Running jobs now show in the sidebar on every screen. Duplicate Home link
+    removed.
+A10 [Bug] Trimming MP3 failed outright, found by a new test. Falls back to re-encoding when a
+    lossless copy is impossible. Also tested on WAV.
+A11 [Bug] On quit, background work could touch the database after it closed, causing an error.
+    The queue now stops first, and the database is left to WAL's crash safety.
+A12 [Validation] Settings now reject values of the wrong type.
+A13 [Test gaps closed] Second launch adding files, MP4 video import, MP3 and WAV trim, large
+    library and long transcript measurements.
+
+
+5. OTHER REVIEW FINDINGS
+--------------------------------------------------------------------------------
+S1  [Wording] "1 source that do not exist" corrected.
+S2  [Accuracy] I removed a claim from the Gemini disclosure that people may review submissions,
+    because the terms I actually retrieved did not state it.
+S3  [Test quality] I replaced a weak crash-screen test, which did not actually crash anything,
+    with one that does.
+
+
+6. TESTING (all passing on 2026-10-31)
+--------------------------------------------------------------------------------
+Unit (Vitest), 145 tests. New here: citations including invented ones, prompt contents for
+every option, scope, splitting, chapter and suggestion validation, the Markdown reader
+including hostile HTML and links, the chat client against a real local server, the queue for
+privacy, 429, too-large, JSON retries, resume and no re-transcription.
+
+End to end (Playwright, real app), 34 tests, 1 skipped (FFmpeg). New:
+- Three formats from one transcript, with exactly one transcription job.
+- Citations play the source. Versions, template save and load, invalid time range, delete.
+- Chapters, suggestions with user control, a summary of one chapter, the edited-transcript
+  warning.
+- Search finds summaries. Studio tools open with the right preset. Summarize selection.
+- A real local server: separate text consent with zero requests before agreeing, a correct
+  request body, 429 waits, invented citations removed and reported, tokens counted.
+
+Measured on this machine:
+- 2,000 recordings: Library opens in 0.3 s, search takes 0.4 s.
+- 5,000-line transcript: opens in 0.15 s, view change takes 1.1 s, find takes 0.3 s.
+- One hour of audio, 110 MB: imported in about 7 s, peak memory 696 MB, slowest UI call 10 ms.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check passes, npm audit (production) 0
+vulnerabilities.
+
+
+7. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  NOT TESTED AGAINST LIVE GROQ OR GEMINI. Tests use a local server following the documented
+    format. Gemini's docs imply JSON mode through its compatible endpoint without listing the
+    parameter, so chapters and suggestions on Gemini especially need a real check. Quality of
+    real summaries, especially in Urdu, cannot be judged until then.
+L2  FFmpeg still not run. It needs the owner's command (see Phase 3 report).
+L3  Grounding reduces invention but cannot eliminate it. A model can cite a real line and still
+    misstate it. The app says so and links every claim to its source to make checking easy.
+L4  Chapters on very long recordings read a sample of lines, so a brief topic may be missed.
+L5  Saving a summary is Markdown only for now. PDF and Word arrive in Phase 5.
+L6  Everything else from earlier reports still applies, such as the real microphone check.

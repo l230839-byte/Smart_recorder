@@ -29,10 +29,21 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 | App crash or quit | Resumes after the last finished piece on next launch |
 | Speech not found | Fails with an explanation. No empty transcript is saved. |
 
+## Summaries, chapters, suggestions (working)
+
+All of these read the stored transcript, so changing a format never transcribes again.
+
+1. **Prompt.** Each transcript line carries an id, such as `[S12 3:05]`. The system prompt requires citations, forbids invention, and declares the transcript to be data, not instructions.
+2. **Long recordings.** `splitSegments` divides by characters. Notes on each piece are stored as they finish, and a final request writes the result from the notes.
+3. **Check.** `resolveCitations` turns real ids into links and removes invented ones, recording how many.
+4. **Display.** `parseMarkdown` builds data and `MarkdownView` builds elements. No HTML is ever injected.
+
+Chapters and suggestions ask for JSON, validate it, and retry once if it cannot be read. HTTP 413 retries with smaller pieces. All jobs share `JobQueue`.
+
 ## Adding a provider
 
-Implement `TranscriptionProvider` in `desktop/src/main/ai/types.ts`, add its facts to `desktop/src/shared/providers.ts`, and connect it in `makeProvider` in `desktop/src/main/index.ts`.
+Implement `TranscriptionProvider` or `ChatProvider` in `desktop/src/main/ai/types.ts`, add its facts to `desktop/src/shared/providers.ts`, and connect it in `makeProvider` or `makeChatProvider` in `desktop/src/main/index.ts`. A service with an OpenAI-compatible API needs only its address and models.
 
 ## Planned
 
-Summaries (Phase 4), documents (Phase 5), chat and retrieval (Phase 6), study tools and AI Studio (Phase 7).
+Documents (Phase 5), chat and retrieval (Phase 6), study tools and AI Studio (Phase 7).

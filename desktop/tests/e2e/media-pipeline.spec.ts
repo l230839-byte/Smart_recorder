@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { closeSync, openSync, readdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { closeSync, copyFileSync, existsSync, openSync, readdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { expect, test, type Page } from '@playwright/test';
@@ -74,8 +75,11 @@ test('workflow A: record with bookmarks and a note, keep going across screens, s
     await page.getByRole('button', { name: 'Resume' }).click();
     await page.waitForTimeout(800);
 
+    // A description can be added while recording, and it is saved.
+    await page.getByLabel('Description').fill('Quarterly numbers');
     await page.getByRole('button', { name: 'Stop and save' }).click();
     await expect(page.getByRole('heading', { name: 'Budget review' })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('Quarterly numbers')).toBeVisible();
 
     const [rec] = await listAll(page);
     expect(rec).toMatchObject({ title: 'Budget review', mode: 'meeting', source: 'native', format: 'OGG', codec: 'Opus' });
@@ -156,6 +160,7 @@ test('workflows B and D: batch import keeps the valid files, reports the bad one
 
     await call(page, 'importPaths', [...good, ...bad, 'truncated.m4a'].map(fixture).concat(missing), 'lecture');
     const jobs = await waitForImports(page, good.length + bad.length + 2);
+    const jobCount = jobs.length + (existsSync(fixture('phone-video.mp4')) ? 1 : 0);
     const byName = Object.fromEntries(jobs.map((j) => [j.displayName, j]));
 
     for (const f of bad) {
@@ -181,15 +186,23 @@ test('workflows B and D: batch import keeps the valid files, reports the bad one
     expect(byTitle['recorder.m4a']!.durationMs).toBeGreaterThan(11_000);
 
     // Video: only the audio is kept, in its original codec.
-    expect(byTitle['lecture-video.webm']).toMatchObject({ format: 'OGG', codec: 'Opus' });
+    expect(byTitle['lecture-video.webm']).toMatchObject({ format: 'OGG', codec: 'Opus', source: 'video' });
     expect(byTitle['lecture-video.webm']!.durationMs).toBeGreaterThan(2500);
+
+    if (existsSync(fixture('phone-video.mp4'))) {
+      await call(page, 'importPaths', [fixture('phone-video.mp4')], 'lecture');
+      await expect.poll(async () => (await call<ImportJob[]>(page, 'listImports')).find((j) => j.displayName === 'phone-video.mp4')?.status, { timeout: 30_000 }).toBe('done');
+      const mp4 = (await listAll(page)).find((r) => r.originalName === 'phone-video.mp4')!;
+      expect(mp4).toMatchObject({ source: 'video', format: 'M4A', codec: 'AAC' });
+      expect(mp4.durationMs).toBeGreaterThan(2500);
+    }
 
     // Originals are byte-identical afterwards.
     for (const f of good) expect(sha(fixture(f)), f).toBe(before[f]);
 
     // Importing the same file again is caught.
     await call(page, 'importPaths', [fixture('recorder.m4a')], 'meeting');
-    const again = await waitForImports(page, jobs.length + 1);
+    const again = await waitForImports(page, jobCount + 1);
     expect(again[0]).toMatchObject({ displayName: 'recorder.m4a', status: 'duplicate', duplicateOf: byTitle['recorder.m4a']!.id });
     expect((await listAll(page)).filter((r) => r.originalName === 'recorder.m4a')).toHaveLength(1);
 
@@ -226,6 +239,64 @@ test('workflow C: a file opened with EchoMind goes straight into the library', a
   try {
     await completeOnboarding(page);
     await expect.poll(async () => (await listAll(page)).map((r) => r.source), { timeout: 20_000 }).toEqual(['opened']);
+  } finally {
+    await closeApp(app);
+    removeDir(dataDir);
+  }
+});
+
+test('identical files imported at the same moment only get in once', async () => {
+  const dataDir = tempDataDir();
+  const copy = join(dataDir, 'second-copy.m4a');
+  copyFileSync(fixture('recorder.m4a'), copy);
+  const { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    await call(page, 'importPaths', [fixture('recorder.m4a'), copy], 'lecture');
+    const jobs = await waitForImports(page, 2);
+    expect(jobs.map((j) => j.status).sort()).toEqual(['done', 'duplicate']);
+    expect(await listAll(page)).toHaveLength(1);
+  } finally {
+    await closeApp(app);
+    removeDir(dataDir);
+  }
+});
+
+test('a second launch with a file adds it to the running app', async () => {
+  const dataDir = tempDataDir();
+  const { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    const env = { ...process.env, ECHOMIND_USER_DATA: dataDir } as Record<string, string>;
+    delete env.ELECTRON_RUN_AS_NODE;
+    const electronPath = (await import('electron')).default as unknown as string;
+    const second = spawnSync(electronPath, [process.cwd(), fixture('tone.wav')], { env, timeout: 30_000 });
+    expect(second.status).toBe(0);
+    await expect.poll(async () => (await listAll(page)).map((r) => r.source), { timeout: 20_000 }).toEqual(['opened']);
+    await expect(page.getByRole('heading', { name: 'Import audio' })).toBeVisible();
+  } finally {
+    await closeApp(app);
+    removeDir(dataDir);
+  }
+});
+
+test('trim also works on MP3 and WAV', async () => {
+  const dataDir = tempDataDir();
+  const { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    await call(page, 'importPaths', [fixture('silent.mp3'), fixture('tone.wav')], 'lecture');
+    await waitForImports(page, 2);
+    const recs = await listAll(page);
+    for (const name of ['silent.mp3', 'tone.wav']) {
+      const rec = recs.find((r) => r.originalName === name)!;
+      const id = await call<string>(page, 'trimRecording', rec.id, 500, 2000);
+      const trimmed = await call<Recording>(page, 'getRecording', id);
+      expect(trimmed.source, name).toBe('trim');
+      expect(Math.abs(trimmed.durationMs - 1500), name).toBeLessThan(250);
+      // The original is untouched either way.
+      expect((await call<Recording>(page, 'getRecording', rec.id)).durationMs, name).toBe(rec.durationMs);
+    }
   } finally {
     await closeApp(app);
     removeDir(dataDir);

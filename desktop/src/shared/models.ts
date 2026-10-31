@@ -1,5 +1,6 @@
 /** Domain types shared by the main process and the UI. No Electron or DOM imports here, so they stay portable. */
-import type { TranscriptionProviderId } from './providers';
+import type { LlmProviderId, TranscriptionProviderId } from './providers';
+import type { SummaryOptions } from './summaries';
 import type { Segment } from './transcript';
 
 export const RECORDING_MODES = ['lecture', 'meeting', 'interview', 'notes', 'business', 'journal', 'custom'] as const;
@@ -127,9 +128,40 @@ export interface ImportJob {
 
 export type JobStatus = 'queued' | 'running' | 'waiting' | 'done' | 'failed' | 'canceled';
 
+export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest';
+
+export const JOB_KIND_LABEL: Record<JobKind, string> = {
+  transcribe: 'Transcript',
+  summarize: 'Summary',
+  chapters: 'Chapters',
+  suggest: 'Title and tags',
+};
+
+export interface Summary {
+  id: string;
+  recordingId: string;
+  version: number;
+  label: string;
+  options: SummaryOptions;
+  markdown: string;
+  provider: string;
+  model: string;
+  /** The transcript it was written from, to warn when that has since changed. */
+  transcriptVersionId: string | null;
+  droppedCitations: number;
+  truncated: boolean;
+  createdAt: number;
+}
+
+export interface SummaryTemplate {
+  id: string;
+  name: string;
+  options: SummaryOptions;
+}
+
 export interface ProcessingJob {
   id: string;
-  kind: 'transcribe';
+  kind: JobKind;
   recordingId: string;
   recordingTitle: string;
   status: JobStatus;
@@ -137,7 +169,7 @@ export interface ProcessingJob {
   progress: number;
   error: string | null;
   retryable: boolean;
-  provider: TranscriptionProviderId;
+  provider: string;
   nextAttemptAt: number | null;
   createdAt: number;
 }
@@ -161,7 +193,11 @@ export interface Transcript {
   speakers: Record<string, string>;
 }
 
-export type TranscribeOutcome = { ok: true; jobId: string } | { ok: false; reason: 'offline-only' | 'needs-setup' | 'needs-consent'; provider: TranscriptionProviderId };
+export type AiPurpose = 'audio' | 'text';
+
+export type TranscribeOutcome = { ok: true; jobId: string } | { ok: false; reason: 'offline-only' | 'needs-setup' | 'needs-consent'; provider: TranscriptionProviderId; purpose: 'audio' };
+
+export type AiOutcome = { ok: true; jobId: string } | { ok: false; reason: 'offline-only' | 'needs-setup' | 'needs-consent'; provider: LlmProviderId; purpose: 'text' } | { ok: false; reason: 'needs-transcript' };
 
 export interface ProviderRateInfo {
   remainingRequests: number | null;
@@ -175,6 +211,8 @@ export interface UsageSummary {
   audioMsToday: number;
   requestsMonth: number;
   audioMsMonth: number;
+  tokensToday: number;
+  tokensMonth: number;
   rate: ProviderRateInfo | null;
   rateUpdatedAt: number | null;
 }
@@ -216,6 +254,9 @@ export interface Settings {
   customBaseUrl: string | null;
   /** Warn past this much audio per day, in minutes. Null means no warning. */
   dailyAudioLimitMinutes: number | null;
+  llmProvider: LlmProviderId;
+  llmModel: string | null;
+  llmBaseUrl: string | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -237,6 +278,9 @@ export const DEFAULT_SETTINGS: Settings = {
   transcriptionLanguage: 'auto',
   customBaseUrl: null,
   dailyAudioLimitMinutes: null,
+  llmProvider: 'groq',
+  llmModel: null,
+  llmBaseUrl: null,
 };
 
 export interface LibraryStats {

@@ -13,6 +13,8 @@ const CONCURRENCY = 2;
 /** Persistent queue: each file succeeds or fails on its own, and interrupted work resumes on launch. */
 export class ImportService {
   private running = 0;
+  /** Hashes being imported right now, so identical files in one batch cannot both get in. */
+  private readonly inFlight = new Map<string, Promise<void>>();
 
   constructor(
     private readonly jobs: ImportRepository,
@@ -75,6 +77,7 @@ export class ImportService {
 
       const sha256 = await this.copyWithHash(job, workFile, size);
 
+      await this.inFlight.get(sha256);
       const existing = this.library.findBySha(sha256);
       if (existing) {
         await rm(workFile, { force: true });
@@ -82,7 +85,7 @@ export class ImportService {
         return;
       }
 
-      const result = await this.pipelineService.ingest({
+      const ingesting = this.pipelineService.ingest({
         workFile,
         title: titleFromFileName(job.displayName),
         mode: job.mode,
@@ -94,6 +97,12 @@ export class ImportService {
           this.changed();
         },
       });
+      const settled = ingesting.then(
+        () => undefined,
+        () => undefined,
+      );
+      this.inFlight.set(sha256, settled);
+      const result = await ingesting.finally(() => this.inFlight.delete(sha256));
       this.jobs.finish(job.id, result.recordingId, result.warning);
       this.libraryChanged();
     } catch (e) {

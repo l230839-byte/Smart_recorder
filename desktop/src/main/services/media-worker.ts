@@ -1,6 +1,6 @@
 import { open, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, type WebContents } from 'electron';
 import type { MediaJob, MediaJobResult } from '@shared/media-jobs';
 
 interface Pending {
@@ -27,8 +27,12 @@ export class MediaWorker {
     ipcMain.on('media:done', (_e, id: number, value: unknown) => this.settle(id)?.resolve(value as never));
     ipcMain.on('media:fail', (_e, id: number, message: string) => this.settle(id)?.reject(new Error(message)));
     ipcMain.on('media:progress', (_e, id: number, value: number) => this.pending.get(id)?.onProgress?.(value));
-    ipcMain.handle('media:size', async (_e, handle: number) => (await this.file(handle).stat()).size);
-    ipcMain.handle('media:read', async (_e, handle: number, start: number, end: number) => {
+    ipcMain.handle('media:size', async (event, handle: number) => {
+      this.requireWorker(event.sender);
+      return (await this.file(handle).stat()).size;
+    });
+    ipcMain.handle('media:read', async (event, handle: number, start: number, end: number) => {
+      this.requireWorker(event.sender);
       const length = end - start;
       const buffer = new Uint8Array(length);
       let total = 0;
@@ -40,9 +44,15 @@ export class MediaWorker {
       }
       return total === length ? buffer : buffer.subarray(0, total);
     });
-    ipcMain.handle('media:write', async (_e, handle: number, position: number, data: Uint8Array) => {
+    ipcMain.handle('media:write', async (event, handle: number, position: number, data: Uint8Array) => {
+      this.requireWorker(event.sender);
       await this.file(handle).write(data, 0, data.length, position);
     });
+  }
+
+  /** File handles are for the worker alone. */
+  private requireWorker(sender: WebContents): void {
+    if (sender !== this.window?.webContents) throw new Error('Not allowed.');
   }
 
   private file(handle: number): FileHandle {

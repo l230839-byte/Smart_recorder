@@ -27,6 +27,8 @@
   overflow: hidden;
 }
 .rec-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 66px;
   display: flex;
   align-items: center;
   min-width: 0;

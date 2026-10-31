@@ -1,14 +1,19 @@
 import type {
+  AiOutcome,
+  AiPurpose,
   AppInfo,
   Bookmark,
   Collection,
   ImportJob,
+  JobKind,
   LibraryQuery,
   LibraryStats,
   Recording,
   RecordingMode,
   Settings,
   StorageInfo,
+  Summary,
+  SummaryTemplate,
   ProcessingJob,
   ProviderStatus,
   Tag,
@@ -16,7 +21,8 @@ import type {
   Transcript,
   UsageSummary,
 } from './models';
-import type { TranscriptionProviderId } from './providers';
+import type { LlmProviderId, TranscriptionProviderId } from './providers';
+import type { Chapter, Suggestions, SummaryOptions } from './summaries';
 
 export interface RecordingEdit {
   title?: string;
@@ -87,18 +93,18 @@ export interface EchoApi {
   getFreeSpace(): Promise<number>;
 
   // AI providers. Keys go in and are never returned to the UI.
-  getProviderStatus(provider: TranscriptionProviderId): ProviderStatus;
-  saveProviderKey(provider: TranscriptionProviderId, key: string): void;
-  clearProviderKey(provider: TranscriptionProviderId): void;
-  testProvider(provider: TranscriptionProviderId): Promise<void>;
-  acceptConsent(provider: TranscriptionProviderId): void;
-  revokeConsent(provider: TranscriptionProviderId): void;
+  getProviderStatus(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): ProviderStatus;
+  saveProviderKey(provider: TranscriptionProviderId | LlmProviderId, key: string): void;
+  clearProviderKey(provider: TranscriptionProviderId | LlmProviderId): void;
+  testProvider(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): Promise<void>;
+  acceptConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;
+  revokeConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;
   getUsage(): UsageSummary[];
 
   // Transcription
   requestTranscription(recordingId: string, language?: string): TranscribeOutcome;
   listJobs(): ProcessingJob[];
-  latestJob(recordingId: string): ProcessingJob | null;
+  latestJob(recordingId: string, kind: JobKind): ProcessingJob | null;
   cancelJob(id: string): void;
   retryJob(id: string): void;
   removeJob(id: string): void;
@@ -111,12 +117,27 @@ export interface EchoApi {
   /** Saves the transcript as a file the user picks. Returns false if they cancel. */
   exportTranscript(recordingId: string, format: 'txt' | 'srt' | 'vtt'): Promise<boolean>;
   openExternal(url: string): void;
+
+  // Summaries, chapters, suggestions. All read the stored transcript; none transcribes again.
+  requestSummary(recordingId: string, options: SummaryOptions): AiOutcome;
+  requestChapters(recordingId: string, language?: string): AiOutcome;
+  requestSuggestions(recordingId: string): AiOutcome;
+  listSummaries(recordingId: string): Summary[];
+  deleteSummary(id: string): void;
+  /** Saves a summary as Markdown or text where the user picks. Returns false if they cancel. */
+  exportSummary(id: string, format: 'md' | 'txt'): Promise<boolean>;
+  listChapters(recordingId: string): Chapter[];
+  getSuggestions(recordingId: string): Suggestions | null;
+  dismissSuggestions(recordingId: string): void;
+  listTemplates(): SummaryTemplate[];
+  saveTemplate(name: string, options: SummaryOptions): string;
+  deleteTemplate(id: string): void;
 }
 
 /** Events pushed from the main process to the UI. */
 export interface EchoEvents {
   /** Stored data changed; screens re-read what they show. The value names the area. */
-  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts';
+  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries';
   /** Files arrived from outside the window ("Open with", a second launch). The batch is already queued. */
   'imports:opened': string;
   /** Interrupted recordings were rebuilt at launch. The value is how many. */

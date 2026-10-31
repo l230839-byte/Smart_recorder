@@ -152,7 +152,7 @@ describe('provider errors', () => {
   it('maps each failure to what should happen next', async () => {
     expect((await toProviderError(response(401))).kind).toBe('auth');
     expect((await toProviderError(response(403))).kind).toBe('auth');
-    expect((await toProviderError(response(413))).kind).toBe('rejected');
+    expect((await toProviderError(response(413))).kind).toBe('too-large');
     expect((await toProviderError(response(404))).kind).toBe('rejected');
     expect((await toProviderError(response(400, { error: { message: 'bad audio' } }))).message).toContain('bad audio');
     expect((await toProviderError(response(503))).kind).toBe('server');
@@ -342,13 +342,16 @@ describe('transcription queue', () => {
     wakeups = [];
   });
 
-  afterEach(() => db.close());
+  afterEach(async () => {
+    await settle();
+    db.close();
+  });
 
   describe('privacy: nothing leaves without permission', () => {
     it('offline-only blocks every cloud provider, and nothing is sent', async () => {
       settings.offlineOnly = true;
       const id = addRecording();
-      expect(service().request(id)).toEqual({ ok: false, reason: 'offline-only', provider: 'groq' });
+      expect(service().request(id)).toEqual({ ok: false, reason: 'offline-only', provider: 'groq', purpose: 'audio' });
       await settle();
       expect(calls).toHaveLength(0);
       expect(prepared).toBe(0);
@@ -357,7 +360,7 @@ describe('transcription queue', () => {
     it('without consent nothing is sent', async () => {
       consents.revoke('groq');
       const id = addRecording();
-      expect(service().request(id)).toEqual({ ok: false, reason: 'needs-consent', provider: 'groq' });
+      expect(service().request(id)).toEqual({ ok: false, reason: 'needs-consent', provider: 'groq', purpose: 'audio' });
       await settle();
       expect(calls).toHaveLength(0);
     });

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { FileUp, Pause, Play, X } from 'lucide-react';
+import { FileUp, Loader2, Pause, Play, X } from 'lucide-react';
 import { formatDuration, plural } from '@shared/format';
 import { IconButton } from '../design/components';
 import { Waveform } from '../design/Waveform';
-import { api, onEvent } from '../lib/api';
+import { api, onEvent, useQuery } from '../lib/api';
 import { player, usePlayer } from '../lib/player';
 import { recorder, useRecorder } from '../lib/recorder';
 import { useRouter } from '../lib/router';
@@ -42,16 +42,27 @@ export function MiniPlayer() {
 /** Always visible while recording, on every screen: recording is never hidden (prompt §21). */
 export function RecordingIndicator() {
   const state = useRecorder();
-  const { section, switchTo } = useRouter();
-  if (state.status === 'idle' || state.status === 'starting') return null;
+  const { section, switchTo, go } = useRouter();
+  const jobs = useQuery(() => api.listJobs(), [], ['jobs']);
+  const activeJobs = jobs.data?.filter((j) => ['queued', 'running', 'waiting'].includes(j.status)).length ?? 0;
+  const recording = state.status !== 'idle' && state.status !== 'starting';
+  if (!recording && activeJobs === 0) return null;
   return (
     <div className="stack" style={{ marginTop: 'auto', gap: 'var(--s2)' }}>
+      {activeJobs > 0 && (
+        <button type="button" className="job-pill" onClick={() => go({ name: 'jobs' })}>
+          <Loader2 size={14} aria-hidden className="spin" />
+          {plural(activeJobs, 'job')} processing
+        </button>
+      )}
+      {recording && (
       <button type="button" className="rec-pill" aria-label={`Recording, ${formatDuration(state.elapsedMs)}. Open recorder`} onClick={() => section !== 'record' && switchTo({ name: 'record' })}>
         <span className={`record-dot ${state.status === 'paused' ? 'paused' : ''}`} aria-hidden />
         <span className="grow tabular" style={{ textAlign: 'left' }}>
           {state.status === 'saving' ? 'Saving…' : state.status === 'paused' ? `Paused ${formatDuration(state.elapsedMs)}` : formatDuration(state.elapsedMs)}
         </span>
       </button>
+      )}
     </div>
   );
 }

@@ -34,4 +34,16 @@ SQLite at `<user data>/echomind.db`, in WAL mode with foreign keys enforced. Mig
 
 Deleting a recording cascades to all of these except the FTS index, which the repository clears in the same transaction.
 
-Later phases add summaries, documents, chat, study material and tasks through new migrations.
+## Migration 3: summaries
+
+| Change | Purpose |
+| --- | --- |
+| `processing_jobs.options` | Settings for each job, as JSON |
+| `ai_usage.input_tokens`, `output_tokens` | Token counts per provider and day |
+| `summaries` | Versioned results, with their settings, model and source transcript version |
+| `chapters` | Topic chapters. A new set replaces the old. |
+| `ai_suggestions` | Suggested title, tags and topics, waiting for the user |
+| `summary_templates` | Reusable settings |
+| `summary_search` | FTS5 index over summary text |
+
+Later phases add documents, chat, study material and tasks through new migrations.

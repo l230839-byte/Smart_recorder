@@ -17,6 +17,9 @@
   gap: 2px;
 }
 .t-block {
+  /* Skips layout for lines far off screen, which keeps very long transcripts smooth. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr) auto;
   gap: var(--s2);

@@ -8,6 +8,8 @@ import type { LibraryRepository, NewRecording } from '../db/library';
 import type { Ffmpeg } from './ffmpeg';
 import type { MediaWorker } from './media-worker';
 
+const IMPORT_SOURCES = new Set<RecordingSource>(['picker', 'dropped', 'opened']);
+
 /** A problem caused by the file itself: trying again cannot help, so the UI offers only Remove. */
 export class BadMediaError extends Error {}
 
@@ -90,7 +92,8 @@ export class IngestPipeline {
         title: request.title,
         description: request.description,
         mode: request.mode,
-        source: request.source,
+        // Decided from the file's content, not its name.
+        source: probe.hasVideo && IMPORT_SOURCES.has(request.source) ? 'video' : request.source,
         originalName: request.originalName,
         format: CONTAINER_LABEL[plan.container],
         codec: codecLabel(finalProbe.codec ?? ''),

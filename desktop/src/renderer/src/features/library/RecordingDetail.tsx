@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Archive, ArchiveRestore, Bookmark, Download, FileAudio, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
 import { formatBytes, formatDateTime, formatDuration } from '@shared/format';
 import { clampPosition } from '@shared/media';
+import { TRANSCRIPT_LANGUAGES } from '@shared/providers';
 import { MODE_INFO, RECORDING_MODES, SOURCE_LABEL, type Recording, type RecordingMode } from '@shared/models';
 import { Button, Card, ConfirmDialog, Dialog, EmptyState, IconButton, Loading, Menu, SectionTitle, TextPromptDialog } from '../../design/components';
 import { Waveform } from '../../design/Waveform';
@@ -123,6 +124,7 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
   const bookmarks = useQuery(() => api.listBookmarks(id), [id], ['library']);
   const collections = useQuery(() => api.listCollections(), [], ['library']);
   const peaks = useQuery(() => api.getPeaks(id), [id]);
+  const transcript = useQuery(() => api.getTranscript(id), [id], ['transcripts']);
   const playback = usePlayer();
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [noteAt, setNoteAt] = useState(0);
@@ -334,6 +336,14 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
                     <dd>
                       {(recording.sampleRate / 1000).toFixed(1)} kHz · {recording.channels === 1 ? 'Mono' : recording.channels === 2 ? 'Stereo' : `${recording.channels} channels`}
                     </dd>
+                  </>
+                )}
+                <dt>Status</dt>
+                <dd>{transcript.data ? 'Transcribed' : 'Not transcribed yet'}</dd>
+                {transcript.data?.version.language && (
+                  <>
+                    <dt>Language</dt>
+                    <dd>{TRANSCRIPT_LANGUAGES.find((l) => l.value === transcript.data?.version.language)?.label ?? transcript.data.version.language}</dd>
                   </>
                 )}
                 <dt>Collection</dt>

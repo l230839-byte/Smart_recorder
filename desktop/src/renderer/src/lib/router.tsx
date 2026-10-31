@@ -1,3 +1,4 @@
+import type { SummaryOptions } from '@shared/summaries';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 /** A small typed route stack. The app has no URLs, so a browser router would add nothing. */
@@ -15,7 +16,8 @@ export type Route =
   | { name: 'transcript'; id: string; startMs?: number }
   | { name: 'jobs' }
   | { name: 'providers' }
-  | { name: 'usage' };
+  | { name: 'usage' }
+  | { name: 'summaries'; id: string; preset?: Partial<SummaryOptions>; scope?: { startMs: number; endMs: number; label: string } };
 
 export type TopLevel = 'home' | 'library' | 'record' | 'studio' | 'settings';
 
@@ -34,6 +36,7 @@ const TOP_LEVEL_OF: Record<Route['name'], TopLevel> = {
   jobs: 'home',
   providers: 'settings',
   usage: 'settings',
+  summaries: 'library',
 };
 
 interface RouterValue {

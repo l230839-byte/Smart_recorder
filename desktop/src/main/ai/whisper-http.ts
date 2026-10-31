@@ -45,7 +45,7 @@ export function parseWait(value: string | null): number | null {
   return Number(h ?? 0) * 3_600_000 + Number(m ?? 0) * 60_000 + Number(s ?? 0) * 1000 + Number(ms ?? 0);
 }
 
-function rateFromHeaders(headers: Headers): ProviderRateInfo | null {
+export function rateFromHeaders(headers: Headers): ProviderRateInfo | null {
   const remaining = headers.get('x-ratelimit-remaining-requests');
   const limit = headers.get('x-ratelimit-limit-requests');
   if (remaining === null && limit === null) return null;
@@ -71,7 +71,7 @@ export async function toProviderError(response: Response): Promise<ProviderError
     const quota = /per day|daily|quota|exceeded your/i.test(detail) || (wait !== null && wait > 10 * 60_000);
     return new ProviderError(quota ? 'quota' : 'rate', quota ? 'The free limit for this service has been reached.' : 'The service asked EchoMind to slow down.', wait);
   }
-  if (status === 413) return new ProviderError('rejected', 'This piece of audio is larger than the service accepts.');
+  if (status === 413) return new ProviderError('too-large', 'This piece is larger than the service accepts.');
   if (status === 404) return new ProviderError('rejected', 'The service does not recognize this model or address. Check Settings.');
   if (status >= 500) return new ProviderError('server', 'The transcription service is having problems.', parseWait(response.headers.get('retry-after')));
   return new ProviderError('rejected', detail ? `The service refused this request: ${detail.slice(0, 200)}` : `The service refused this request (HTTP ${status}).`);

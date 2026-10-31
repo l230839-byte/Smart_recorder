@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, Download, FileText, History, Locate, Pause, Pencil, Play, Users } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronUp, Download, FileText, History, Locate, Pause, Pencil, Play, Sparkles, Users } from 'lucide-react';
 import { formatDateTime, formatDuration } from '@shared/format';
 import { PROVIDER_INFO, TRANSCRIPT_LANGUAGES, type TranscriptionProviderId } from '@shared/providers';
 import { activeBlockIndex, findMatches, hasQuestions, hasSpeakers, speakerName, toBlocks, TRANSCRIPT_MODE_LABEL, TRANSCRIPT_MODES, type TranscriptBlock, type TranscriptMode } from '@shared/transcript';
@@ -57,6 +57,65 @@ function SegmentEditor({ text, onSave, onCancel }: { text: string; onSave: (text
   );
 }
 
+interface BlockActions {
+  seek: (ms: number) => void;
+  toggle: () => void;
+  edit: (idx: number | null) => void;
+  save: (idx: number, text: string) => void;
+}
+
+/** Memoized: during playback the screen updates several times a second, but only one line changes. */
+const BlockRow = memo(function BlockRow({
+  block,
+  mode,
+  who,
+  query,
+  activeOffset,
+  active,
+  playingHere,
+  editing,
+  actions,
+  register,
+}: {
+  block: TranscriptBlock;
+  mode: TranscriptMode;
+  who: string | null;
+  query: string;
+  activeOffset: number | null;
+  active: boolean;
+  playingHere: boolean;
+  editing: boolean;
+  actions: BlockActions;
+  register: (key: string, el: HTMLDivElement | null) => void;
+}) {
+  return (
+    <div ref={(el) => register(block.key, el)} data-start={block.startMs} data-end={block.endMs} className={`t-block ${active ? 'active' : ''} ${block.kind}`}>
+      <div className="t-gutter">
+        {(block.showTime || mode === 'speaker' || mode === 'paragraph') && (
+          <button type="button" className="t-time tabular" aria-label={`Play from ${formatDuration(block.startMs)}`} onClick={() => actions.seek(block.startMs)}>
+            {formatDuration(block.startMs)}
+          </button>
+        )}
+      </div>
+      <div className="t-main">
+        {who && mode !== 'raw' && mode !== 'cleaned' && <div className="t-speaker">{who}</div>}
+        {block.kind === 'question' && <div className="t-kind">Question</div>}
+        {editing ? (
+          <SegmentEditor text={block.text} onCancel={() => actions.edit(null)} onSave={(text) => actions.save(block.segmentIdx!, text)} />
+        ) : (
+          <p className={`t-text selectable ${block.uncertain ? 'uncertain' : ''}`} dir="auto" title={block.uncertain ? 'The service was unsure about this part' : undefined}>
+            <Highlighted text={block.text} query={query} activeOffset={activeOffset} />
+          </p>
+        )}
+      </div>
+      <div className="t-actions">
+        <IconButton icon={playingHere ? Pause : Play} size={15} label={`Play from ${formatDuration(block.startMs)}`} onClick={() => (playingHere ? actions.toggle() : actions.seek(block.startMs))} />
+        {mode === 'timestamped' && block.segmentIdx !== null && !editing && <IconButton icon={Pencil} size={15} label={`Edit text at ${formatDuration(block.startMs)}`} onClick={() => actions.edit(block.segmentIdx)} />}
+      </div>
+    </div>
+  );
+});
+
 export function TranscriptScreen({ id, startMs }: { id: string; startMs?: number }) {
   const { go } = useRouter();
   const toast = useToast();
@@ -69,7 +128,12 @@ export function TranscriptScreen({ id, startMs }: { id: string; startMs?: number
   const [editing, setEditing] = useState<number | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [follow, setFollow] = useState(true);
+  const [selectionRange, setSelectionRange] = useState<{ startMs: number; endMs: number } | null>(null);
   const blockRefs = useRef(new Map<string, HTMLDivElement>());
+  const register = useCallback((key: string, el: HTMLDivElement | null) => {
+    if (el) blockRefs.current.set(key, el);
+    else blockRefs.current.delete(key);
+  }, []);
   const data = transcript.data;
   const rec = recording.data;
   const loaded = playback.recording?.id === id;
@@ -79,6 +143,32 @@ export function TranscriptScreen({ id, startMs }: { id: string; startMs?: number
   }, [rec?.id, startMs]);
 
   const blocks = useMemo(() => (data ? toBlocks(mode, data.segments) : []), [data, mode]);
+
+  const actions = useMemo<BlockActions>(
+    () => ({
+      seek: (ms) => {
+        if (rec) void player.load(rec, ms, true);
+      },
+      toggle: () => player.toggle(),
+      edit: setEditing,
+      save: (idx, text) => {
+        setEditing(null);
+        void api.editSegment(id, idx, text).catch(toast.showError);
+      },
+    }),
+    [rec, id, toast],
+  );
+
+  /** Selected transcript text can be summarized by itself (prompt §8). */
+  const onSelectionEnd = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.anchorNode || !selection.focusNode) return setSelectionRange(null);
+    const blockOf = (node: Node) => (node instanceof Element ? node : node.parentElement)?.closest<HTMLElement>('[data-start]');
+    const a = blockOf(selection.anchorNode);
+    const b = blockOf(selection.focusNode);
+    if (!a || !b) return setSelectionRange(null);
+    setSelectionRange({ startMs: Math.min(Number(a.dataset.start), Number(b.dataset.start)), endMs: Math.max(Number(a.dataset.end), Number(b.dataset.end)) });
+  };
 
   /** Every match in reading order, so next and previous can step through them. */
   const allMatches = useMemo(() => {
@@ -126,10 +216,6 @@ export function TranscriptScreen({ id, startMs }: { id: string; startMs?: number
   const providerLabel = PROVIDER_INFO[version.provider as TranscriptionProviderId]?.label ?? version.provider;
   const isDemo = version.provider === 'fake';
   const speakerLabels = [...new Set(segments.map((s) => s.speaker).filter((s): s is string => !!s))];
-
-  const seek = (ms: number) => {
-    void player.load(rec, ms, true);
-  };
 
   const emptyMode =
     mode === 'speaker' && !hasSpeakers(segments)
@@ -203,55 +289,39 @@ export function TranscriptScreen({ id, startMs }: { id: string; startMs?: number
             <Menu icon={Users} label="Rename speakers" items={speakerLabels.map((label) => ({ label: speakerName(label, speakers) ?? label, onSelect: () => setRenaming(label) }))} />
           )}
         </div>
-        {mode !== 'timestamped' && <p className="muted small">To correct text, switch to the Timestamped view.</p>}
+        <div className="row wrap">
+          {mode !== 'timestamped' && <p className="muted small grow">To correct text, switch to the Timestamped view.</p>}
+          {selectionRange && (
+            <Button size="sm" variant="tonal" icon={Sparkles} onClick={() => go({ name: 'summaries', id, scope: { ...selectionRange, label: `Selection ${formatDuration(selectionRange.startMs)}–${formatDuration(selectionRange.endMs)}` } })}>
+              Summarize selection
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" icon={Sparkles} onClick={() => go({ name: 'summaries', id })}>
+            Summaries
+          </Button>
+        </div>
       </div>
 
       {emptyMode ? (
         <p className="muted">{emptyMode}</p>
       ) : (
-        <div className="transcript-body">
+        <div className="transcript-body" onMouseUp={onSelectionEnd}>
           {blocks.map((block) => {
-            const isEditing = mode === 'timestamped' && block.segmentIdx !== null && editing === block.segmentIdx;
-            const who = speakerName(block.speaker, speakers);
+            const match = currentMatch?.block.key === block.key ? currentMatch.offset : null;
             return (
-              <div
+              <BlockRow
                 key={block.key}
-                ref={(el) => {
-                  if (el) blockRefs.current.set(block.key, el);
-                  else blockRefs.current.delete(block.key);
-                }}
-                className={`t-block ${block.key === activeKey ? 'active' : ''} ${block.kind}`}
-              >
-                <div className="t-gutter">
-                  {(block.showTime || mode === 'speaker' || mode === 'paragraph') && (
-                    <button type="button" className="t-time tabular" aria-label={`Play from ${formatDuration(block.startMs)}`} onClick={() => seek(block.startMs)}>
-                      {formatDuration(block.startMs)}
-                    </button>
-                  )}
-                </div>
-                <div className="t-main">
-                  {who && mode !== 'raw' && mode !== 'cleaned' && <div className="t-speaker">{who}</div>}
-                  {block.kind === 'question' && <div className="t-kind">Question</div>}
-                  {isEditing ? (
-                    <SegmentEditor
-                      text={block.text}
-                      onCancel={() => setEditing(null)}
-                      onSave={(text) => {
-                        setEditing(null);
-                        void api.editSegment(id, block.segmentIdx!, text).catch(toast.showError);
-                      }}
-                    />
-                  ) : (
-                    <p className={`t-text selectable ${block.uncertain ? 'uncertain' : ''}`} dir="auto" title={block.uncertain ? 'The service was unsure about this part' : undefined}>
-                      <Highlighted text={block.text} query={query} activeOffset={currentMatch?.block.key === block.key ? currentMatch.offset : null} />
-                    </p>
-                  )}
-                </div>
-                <div className="t-actions">
-                  <IconButton icon={loaded && playback.playing && block.key === activeKey ? Pause : Play} size={15} label={`Play from ${formatDuration(block.startMs)}`} onClick={() => (loaded && playback.playing && block.key === activeKey ? player.toggle() : seek(block.startMs))} />
-                  {mode === 'timestamped' && block.segmentIdx !== null && !isEditing && <IconButton icon={Pencil} size={15} label={`Edit text at ${formatDuration(block.startMs)}`} onClick={() => setEditing(block.segmentIdx)} />}
-                </div>
-              </div>
+                block={block}
+                mode={mode}
+                who={speakerName(block.speaker, speakers)}
+                query={query}
+                activeOffset={match}
+                active={block.key === activeKey}
+                playingHere={loaded && playback.playing && block.key === activeKey}
+                editing={mode === 'timestamped' && block.segmentIdx !== null && editing === block.segmentIdx}
+                actions={actions}
+                register={register}
+              />
             );
           })}
         </div>

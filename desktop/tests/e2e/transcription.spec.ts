@@ -157,7 +157,7 @@ test('privacy: offline-only and consent both stop uploads, with a real server co
 
     // Only after agreeing does audio go out.
     await page.getByRole('button', { name: 'Transcribe', exact: true }).click();
-    await page.getByRole('button', { name: 'I agree, transcribe' }).click();
+    await page.getByRole('button', { name: 'I agree, continue' }).click();
     await expect(page.getByRole('button', { name: 'Open transcript' })).toBeVisible({ timeout: 30_000 });
     expect(uploads).toBe(1);
     await page.getByRole('button', { name: 'Open transcript' }).click();
@@ -197,7 +197,7 @@ test('the upload is real, valid audio; HTTP 429 waits and continues on its own',
     await completeOnboarding(page);
     const rec = await importOne(page, 'recorder.m4a');
     await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'custom', customBaseUrl: baseUrl });
-    await call(page, 'acceptConsent', 'custom');
+    await call(page, 'acceptConsent', 'custom', 'audio');
     await call(page, 'requestTranscription', rec.id);
 
     // The user is told what is happening.
@@ -205,7 +205,7 @@ test('the upload is real, valid audio; HTTP 429 waits and continues on its own',
     const waiting = (await call<ProcessingJob[]>(page, 'listJobs'))[0]!;
     expect(waiting.error).toMatch(/slow down.*continue on its own/);
     await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Home', exact: true }).click();
-    await page.getByRole('button', { name: /job/ }).click();
+    await page.locator('.job-pill').click();
     await expect(page.getByText(/Waiting until about/)).toBeVisible();
     await page.screenshot({ path: 'test-shots/jobs-waiting.png' });
 
@@ -252,7 +252,7 @@ test('keys are stored encrypted, never shown again, and a bad key gives a clear 
   const { app, page } = await launch(dataDir);
   try {
     await completeOnboarding(page);
-    await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'custom', customBaseUrl: baseUrl });
+    await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'custom', customBaseUrl: baseUrl, llmProvider: 'fake' });
     await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'AI providers and keys' }).click();
 
@@ -266,7 +266,7 @@ test('keys are stored encrypted, never shown again, and a bad key gives a clear 
     await expect(page.getByText('A key is saved and encrypted.')).toBeVisible();
     await expect(page.getByLabel('API key')).toHaveCount(0);
     await page.getByRole('button', { name: 'Test connection' }).click();
-    await expect(page.getByText('Connected. No audio was sent.')).toBeVisible();
+    await expect(page.getByText('Connected. Nothing from your recordings was sent.')).toBeVisible();
 
     await closeApp(app);
     const db = new DatabaseSync(join(dataDir, 'echomind.db'));
@@ -303,7 +303,7 @@ test('a job killed by a crash resumes on the next launch, and cancel works', asy
     await completeOnboarding(page);
     const rec = await importOne(page, 'recorder.m4a');
     await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'custom', customBaseUrl: baseUrl });
-    await call(page, 'acceptConsent', 'custom');
+    await call(page, 'acceptConsent', 'custom', 'audio');
 
     // Cancel leaves no transcript and a clean temp folder.
     await call(page, 'requestTranscription', rec.id);
@@ -322,6 +322,36 @@ test('a job killed by a crash resumes on the next launch, and cancel works', asy
     ({ app, page } = await launch(dataDir));
     await expect.poll(async () => (await call<ProcessingJob[]>(page, 'listJobs'))[0]?.status, { timeout: 30_000 }).toBe('done');
     expect((await call<{ segments: { text: string }[] }>(page, 'getTranscript', rec.id)).segments[0]!.text).toBe('Resumed fine.');
+  } finally {
+    await closeApp(app);
+    removeDir(dataDir);
+    server.closeAllConnections();
+    await new Promise((r) => server.close(r));
+  }
+});
+
+test('trashing a recording stops its running job, so quota is not wasted', async () => {
+  const dataDir = tempDataDir();
+  let requests = 0;
+  const server: Server = createServer((req) => {
+    req.resume();
+    req.on('end', () => {
+      requests++; // Never answers.
+    });
+  });
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+  const { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    const rec = await importOne(page, 'recorder.m4a');
+    await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'custom', customBaseUrl: `http://127.0.0.1:${(server.address() as { port: number }).port}/v1` });
+    await call(page, 'acceptConsent', 'custom', 'audio');
+    await call(page, 'requestTranscription', rec.id);
+    await expect.poll(() => requests, { timeout: 20_000 }).toBe(1);
+    await expect(page.locator('.job-pill')).toHaveText('1 job processing');
+    await call(page, 'trashRecordings', [rec.id]);
+    await expect(page.locator('.job-pill')).toHaveCount(0);
+    expect((await call<ProcessingJob[]>(page, 'latestJob', rec.id, 'transcribe') as unknown as ProcessingJob).status).toBe('canceled');
   } finally {
     await closeApp(app);
     removeDir(dataDir);

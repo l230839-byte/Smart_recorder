@@ -193,8 +193,8 @@ export class LibraryRepository {
     const fts = query.text ? toFtsQuery(query.text) : null;
     if (query.text?.trim() && !fts) return [];
     if (fts) {
-      where.push('r.id IN (SELECT recording_id FROM recording_search WHERE recording_search MATCH ? UNION SELECT recording_id FROM transcript_search WHERE transcript_search MATCH ?)');
-      params.push(fts, fts);
+      where.push('r.id IN (SELECT recording_id FROM recording_search WHERE recording_search MATCH ? UNION SELECT recording_id FROM transcript_search WHERE transcript_search MATCH ? UNION SELECT recording_id FROM summary_search WHERE summary_search MATCH ?)');
+      params.push(fts, fts, fts);
     }
     const sql = `${RECORDING_SELECT} WHERE ${where.join(' AND ')} ORDER BY ${SORT_SQL[query.sort]}`;
     return (this.db.prepare(sql).all(...params) as unknown as RecordingRow[]).map(toRecording);
@@ -254,12 +254,14 @@ export class LibraryRepository {
     const remove = this.db.prepare('DELETE FROM recordings WHERE id = ?');
     const removeSearch = this.db.prepare('DELETE FROM recording_search WHERE recording_id = ?');
     const removeTranscriptSearch = this.db.prepare('DELETE FROM transcript_search WHERE recording_id = ?');
+    const removeSummarySearch = this.db.prepare('DELETE FROM summary_search WHERE recording_id = ?');
     transaction(this.db, () => {
       for (const id of ids) {
         files.push(...(getFiles.all(id) as { file_name: string }[]).map((r) => r.file_name));
         remove.run(id);
         removeSearch.run(id);
         removeTranscriptSearch.run(id);
+        removeSummarySearch.run(id);
       }
       this.db.exec('DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM recording_tags)');
     });

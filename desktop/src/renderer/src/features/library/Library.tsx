@@ -210,6 +210,11 @@ export function Library({ collectionId }: { collectionId?: string }) {
       {selection && selection.size > 0 && (
         <div className="batch-bar" role="toolbar" aria-label="Selected recordings">
           <strong>{selection.size} selected</strong>
+          {list && selection.size < list.length && (
+            <Button size="sm" variant="ghost" onClick={() => setSelection(new Set(list.map((r) => r.id)))}>
+              Select all
+            </Button>
+          )}
           <span className="grow" />
           {inTrash ? (
             <>

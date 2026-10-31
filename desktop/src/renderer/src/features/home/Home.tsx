@@ -47,10 +47,11 @@ export function Home() {
         </button>
       </div>
 
-      {!!jobs.data?.length && (
+      {/* While jobs are running, the sidebar shows them. This keeps finished ones reachable. */}
+      {!!jobs.data?.length && activeJobs === 0 && (
         <button type="button" className="setting-link job-link" onClick={() => go({ name: 'jobs' })}>
           <ListChecks size={18} aria-hidden />
-          <span className="grow">{activeJobs > 0 ? `${activeJobs} ${activeJobs === 1 ? 'job' : 'jobs'} processing` : 'Processing jobs'}</span>
+          <span className="grow">Processing jobs</span>
         </button>
       )}
 

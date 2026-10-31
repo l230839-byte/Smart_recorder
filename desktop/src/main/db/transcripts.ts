@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { JobStatus, ProcessingJob, ProviderRateInfo, TranscriptVersion, UsageSummary } from '@shared/models';
-import type { TranscriptionProviderId } from '@shared/providers';
+import type { JobKind, JobStatus, ProcessingJob, ProviderRateInfo, TranscriptVersion, UsageSummary } from '@shared/models';
 import type { ChunkSegment, Segment } from '@shared/transcript';
 import { transaction, type Db } from './database';
 
@@ -123,7 +122,7 @@ export class TranscriptRepository {
 
 interface JobRow {
   id: string;
-  kind: 'transcribe';
+  kind: JobKind;
   recording_id: string;
   title: string;
   status: JobStatus;
@@ -132,9 +131,10 @@ interface JobRow {
   error: string | null;
   retryable: number;
   attempts: number;
-  provider: TranscriptionProviderId;
+  provider: string;
   model: string;
   language: string;
+  options: string | null;
   next_attempt_at: number | null;
   created_at: number;
 }
@@ -143,6 +143,7 @@ export interface StoredJob extends ProcessingJob {
   attempts: number;
   model: string;
   language: string;
+  options: unknown;
 }
 
 function toJob(r: JobRow): StoredJob {
@@ -160,6 +161,7 @@ function toJob(r: JobRow): StoredJob {
     provider: r.provider,
     model: r.model,
     language: r.language,
+    options: r.options ? (JSON.parse(r.options) as unknown) : null,
     nextAttemptAt: r.next_attempt_at,
     createdAt: r.created_at,
   };
@@ -181,13 +183,17 @@ export class JobRepository {
     private readonly now: () => number = Date.now,
   ) {}
 
-  create(recordingId: string, provider: TranscriptionProviderId, model: string, language: string): string {
+  create(recordingId: string, provider: string, model: string, language: string, kind: JobKind = 'transcribe', options: string | null = null): string {
     const id = randomUUID();
     const t = this.now();
     this.db
-      .prepare("INSERT INTO processing_jobs (id, kind, recording_id, status, stage, provider, model, language, created_at, updated_at) VALUES (?, 'transcribe', ?, 'queued', 'Waiting', ?, ?, ?, ?, ?)")
-      .run(id, recordingId, provider, model, language, t, t);
+      .prepare("INSERT INTO processing_jobs (id, kind, recording_id, status, stage, provider, model, language, options, created_at, updated_at) VALUES (?, ?, ?, 'queued', 'Waiting', ?, ?, ?, ?, ?, ?)")
+      .run(id, kind, recordingId, provider, model, language, options, t, t);
     return id;
+  }
+
+  setOptions(id: string, options: string): void {
+    this.db.prepare('UPDATE processing_jobs SET options = ?, updated_at = ? WHERE id = ?').run(options, this.now(), id);
   }
 
   get(id: string): StoredJob | null {
@@ -200,14 +206,18 @@ export class JobRepository {
   }
 
   /** The active job for a recording, or its latest one. */
-  latestFor(recordingId: string): StoredJob | null {
-    const row = this.db.prepare(`${JOB_SELECT} WHERE j.recording_id = ? ORDER BY j.created_at DESC, j.rowid DESC LIMIT 1`).get(recordingId) as JobRow | undefined;
+  latestFor(recordingId: string, kind: JobKind): StoredJob | null {
+    const row = this.db.prepare(`${JOB_SELECT} WHERE j.recording_id = ? AND j.kind = ? ORDER BY j.created_at DESC, j.rowid DESC LIMIT 1`).get(recordingId, kind) as JobRow | undefined;
     return row ? toJob(row) : null;
   }
 
-  activeFor(recordingId: string): StoredJob | null {
-    const row = this.db.prepare(`${JOB_SELECT} WHERE j.recording_id = ? AND j.status IN ('queued', 'running', 'waiting') LIMIT 1`).get(recordingId) as JobRow | undefined;
+  activeFor(recordingId: string, kind: JobKind): StoredJob | null {
+    const row = this.db.prepare(`${JOB_SELECT} WHERE j.recording_id = ? AND j.kind = ? AND j.status IN ('queued', 'running', 'waiting') LIMIT 1`).get(recordingId, kind) as JobRow | undefined;
     return row ? toJob(row) : null;
+  }
+
+  activeForRecording(recordingId: string): StoredJob[] {
+    return (this.db.prepare(`${JOB_SELECT} WHERE j.recording_id = ? AND j.status IN ('queued', 'running', 'waiting')`).all(recordingId) as unknown as JobRow[]).map(toJob);
   }
 
   /** The next job due. Waiting jobs count once their retry time passes. */
@@ -280,6 +290,20 @@ export class JobRepository {
     transaction(this.db, () => ranges.forEach((r, i) => insert.run(jobId, i, r.startMs, r.endMs)));
   }
 
+  clearChunks(jobId: string): void {
+    this.db.prepare('DELETE FROM job_chunks WHERE job_id = ?').run(jobId);
+  }
+
+  /** Text results for jobs made of pieces, such as notes on each part of a long summary. */
+  pieceResults(jobId: string): (string | null)[] {
+    const rows = this.db.prepare('SELECT result FROM job_chunks WHERE job_id = ? ORDER BY idx').all(jobId) as { result: string | null }[];
+    return rows.map((r) => r.result);
+  }
+
+  savePieceResult(jobId: string, idx: number, text: string): void {
+    this.db.prepare('UPDATE job_chunks SET result = ? WHERE job_id = ? AND idx = ?').run(text, jobId, idx);
+  }
+
   saveChunk(jobId: string, idx: number, segments: ChunkSegment[], language: string | null): void {
     this.db.prepare('UPDATE job_chunks SET result = ?, language = ? WHERE job_id = ? AND idx = ?').run(JSON.stringify(segments), language, jobId, idx);
   }
@@ -296,13 +320,14 @@ export class UsageRepository {
     return new Date(at).toISOString().slice(0, 10);
   }
 
-  record(provider: string, requests: number, audioMs: number): void {
+  record(provider: string, requests: number, audioMs: number, inputTokens = 0, outputTokens = 0): void {
     this.db
       .prepare(
-        `INSERT INTO ai_usage (provider, day, requests, audio_ms) VALUES (?, ?, ?, ?)
-         ON CONFLICT (provider, day) DO UPDATE SET requests = requests + excluded.requests, audio_ms = audio_ms + excluded.audio_ms`,
+        `INSERT INTO ai_usage (provider, day, requests, audio_ms, input_tokens, output_tokens) VALUES (?, ?, ?, ?, ?, ?)
+         ON CONFLICT (provider, day) DO UPDATE SET requests = requests + excluded.requests, audio_ms = audio_ms + excluded.audio_ms,
+           input_tokens = input_tokens + excluded.input_tokens, output_tokens = output_tokens + excluded.output_tokens`,
       )
-      .run(provider, this.day(), requests, Math.round(audioMs));
+      .run(provider, this.day(), requests, Math.round(audioMs), inputTokens, outputTokens);
   }
 
   saveRate(provider: string, info: ProviderRateInfo): void {
@@ -316,10 +341,12 @@ export class UsageRepository {
       .prepare(
         `SELECT provider,
            SUM(CASE WHEN day = ? THEN requests ELSE 0 END) AS rd, SUM(CASE WHEN day = ? THEN audio_ms ELSE 0 END) AS ad,
-           SUM(CASE WHEN substr(day, 1, 7) = ? THEN requests ELSE 0 END) AS rm, SUM(CASE WHEN substr(day, 1, 7) = ? THEN audio_ms ELSE 0 END) AS am
+           SUM(CASE WHEN day = ? THEN input_tokens + output_tokens ELSE 0 END) AS td,
+           SUM(CASE WHEN substr(day, 1, 7) = ? THEN requests ELSE 0 END) AS rm, SUM(CASE WHEN substr(day, 1, 7) = ? THEN audio_ms ELSE 0 END) AS am,
+           SUM(CASE WHEN substr(day, 1, 7) = ? THEN input_tokens + output_tokens ELSE 0 END) AS tm
          FROM ai_usage GROUP BY provider ORDER BY provider`,
       )
-      .all(today, today, monthPrefix, monthPrefix) as unknown as { provider: string; rd: number; ad: number; rm: number; am: number }[];
+      .all(today, today, today, monthPrefix, monthPrefix, monthPrefix) as unknown as { provider: string; rd: number; ad: number; td: number; rm: number; am: number; tm: number }[];
     return rows.map((r) => {
       const rate = this.db.prepare('SELECT info, updated_at FROM provider_rate WHERE provider = ?').get(r.provider) as { info: string; updated_at: number } | undefined;
       return {
@@ -328,6 +355,8 @@ export class UsageRepository {
         audioMsToday: r.ad,
         requestsMonth: r.rm,
         audioMsMonth: r.am,
+        tokensToday: r.td,
+        tokensMonth: r.tm,
         rate: rate ? (JSON.parse(rate.info) as ProviderRateInfo) : null,
         rateUpdatedAt: rate?.updated_at ?? null,
       };

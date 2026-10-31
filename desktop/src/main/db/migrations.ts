@@ -210,4 +210,55 @@ export const MIGRATIONS: readonly string[] = [
     tokenize = 'unicode61 remove_diacritics 2'
   );
   `,
+
+  /* 3: summaries, chapters, suggestions, templates */ `
+  ALTER TABLE processing_jobs ADD COLUMN options TEXT;
+  ALTER TABLE ai_usage ADD COLUMN input_tokens INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE ai_usage ADD COLUMN output_tokens INTEGER NOT NULL DEFAULT 0;
+
+  CREATE TABLE summaries (
+    id TEXT PRIMARY KEY,
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    options TEXT NOT NULL,
+    markdown TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    transcript_version_id TEXT REFERENCES transcript_versions(id) ON DELETE SET NULL,
+    dropped_citations INTEGER NOT NULL DEFAULT 0,
+    truncated INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    UNIQUE (recording_id, version)
+  ) STRICT;
+
+  CREATE TABLE chapters (
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    transcript_version_id TEXT REFERENCES transcript_versions(id) ON DELETE SET NULL,
+    PRIMARY KEY (recording_id, idx)
+  ) STRICT;
+
+  CREATE TABLE ai_suggestions (
+    recording_id TEXT PRIMARY KEY REFERENCES recordings(id) ON DELETE CASCADE,
+    value TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+
+  CREATE TABLE summary_templates (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    options TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+
+  CREATE VIRTUAL TABLE summary_search USING fts5(
+    recording_id UNINDEXED, summary_id UNINDEXED, text,
+    tokenize = 'unicode61 remove_diacritics 2'
+  );
+  `,
 ];

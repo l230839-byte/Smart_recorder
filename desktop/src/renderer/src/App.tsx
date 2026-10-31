@@ -10,6 +10,7 @@ import { Onboarding } from './features/onboarding/Onboarding';
 import { RecordScreen } from './features/record/RecordScreen';
 import { Settings } from './features/settings/Settings';
 import { Studio } from './features/studio/Studio';
+import { SummariesScreen } from './features/summary/SummariesScreen';
 import { JobsScreen } from './features/transcript/JobsScreen';
 import { ProvidersScreen, UsageScreen } from './features/transcript/ProvidersScreen';
 import { TranscriptScreen } from './features/transcript/TranscriptScreen';
@@ -17,6 +18,7 @@ import { api, useQuery } from './lib/api';
 import { RouterProvider, useRouter } from './lib/router';
 import { ToastProvider } from './lib/toast';
 import { DropTarget, GlobalEvents, MiniPlayer, RecordingIndicator } from './shell/Overlays';
+import { ErrorBoundary } from './shell/ErrorBoundary';
 import { Shell } from './shell/Shell';
 
 function Screen() {
@@ -50,7 +52,18 @@ function Screen() {
       return <ProvidersScreen />;
     case 'usage':
       return <UsageScreen />;
+    case 'summaries':
+      return <SummariesScreen key={route.id} id={route.id} preset={route.preset} scope={route.scope} />;
   }
+}
+
+function ScreenWithBoundary() {
+  const { route } = useRouter();
+  return (
+    <ErrorBoundary resetKey={route}>
+      <Screen />
+    </ErrorBoundary>
+  );
 }
 
 export function App() {
@@ -64,7 +77,7 @@ export function App() {
       ) : (
         <RouterProvider>
           <Shell footer={<MiniPlayer />} sidebarExtra={<RecordingIndicator />}>
-            <Screen />
+            <ScreenWithBoundary />
           </Shell>
           <DropTarget />
           <GlobalEvents />
