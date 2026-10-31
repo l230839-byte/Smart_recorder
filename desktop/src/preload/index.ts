@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { EchoBridge } from '@shared/api';
 
 const bridge: EchoBridge = {
@@ -8,6 +8,8 @@ const bridge: EchoBridge = {
     ipcRenderer.on(event, handler);
     return () => ipcRenderer.removeListener(event, handler);
   },
+  pathForFile: (file) => webUtils.getPathForFile(file),
+  closeAfterRecording: () => ipcRenderer.send('recorder:closed'),
   platform: process.platform,
 };
 

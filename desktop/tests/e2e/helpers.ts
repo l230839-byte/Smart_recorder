@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -38,6 +39,16 @@ export async function launch(dataDir: string, args: string[] = []): Promise<Laun
   const page = await firstMainWindow(app);
   await page.waitForLoadState('domcontentloaded');
   return { app, page, dataDir };
+}
+
+/** A failed test can leave a recording running, and the app rightly refuses to close then. */
+export async function closeApp(app: ElectronApplication): Promise<void> {
+  const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 5000));
+  if ((await Promise.race([app.close().catch(() => undefined), timeout])) === 'timeout') killTree(app);
+}
+
+export function killTree(app: ElectronApplication): void {
+  spawnSync('taskkill', ['/PID', String(app.process().pid), '/T', '/F']);
 }
 
 /** The hidden media worker is also a window; tests always drive the main one. */

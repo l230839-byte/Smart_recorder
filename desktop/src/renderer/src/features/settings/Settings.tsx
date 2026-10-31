@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { FolderOpen } from 'lucide-react';
+import { ChevronRight, FolderOpen, HardDrive } from 'lucide-react';
 import type { Settings as SettingsModel, ThemeSetting } from '@shared/models';
 import { Button, Card, ConfirmDialog, Loading, PageHeader, Segmented, SwitchRow } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
+import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
 import './settings.css';
 
@@ -16,6 +17,7 @@ export function Settings() {
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
   const info = useQuery(() => api.getAppInfo(), []);
   const toast = useToast();
+  const { go } = useRouter();
   const [name, setName] = useState<string | null>(null);
   const [confirmOnline, setConfirmOnline] = useState(false);
 
@@ -76,6 +78,26 @@ export function Settings() {
             checked={s.offlineOnly}
             onChange={(offlineOnly) => (offlineOnly ? update({ offlineOnly }) : setConfirmOnline(true))}
           />
+        </Card>
+      </section>
+
+      <section className="stack" aria-labelledby="s-recording">
+        <h2 id="s-recording">Recording</h2>
+        <Card>
+          <SwitchRow title="Noise suppression" subtitle="Reduces steady background noise while recording. Applied by your system's audio engine." checked={s.noiseSuppression} onChange={(noiseSuppression) => update({ noiseSuppression })} />
+          <SwitchRow title="Automatic gain" subtitle="Keeps your voice at an even level." checked={s.autoGain} onChange={(autoGain) => update({ autoGain })} />
+          <SwitchRow title="Echo cancellation" subtitle="Useful with speakers. Leave off when using headphones or recording a room." checked={s.echoCancellation} onChange={(echoCancellation) => update({ echoCancellation })} />
+        </Card>
+      </section>
+
+      <section className="stack" aria-labelledby="s-storage">
+        <h2 id="s-storage">Storage</h2>
+        <Card>
+          <button type="button" className="setting-link" onClick={() => go({ name: 'storage' })}>
+            <HardDrive size={18} aria-hidden />
+            <span className="grow">Storage and trash</span>
+            <ChevronRight size={18} aria-hidden />
+          </button>
         </Card>
       </section>
 

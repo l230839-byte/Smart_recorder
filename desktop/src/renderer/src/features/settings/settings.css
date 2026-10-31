@@ -16,6 +16,23 @@
   padding-top: var(--s3);
   border-top: 1px solid var(--border);
 }
+.setting-link {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.setting-link:hover {
+  color: var(--primary);
+}
 .setting-input {
   flex: none;
   width: 240px;

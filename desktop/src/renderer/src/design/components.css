@@ -437,6 +437,10 @@ h3 {
   border-radius: 50%;
   animation: spin 800ms linear infinite;
 }
+.spin {
+  animation: spin 1s linear infinite;
+  color: var(--primary);
+}
 .center-fill {
   display: flex;
   align-items: center;

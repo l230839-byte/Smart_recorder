@@ -1,0 +1,150 @@
+ECHOMIND DESKTOP: PHASE 02, RECORDING, IMPORT, LIBRARY, PLAYBACK
+================================================================================
+Status:      COMPLETE, with the limits listed in section 6
+Prompt refs: §3 unified rule, §4 import, §5 recording, §6 modes, §12 library,
+             §18 pipeline (input to library), §22 reliability, §25 tests
+Date:        2026-10-31
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+A complete offline recorder and audio library. Every source enters through one
+pipeline and comes out as the same kind of recording, ready for the AI phases.
+
+
+2. WHAT THIS PHASE INCLUDES
+--------------------------------------------------------------------------------
+Recording
+- Seven modes, title, microphone choice, three quality levels.
+- Pause, resume, stop, discard. Live waveform and timer. Bookmarks (B) and timestamped
+  notes (N); Space pauses.
+- Noise suppression, automatic gain and echo cancellation settings.
+- Keeps running across screens and while minimized, with an always-visible sidebar
+  indicator. System sleep is blocked while recording.
+- Warnings for 30 s of silence and for low disk. It stops and saves safely if the disk
+  fills or the microphone is unplugged.
+- Closing the window during a recording asks: Stop and save, or Keep recording.
+
+Crash safety
+- Audio is appended and flushed to disk each second. The session row and bookmarks
+  are stored from the first moment. On the next launch, interrupted sessions are
+  rebuilt through the normal pipeline.
+
+Import
+- File dialog (multi-select), drag and drop anywhere, "Open with" and command-line files.
+- Persistent queue, two at a time: per-file progress and errors, resumes after a
+  restart. Retry is offered only where it can help.
+- Real format detected from content; extensions are ignored. SHA-256 duplicate check.
+  Originals are only ever read. Copies stream, so large files stay out of memory.
+- Video keeps only its audio, without re-encoding when possible.
+
+Library
+- Views: All, Recent, Favorites, Recorded, Imported, Archived, Trash.
+- FTS5 search over title, description, tags and notes, including Urdu. Sort options.
+- Tags, nested collections, multi-select with batch actions.
+- Trash with Undo, Restore, Empty, and automatic purge after 7, 30, 90 or 365 days.
+- Storage screen with real numbers and the largest recordings.
+- The Library remembers filter, search and scroll when you go back.
+
+Recording details and playback
+- Details, edit, tags, bookmarks, lossless trim into a new recording, save a copy.
+- One player across the app with a mini bar. Seekable waveform (mouse, keyboard, screen
+  reader), bookmark markers, speed 0.5x to 2.5x, skip silence, voice boost, ±10 s,
+  Space, hardware media keys.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  One IngestPipeline.ingest() is the only way into the library: recorded, imported,
+    dropped, opened, trimmed, recovered and video audio all use it. `source` is stored
+    for display and views only, satisfying prompt §3.
+D2  Live capture is WebM/Opus, rewritten to Ogg/Opus on finish without re-encoding.
+    A spike proved a WebM cut off mid-recording stays readable, which is what makes
+    crash recovery simple and reliable.
+D3  Decoding runs in a hidden sandboxed window. A file that crashes the decoder fails
+    only that import. The worker sees numbered file handles, never paths.
+D4  Common files are kept byte for byte. Anything else is rewritten without quality
+    loss where possible, and re-encoded only as a last resort.
+D5  A truncated file is imported with a warning instead of refused: the readable part
+    may be the user's only copy. A file that fails to decode is refused as damaged.
+D6  Failed session files are never deleted unless they are under 16 KB and unreadable,
+    which means nothing was captured. Larger ones are kept for a future version.
+D7  AMR is refused with a clear message. The only free decoder found requires eval, and
+    allowing eval would weaken the app's Content Security Policy. See section 6.
+
+
+4. TESTING (all passing on 2026-10-31)
+--------------------------------------------------------------------------------
+Unit (Vitest), 45 tests: library SQL, trash, search including Urdu and hostile input,
+tags, collections, import queue, sessions, ingest plans, silence detection, range
+parsing, formatting.
+
+End to end (Playwright, the real app with a simulated microphone), 16 tests:
+- Workflow A: record, bookmark, note, switch screens, pause, resume, stop, play, seek.
+- Crash: every process killed mid-recording. Next launch restored the audio, title and
+  bookmark, and it plays.
+- Workflows B and D: batch of 11 files. Opus, AAC, WAV, MP3 and video imported. Corrupt,
+  fake and empty files were refused with no retry. A missing file was retryable and
+  worked after it appeared. A truncated file gave a warning. A misnamed file was
+  detected by content. Duplicates were caught. Originals were byte-identical afterwards.
+- Workflow C: file opened with EchoMind enters the library.
+- Library: tags, search, batch favorite, nested collections, trash, restore, permanent
+  delete removes the file from disk.
+- Trim: selected 5.0 s produced 5.0 s within 250 ms, for both Opus and AAC. Original
+  unchanged. Create is disabled until something is cut.
+- Player: 12 s at 2x with a 4 s gap finished under 5.5 s (skip silence works).
+- Close guard, blocked microphone, unplugged microphone, discard, stop at once, leftover
+  session clean-up, AMR message, storage numbers.
+- Smallest window (860x600) in dark mode: no sideways scrolling on any main screen.
+
+Large file: 110 MB, one hour of audio. Imported in 18 s, peak memory across all processes
+772 MB, slowest UI call 12 ms during the import.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check 10 production packages with
+none GPL or AGPL, npm audit (production) 0 vulnerabilities.
+
+
+5. REVIEW FINDINGS AND FIXES
+--------------------------------------------------------------------------------
+P1  [Bug] Closing the main window left an invisible process running, because the hidden
+    worker kept the app alive. Found by test. Fixed: closing the main window quits.
+P2  [Bug] Going back from a recording reset the Library's filter, search and scroll. Found
+    by test. Fixed.
+P3  [Bug] Stopping at once left an unreadable session that would be retried on every
+    launch. Found by test. Fixed: under 16 KB and unreadable is cleared, with a message.
+P4  [Bug] Starting a recording while audio played would record the speakers through the
+    microphone. Found in design review. Fixed: playback pauses first.
+P5  [UX] The sidebar recording pill showed a Stop icon but only opens the recorder. Icon
+    removed: an icon must not promise something it does not do.
+P6  [UX] After an unplanned stop there was no way to reach the saved recording. Added Open.
+P7  [Visual] The mode badge vanished on selected rows. Fixed.
+P8  [Layout] On short windows the recorder status scrolled away. Layout now tightens.
+P9  [UX] Added Space for playback, as in other media apps.
+
+
+6. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  AMR files cannot be imported (prompt §4 lists AMR). They are detected and explained.
+    Options: approve a bundled LGPL FFmpeg, or relax the CSP for the worker. Owner decision.
+L2  Only tested with Chromium's simulated microphone. A real microphone, Bluetooth headset
+    and real unplugging still need a manual check on real hardware.
+L3  The native file dialog and real drag and drop from Explorer cannot be driven by the
+    test tools. Their code paths after selection are covered; the gestures need a manual
+    check. A disk that truly fills up was not tested.
+L4  "Open with" works for files passed at launch or to a running app, but Windows only
+    lists EchoMind in that menu once the installer registers it (Phase 8).
+L5  A second launch adding files to an already-open window is implemented but not covered
+    by an automated test.
+L6  Containers Mediabunny does not support, such as WMA, 3GP with AMR and some AVI files,
+    get a clear "cannot read" message.
+L7  Run from source only until Phase 8.
+
+
+7. MANUAL CHECKLIST (real hardware)
+--------------------------------------------------------------------------------
+cd desktop; npm install; npm run dev
+1. Record a minute with your real microphone, add a note, minimize, stop, play back.
+2. Drag a WhatsApp voice note and a phone recording onto the window.
+3. Choose files with the Import button, including a video.
+4. Unplug a USB microphone while recording: the audio should be saved with a message.
+5. End the app in Task Manager while recording, reopen it: the recording should return.

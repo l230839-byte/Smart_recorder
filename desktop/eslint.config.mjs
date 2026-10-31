@@ -11,4 +11,6 @@ export default tseslint.config(
     },
   },
   { files: ['scripts/**'], rules: { 'no-console': 'off' } },
+  // Fixture generators run in a throwaway Electron window with Node access.
+  { files: ['tests/fixtures/**'], rules: { 'no-console': 'off', '@typescript-eslint/no-require-imports': 'off' } },
 );

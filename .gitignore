@@ -4,6 +4,7 @@ dist/
 coverage/
 test-results/
 playwright-report/
+test-fixtures/
 *.log
 .DS_Store
 .vscode/

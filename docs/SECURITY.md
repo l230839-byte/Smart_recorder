@@ -11,6 +11,9 @@ Every recording is treated as sensitive private data.
 | Content Security Policy | `default-src 'none'`, with only the app's own scripts, styles and fonts. No inline script, no network origins. | `foundation.spec.ts` |
 | Navigation lockdown | The window cannot navigate elsewhere, open child windows or attach webviews. Only `https://` links open, in the system browser. | Code review |
 | Permissions | Audio capture is the only permission ever granted. Camera is refused. | Code review |
+| Media access | The player and worker use a recording id or numbered handle. No path from the UI reaches the disk, except files the user chose to import. | Code review |
+| Sleep and close guards | Recording blocks system sleep and cannot be lost by closing the window. | `media-pipeline.spec.ts` |
+| Permanent delete | Removes the audio file, bookmarks, tags, waveform and search entries. | `library.test.ts`, `media-pipeline.spec.ts` |
 | No telemetry | The app makes no network requests of its own. | Code review; Phase 8 adds a network test |
 
 ## Planned

@@ -55,7 +55,7 @@ test('the renderer has no access to Node or the file system', async () => {
       process: typeof (window as unknown as { process?: unknown }).process,
       bridge: Object.keys(window.echomind).sort(),
     }));
-    expect(exposure).toEqual({ require: 'undefined', process: 'undefined', bridge: ['call', 'on', 'platform'] });
+    expect(exposure).toEqual({ require: 'undefined', process: 'undefined', bridge: ['call', 'closeAfterRecording', 'on', 'pathForFile', 'platform'] });
 
     // A strict CSP is in place: injected inline script must not run.
     const ran = await page.evaluate(() => {
