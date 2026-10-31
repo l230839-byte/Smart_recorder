@@ -123,7 +123,7 @@ async function convert(jobId: number, job: Extract<MediaJob, { op: 'convert' }>)
       input,
       output,
       video: { discard: true },
-      audio: job.transcode ? { codec: 'opus', bitrate: 96_000, forceTranscode: true } : {},
+      audio: job.speechBitrate ? { codec: 'opus', bitrate: job.speechBitrate, numberOfChannels: 1, forceTranscode: true } : job.transcode ? { codec: 'opus', bitrate: 96_000, forceTranscode: true } : {},
       ...(trim ? { trim } : {}),
       showWarnings: false,
     });

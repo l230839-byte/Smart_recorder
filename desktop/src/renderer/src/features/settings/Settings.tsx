@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, FolderOpen, HardDrive } from 'lucide-react';
+import { Activity, ChevronRight, FolderOpen, Gauge, HardDrive, KeyRound } from 'lucide-react';
 import type { Settings as SettingsModel, ThemeSetting } from '@shared/models';
 import { Button, Card, ConfirmDialog, Loading, PageHeader, Segmented, SwitchRow } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
@@ -81,6 +81,27 @@ export function Settings() {
         </Card>
       </section>
 
+      <section className="stack" aria-labelledby="s-ai">
+        <h2 id="s-ai">AI</h2>
+        <Card>
+          <button type="button" className="setting-link" onClick={() => go({ name: 'providers' })}>
+            <KeyRound size={18} aria-hidden />
+            <span className="grow">AI providers and keys</span>
+            <ChevronRight size={18} aria-hidden />
+          </button>
+          <button type="button" className="setting-link" onClick={() => go({ name: 'usage' })}>
+            <Gauge size={18} aria-hidden />
+            <span className="grow">Usage and limits</span>
+            <ChevronRight size={18} aria-hidden />
+          </button>
+          <button type="button" className="setting-link" onClick={() => go({ name: 'jobs' })}>
+            <Activity size={18} aria-hidden />
+            <span className="grow">Processing jobs</span>
+            <ChevronRight size={18} aria-hidden />
+          </button>
+        </Card>
+      </section>
+
       <section className="stack" aria-labelledby="s-recording">
         <h2 id="s-recording">Recording</h2>
         <Card>
@@ -108,7 +129,7 @@ export function Settings() {
             <div className="grow">
               EchoMind {info.data?.version}
               <div className="muted small selectable">
-                Electron {info.data?.electron} · Chromium {info.data?.chromium} · SQLite {info.data?.sqlite}
+                Electron {info.data?.electron} · Chromium {info.data?.chromium} · SQLite {info.data?.sqlite} · FFmpeg add-on {info.data?.ffmpeg ? 'installed' : 'not installed'}
               </div>
             </div>
           </div>

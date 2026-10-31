@@ -12,7 +12,7 @@ test('first run, navigation, theme and settings persist across a restart', async
     });
 
     await expect(page.getByRole('heading', { name: 'Turn every recording into knowledge' })).toBeVisible();
-    await page.screenshot({ path: 'test-results/shots/onboarding.png' });
+    await page.screenshot({ path: 'test-shots/onboarding.png' });
     await completeOnboarding(page, 'Sara');
     await expect(page.getByRole('heading', { name: /, Sara$/ })).toBeVisible();
 
@@ -24,7 +24,7 @@ test('first run, navigation, theme and settings persist across a restart', async
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByRole('button', { name: 'Dark' }).click();
     await expect.poll(() => page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(true);
-    await page.screenshot({ path: 'test-results/shots/settings-dark.png' });
+    await page.screenshot({ path: 'test-shots/settings-dark.png' });
 
     // Offline-only is on by default, and turning it off requires a deliberate confirmation.
     const offline = page.getByRole('switch', { name: 'Offline only' });

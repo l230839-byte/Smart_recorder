@@ -5,6 +5,7 @@ import { codecLabel, CONTAINER_LABEL, CONTAINER_MIME, isTruncated, planIngest, r
 import type { RecordingMode, RecordingSource } from '@shared/models';
 import { formatDuration } from '@shared/format';
 import type { LibraryRepository, NewRecording } from '../db/library';
+import type { Ffmpeg } from './ffmpeg';
 import type { MediaWorker } from './media-worker';
 
 /** A problem caused by the file itself: trying again cannot help, so the UI offers only Remove. */
@@ -39,24 +40,14 @@ export class IngestPipeline {
     private readonly media: MediaWorker,
     private readonly library: LibraryRepository,
     private readonly mediaDir: string,
+    private readonly ffmpeg: Pick<Ffmpeg, 'available' | 'normalize'> | null = null,
   ) {}
 
   async ingest(request: IngestRequest): Promise<IngestResult> {
     const { workFile, onStage } = request;
     onStage?.('checking', 0);
 
-    if (await this.isAmr(workFile)) {
-      throw new BadMediaError('AMR voice recordings are recognized but cannot be read yet. Convert this file to MP3 or M4A first, then import it.');
-    }
-
-    let probe: MediaProbe;
-    try {
-      probe = await this.media.probe(workFile);
-    } catch {
-      throw new BadMediaError('This file is not audio EchoMind can read. It may be damaged, or not really the format its name suggests.');
-    }
-    const reason = rejectionReason(probe);
-    if (reason) throw new BadMediaError(reason);
+    const probe = await this.readableProbe(workFile, onStage);
 
     const plan: IngestPlan = planIngest(probe);
     const id = randomUUID();
@@ -120,6 +111,32 @@ export class IngestPipeline {
     } catch (e) {
       if (current !== workFile) await rm(current, { force: true });
       throw e;
+    }
+  }
+
+  /** Probes the file. What the built-in decoders cannot read gets one more chance through FFmpeg, if bundled. */
+  private async readableProbe(workFile: string, onStage: IngestRequest['onStage']): Promise<MediaProbe> {
+    const amr = await this.isAmr(workFile);
+    let probe: MediaProbe | null = null;
+    if (!amr) probe = await this.media.probe(workFile).catch(() => null);
+    const reason = probe ? rejectionReason(probe) : null;
+    if (probe && !reason) return probe;
+
+    if (!this.ffmpeg?.available) {
+      if (amr) throw new BadMediaError('AMR voice recordings are recognized but cannot be read without the FFmpeg add-on. Convert this file to MP3 or M4A first, or install the add-on.');
+      throw new BadMediaError(reason ?? 'This file is not audio EchoMind can read. It may be damaged, or not really the format its name suggests.');
+    }
+
+    const normalized = `${workFile}.normalized`;
+    onStage?.('converting', 0);
+    try {
+      await this.ffmpeg.normalize(workFile, normalized, probe?.durationMs ?? 0, (p) => onStage?.('converting', p));
+      await rm(workFile, { force: true });
+      await rename(normalized, workFile);
+      return await this.media.probe(workFile);
+    } catch {
+      await rm(normalized, { force: true });
+      throw new BadMediaError(reason ?? 'This file is not audio EchoMind can read. It may be damaged, or not really the format its name suggests.');
     }
   }
 

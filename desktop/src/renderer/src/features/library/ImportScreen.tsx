@@ -18,6 +18,7 @@ const STATUS_TEXT: Record<ImportJob['status'], string> = {
 };
 
 const FORMATS = 'MP3, WAV, M4A, AAC, OGG, OPUS, FLAC, WebM and video files such as MP4, MOV and MKV';
+const EXTRA_FORMATS = ', plus AMR, WMA and more with the FFmpeg add-on';
 
 function JobRow({ job }: { job: ImportJob }) {
   const { go } = useRouter();
@@ -65,6 +66,7 @@ export function ImportScreen() {
   const toast = useToast();
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
   const jobs = useQuery(() => api.listImports(), [], ['imports']);
+  const info = useQuery(() => api.getAppInfo(), []);
   const [mode, setMode] = useState<RecordingMode | null>(null);
   const selected = mode ?? settings.data?.defaultMode ?? 'lecture';
   const list = jobs.data ?? [];
@@ -80,7 +82,7 @@ export function ImportScreen() {
           <FileUp size={26} aria-hidden />
         </div>
         <h2>Choose files, or drop them anywhere in this window</h2>
-        <p className="muted small">{FORMATS}. Your original files are never changed.</p>
+        <p className="muted small">{FORMATS}{info.data?.ffmpeg ? EXTRA_FORMATS : ''}. Your original files are never changed.</p>
         <div className="row wrap" style={{ marginTop: 'var(--s3)', justifyContent: 'center' }}>
           <label className="row small" htmlFor="import-mode">
             Mode

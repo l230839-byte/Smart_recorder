@@ -4,7 +4,7 @@ import type { MediaProbe, OutputContainer } from './media';
 export type MediaJob =
   | { op: 'probe'; input: number }
   | { op: 'analyze'; input: number; durationMs: number }
-  | { op: 'convert'; input: number; output: number; container: OutputContainer; transcode: boolean; startMs?: number; endMs?: number };
+  | { op: 'convert'; input: number; output: number; container: OutputContainer; transcode: boolean; startMs?: number; endMs?: number; speechBitrate?: number };
 
 export interface MediaJobResult {
   probe: MediaProbe;

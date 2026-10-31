@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { expect, test, type Page } from '@playwright/test';
 import type { ImportJob, Recording } from '../../src/shared/models';
-import { ensureFixtures, fixture } from './fixtures';
+import { ensureFixtures, ffmpegInstalled, fixture } from './fixtures';
 import { closeApp, completeOnboarding, killTree, launch, removeDir, tempDataDir } from './helpers';
 
 test.beforeAll(() => ensureFixtures());
@@ -45,7 +45,7 @@ test('workflow A: record with bookmarks and a note, keep going across screens, s
     await nav(page, 'Record');
     await page.getByRole('radio', { name: /Meeting/ }).click();
     await page.getByLabel('Title (optional)').fill('Budget review');
-    await page.screenshot({ path: 'test-results/shots/record-modes.png' });
+    await page.screenshot({ path: 'test-shots/record-modes.png' });
     await page.getByRole('button', { name: 'Start recording' }).click();
 
     await expect(page.getByText('Recording', { exact: true })).toBeVisible();
@@ -57,7 +57,7 @@ test('workflow A: record with bookmarks and a note, keep going across screens, s
     await expect(page.getByRole('button', { name: /^Recording, / })).toBeVisible();
     await page.waitForTimeout(1200);
     await nav(page, 'Record');
-    await page.screenshot({ path: 'test-results/shots/record-active.png' });
+    await page.screenshot({ path: 'test-shots/record-active.png' });
 
     // A note belongs to the moment it was opened, even if typing takes a while.
     await page.getByRole('button', { name: 'Add note' }).click();
@@ -95,7 +95,7 @@ test('workflow A: record with bookmarks and a note, keep going across screens, s
     await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
     await expect.poll(async () => page.getByText(/^0:0[1-9] \/ /).count(), { timeout: 8000 }).toBeGreaterThan(0);
-    await page.screenshot({ path: 'test-results/shots/recording-detail.png' });
+    await page.screenshot({ path: 'test-shots/recording-detail.png' });
     const slider = page.getByRole('slider', { name: 'Playback position' });
     await slider.focus();
     await page.keyboard.press('End');
@@ -200,7 +200,7 @@ test('workflows B and D: batch import keeps the valid files, reports the bad one
 
     await page.getByRole('button', { name: /^Import\b/ }).first().click();
     await expect(page.getByText('Failed').first()).toBeVisible();
-    await page.screenshot({ path: 'test-results/shots/import-batch.png' });
+    await page.screenshot({ path: 'test-shots/import-batch.png' });
     // No retry offered for files that can never work.
     const corruptRow = page.locator('.import-row', { hasText: 'corrupt.m4a' });
     await expect(corruptRow.getByRole('button', { name: 'Retry' })).toHaveCount(0);
@@ -210,7 +210,7 @@ test('workflows B and D: batch import keeps the valid files, reports the bad one
     await page.getByRole('button', { name: 'Play', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
     await expect.poll(async () => page.getByText(/^0:0[1-9] \/ /).count(), { timeout: 8000 }).toBeGreaterThan(0);
-    await page.screenshot({ path: 'test-results/shots/import-playing.png' });
+    await page.screenshot({ path: 'test-shots/import-playing.png' });
 
     expect(readdirSync(join(dataDir, 'tmp'))).toEqual([]);
   } finally {
@@ -266,7 +266,7 @@ test('library: tags, search, favorites, collections, trash, restore, permanent d
     await page.getByRole('button', { name: 'Select', exact: true }).click();
     await page.getByRole('checkbox', { name: 'Select tone' }).click();
     await page.getByRole('checkbox', { name: 'Select voice-note' }).click();
-    await page.screenshot({ path: 'test-results/shots/library-selection.png' });
+    await page.screenshot({ path: 'test-shots/library-selection.png' });
     await page.getByRole('toolbar').getByRole('button', { name: 'Favorite' }).click();
     await page.getByRole('button', { name: 'Favorites' }).click();
     await expect(page.locator('.rec-row')).toHaveCount(2);
@@ -282,7 +282,7 @@ test('library: tags, search, favorites, collections, trash, restore, permanent d
     await page.getByLabel('Name').fill('Semester 1');
     await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click();
     await expect(page.getByText('Semester 1')).toBeVisible();
-    await page.screenshot({ path: 'test-results/shots/collections.png' });
+    await page.screenshot({ path: 'test-shots/collections.png' });
     const collections = await call<{ id: string; name: string }[]>(page, 'listCollections');
     const recs = await listAll(page);
     await call(page, 'moveToCollection', [recs.find((r) => r.originalName === 'tone.wav')!.id], collections.find((c) => c.name === 'Semester 1')!.id);
@@ -299,14 +299,14 @@ test('library: tags, search, favorites, collections, trash, restore, permanent d
     await expect(page.getByRole('group', { name: 'Tags' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Trash', exact: true }).click();
     await expect(page.getByText('Removed permanently after 30 days')).toBeVisible();
-    await page.screenshot({ path: 'test-results/shots/library-trash.png' });
+    await page.screenshot({ path: 'test-shots/library-trash.png' });
 
     // A trashed recording offers no paid AI work.
     await row('recorder').locator('.rec-main').click();
     await expect(page.getByText('This recording is in the trash.')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'AI', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Create a transcript' })).toHaveCount(0);
     await page.getByRole('button', { name: 'Restore' }).click();
-    await expect(page.getByRole('heading', { name: 'AI', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create a transcript' })).toBeVisible();
     expect((await listAll(page)).length).toBe(3);
 
     // Permanent delete removes the file from disk too.
@@ -342,7 +342,7 @@ test('trim and player: exact range, untouched original, speed, skip silence and 
     await page.getByRole('menuitem', { name: 'Trim into new recording' }).click();
     // Full range: nothing to cut, so nothing to create.
     await expect(page.getByRole('dialog').getByRole('button', { name: 'Create' })).toBeDisabled();
-    await page.screenshot({ path: 'test-results/shots/trim-dialog.png' });
+    await page.screenshot({ path: 'test-shots/trim-dialog.png' });
     await page.getByLabel(/^Start:/).fill('2000');
     await page.getByLabel(/^End:/).fill('7000');
     await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click();
@@ -369,7 +369,7 @@ test('trim and player: exact range, untouched original, speed, skip silence and 
     await page.getByRole('button', { name: '2×' }).click();
     await page.getByRole('switch', { name: 'Skip silence' }).click();
     await page.getByRole('switch', { name: 'Voice boost' }).click();
-    await page.screenshot({ path: 'test-results/shots/player.png' });
+    await page.screenshot({ path: 'test-shots/player.png' });
 
     // 12 s at 2× with the 4 s gap skipped finishes in about 4 s, where playing it all takes 6 s.
     const start = Date.now();
@@ -386,7 +386,7 @@ test('trim and player: exact range, untouched original, speed, skip silence and 
     await nav(page, 'Home');
     const nowPlaying = page.getByRole('region', { name: 'Now playing' });
     await expect(nowPlaying).toBeVisible();
-    await page.screenshot({ path: 'test-results/shots/home.png' });
+    await page.screenshot({ path: 'test-shots/home.png' });
 
     // Space toggles playback when nothing is focused.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -548,7 +548,8 @@ test('a tiny unreadable leftover from a crash is cleared, while a substantial on
   }
 });
 
-test('AMR is recognized from its content and refused with a clear message', async () => {
+test('AMR without the FFmpeg add-on is recognized from its content and explained', async () => {
+  test.skip(ffmpegInstalled(), 'The add-on is installed; ffmpeg.spec.ts covers this case.');
   const dataDir = tempDataDir();
   const { app, page } = await launch(dataDir);
   try {
@@ -629,7 +630,7 @@ test('storage screen reports real numbers', async () => {
     await nav(page, 'Settings');
     await page.getByRole('button', { name: 'Storage and trash' }).click();
     await expect(page.getByText(/used by EchoMind/)).toContainText(/1\.0 MB/);
-    await page.screenshot({ path: 'test-results/shots/storage.png' });
+    await page.screenshot({ path: 'test-shots/storage.png' });
     await page.getByLabel('Keep deleted recordings for').selectOption('7');
     expect((await call<{ trashRetentionDays: number }>(page, 'getSettings')).trashRetentionDays).toBe(7);
   } finally {

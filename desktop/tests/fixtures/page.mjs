@@ -42,6 +42,13 @@ async function convert(blob, format, audio) {
   return new Blob([target.buffer]);
 }
 
+/** Ten seconds of valid AMR-NB frames (12.2 kbps mode). */
+function amr() {
+  const frame = new Uint8Array(32);
+  frame[0] = 0x3c;
+  return new Blob([new TextEncoder().encode('#!AMR\n'), ...Array(500).fill(frame)]);
+}
+
 async function video() {
   const target = new M.BufferTarget();
   const output = new M.Output({ format: new M.WebMOutputFormat(), target });
@@ -89,7 +96,7 @@ try {
   for (let i = 2000; i < corrupt.length - 2000; i++) corrupt[i] = (i * 31) & 255;
   await write('corrupt.m4a', new Blob([corrupt]));
   await write('fake.mp3', new Blob([new TextEncoder().encode('this is not audio '.repeat(2000))]));
-  await write('old-phone.amr', new Blob([new TextEncoder().encode('#!AMR\n'), new Uint8Array(4000)]));
+  await write('old-phone.amr', amr());
   await write('empty.wav', new Blob([]));
   ipcRenderer.send('done');
 } catch (e) {

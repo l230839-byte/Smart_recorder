@@ -5,7 +5,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-console': ['error', { allow: ['warn', 'error'] }],
     },

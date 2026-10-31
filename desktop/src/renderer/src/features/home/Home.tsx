@@ -1,4 +1,4 @@
-import { FileUp, Mic } from 'lucide-react';
+import { FileUp, ListChecks, Mic } from 'lucide-react';
 import { formatBytes, formatDurationLong } from '@shared/format';
 import { Button, Card, EmptyState, PageHeader, SectionTitle } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
@@ -19,6 +19,8 @@ export function Home() {
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
   const stats = useQuery(() => api.getLibraryStats(), [], ['library']);
   const recent = useQuery(() => api.listRecordings({ view: 'all', sort: 'newest' }), [], ['library']);
+  const jobs = useQuery(() => api.listJobs(), [], ['jobs']);
+  const activeJobs = jobs.data?.filter((j) => ['queued', 'running', 'waiting'].includes(j.status)).length ?? 0;
 
   return (
     <div className="page">
@@ -44,6 +46,13 @@ export function Home() {
           </span>
         </button>
       </div>
+
+      {!!jobs.data?.length && (
+        <button type="button" className="setting-link job-link" onClick={() => go({ name: 'jobs' })}>
+          <ListChecks size={18} aria-hidden />
+          <span className="grow">{activeJobs > 0 ? `${activeJobs} ${activeJobs === 1 ? 'job' : 'jobs'} processing` : 'Processing jobs'}</span>
+        </button>
+      )}
 
       {!!stats.data?.recordings && (
         <div className="stat-grid">

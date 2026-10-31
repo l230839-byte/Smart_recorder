@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Archive, ArchiveRestore, Bookmark, Download, FileAudio, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Sparkles, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Bookmark, Download, FileAudio, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
 import { formatBytes, formatDateTime, formatDuration } from '@shared/format';
 import { clampPosition } from '@shared/media';
 import { MODE_INFO, RECORDING_MODES, SOURCE_LABEL, type Recording, type RecordingMode } from '@shared/models';
@@ -10,6 +10,7 @@ import { player, usePlayer } from '../../lib/player';
 import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
 import { CollectionPicker } from '../collections/CollectionPicker';
+import { AiCard } from '../transcript/AiCard';
 import { ModeBadge } from './RecordingRow';
 
 const MIN_TRIM_CUT_MS = 500;
@@ -238,18 +239,7 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
             {loaded && playback.error && <p className="small" style={{ color: 'var(--danger)' }}>{playback.error}</p>}
           </Card>
 
-          {!inTrash && (
-            <Card>
-              <div className="row">
-                <Sparkles size={18} aria-hidden style={{ color: 'var(--teal)' }} />
-                <h2 className="grow">AI</h2>
-                <span className="badge">Phase 3</span>
-              </div>
-              <p className="muted small" style={{ marginTop: 6 }}>
-                Transcripts arrive in the next build phase, then summaries, chat, study tools and documents. They work the same for every recording, whatever its source.
-              </p>
-            </Card>
-          )}
+          {!inTrash && <AiCard recording={recording} />}
 
           <section>
             <SectionTitle

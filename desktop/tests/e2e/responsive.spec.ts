@@ -22,7 +22,7 @@ test('every screen fits the smallest window in dark mode, with no sideways scrol
         return content.scrollWidth - content.clientWidth;
       });
       expect(overflow, name).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: `test-results/shots/small-${name}.png` });
+      await page.screenshot({ path: `test-shots/small-${name}.png` });
     };
 
     const nav = (name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name, exact: true }).click();

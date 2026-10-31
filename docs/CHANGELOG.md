@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Phase 3: Transcription
+
+- Provider layer with Groq Whisper, any OpenAI-compatible service, and a labelled demo provider.
+- Persistent job queue: long audio in pieces, waits out rate limits, resumes after crashes, never redoes finished work.
+- Privacy gate: offline only, encrypted keys, and consent before the first upload to each provider.
+- Transcript viewer: six views, editing that keeps the original, versions, find, synced playback, TXT, SRT and VTT export.
+- Transcripts join Library search. Usage and limits screen. Key step in onboarding.
+- Optional FFmpeg add-on for AMR, WMA and more (written, not yet run).
+
 ### Phase 2: Recording, import, library, playback
 
 - Crash-safe recording with seven modes, bookmarks, notes and a live waveform.

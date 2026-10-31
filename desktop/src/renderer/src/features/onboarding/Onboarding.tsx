@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { ArrowRight, BrainCircuit, CloudOff, FileText, HardDrive, Mic, ShieldCheck, Sparkles } from 'lucide-react';
+import { PROVIDER_INFO } from '@shared/providers';
 import { Button } from '../../design/components';
 import { api } from '../../lib/api';
 import { useToast } from '../../lib/toast';
 import { BrandMark } from '../../shell/Shell';
+import { KeyForm } from '../transcript/ProvidersScreen';
 
-const STEPS = 3;
 
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [offlineOnly, setOfflineOnly] = useState(true);
   const toast = useToast();
+  const steps = offlineOnly ? 3 : 4;
 
   const finish = () => {
     api.updateSettings({ onboardingComplete: true, displayName: name.trim(), offlineOnly }).then(onDone, toast.showError);
@@ -22,8 +24,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       <div className="titlebar" />
       <div className="onboarding-body">
         <div className="onboarding-card">
-          <div className="onboarding-steps" aria-label={`Step ${step + 1} of ${STEPS}`}>
-            {Array.from({ length: STEPS }, (_, i) => (
+          <div className="onboarding-steps" aria-label={`Step ${step + 1} of ${steps}`}>
+            {Array.from({ length: steps }, (_, i) => (
               <span key={i} className={i <= step ? 'on' : ''} />
             ))}
           </div>
@@ -106,8 +108,32 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 <HardDrive size={16} aria-hidden />
                 <span>Your data folder is shown in Settings.</span>
               </div>
-              <Button variant="primary" size="lg" trailingIcon={ArrowRight} onClick={finish}>
-                Start using EchoMind
+              {offlineOnly ? (
+                <Button variant="primary" size="lg" trailingIcon={ArrowRight} onClick={finish}>
+                  Start using EchoMind
+                </Button>
+              ) : (
+                <Button variant="primary" size="lg" trailingIcon={ArrowRight} onClick={() => setStep(3)}>
+                  Continue
+                </Button>
+              )}
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <div className="stack">
+                <h1>Add a free transcription key</h1>
+                <p className="muted">
+                  {PROVIDER_INFO.groq.label} turns speech into text. Create a free key on its site, then paste it here. It is encrypted on this computer. You can also do this later in Settings.
+                </p>
+              </div>
+              <button type="button" className="link small" style={{ alignSelf: 'flex-start' }} onClick={() => void api.openExternal(PROVIDER_INFO.groq.keyUrl!)}>
+                Get a free Groq key
+              </button>
+              <KeyForm provider="groq" onSaved={finish} />
+              <Button variant="ghost" onClick={finish}>
+                Skip for now
               </Button>
             </>
           )}

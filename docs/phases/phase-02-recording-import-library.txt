@@ -125,7 +125,8 @@ P9  [UX] Added Space for playback, as in other media apps.
 6. UNRESOLVED / KNOWN LIMITS
 --------------------------------------------------------------------------------
 L1  AMR files cannot be imported (prompt §4 lists AMR). They are detected and explained.
-    Options: approve a bundled LGPL FFmpeg, or relax the CSP for the worker. Owner decision.
+    Update: the owner approved a bundled LGPL FFmpeg. The code is in Phase 3, waiting on one
+    command the owner must run. See the Phase 3 report, L2.
 L2  Only tested with Chromium's simulated microphone. A real microphone, Bluetooth headset
     and real unplugging still need a manual check on real hardware.
 L3  The native file dialog and real drag and drop from Explorer cannot be driven by the

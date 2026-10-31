@@ -17,4 +17,21 @@ SQLite at `<user data>/echomind.db`, in WAL mode with foreign keys enforced. Mig
 | `recording_sessions` | Exists from the moment recording starts, for crash recovery |
 | `recording_search` | FTS5 index over title, description, tags and notes |
 
-Later phases add transcripts, summaries, documents, chat, study material and tasks through new migrations.
+## Migration 2: transcription
+
+| Table | Purpose |
+| --- | --- |
+| `processing_jobs` | Persistent queue: status, stage, progress, retry time, attempts |
+| `job_chunks` | Each piece of a job with its stored result, so nothing is transcribed twice |
+| `transcript_versions` | Original and edited versions. A partial unique index allows one current version per recording. |
+| `transcript_segments` | Timestamped text, speaker and confidence |
+| `speakers` | Names for speaker labels, per recording |
+| `ai_usage` | Requests and audio per provider and day |
+| `provider_rate` | The latest limits a service reported |
+| `provider_consents` | Which providers the user agreed to |
+| `secrets` | API keys, encrypted by Windows DPAPI |
+| `transcript_search` | FTS5 index over the current version |
+
+Deleting a recording cascades to all of these except the FTS index, which the repository clears in the same transaction.
+
+Later phases add summaries, documents, chat, study material and tasks through new migrations.

@@ -62,6 +62,7 @@ export function RecordingRow({
             <span aria-hidden>·</span>
             <span>{MODE_INFO[recording.mode].label}</span>
             {imported && <span className="badge">{SOURCE_LABEL[recording.source]}</span>}
+            {recording.hasTranscript && <span className="badge badge-teal">Transcript</span>}
             {recording.tags.slice(0, 3).map((t) => (
               <span key={t.id} className="rec-tag">
                 #{t.name}

@@ -125,6 +125,15 @@
 .onboarding-steps span.on {
   background: var(--primary);
 }
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .feature-line {
   display: flex;
   gap: var(--s3);

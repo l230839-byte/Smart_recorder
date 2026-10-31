@@ -1,0 +1,148 @@
+ECHOMIND DESKTOP: PHASE 03, TRANSCRIPTION
+================================================================================
+Status:      COMPLETE for everything testable here. Not yet run against the live Groq
+             service, because that needs the owner's key (section 6).
+Prompt refs: §0 free-stack rules, §7 speech to text, §18 pipeline, §19 database,
+             §21 privacy, §23 usage limits, §25 tests
+Date:        2026-10-31
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Any recording, whatever its source, becomes searchable, editable text with timestamps,
+through a provider the user chooses, without anything leaving the computer until they
+agree.
+
+
+2. WHAT THIS PHASE INCLUDES
+--------------------------------------------------------------------------------
+Providers
+- Interface so any service can be swapped. Three implementations: Groq Whisper, any
+  OpenAI-compatible address (including self-hosted), and a clearly labelled demo provider
+  that works with no key and no internet.
+- Keys encrypted through Windows DPAPI, never returned to the UI. Test connection sends
+  no audio. Provider facts live in one configuration file.
+
+Privacy gate, checked when requesting and again just before sending
+- Offline only blocks every cloud provider. A key or address must exist. The provider's
+  disclosure must be accepted once, and can be withdrawn.
+
+Job queue
+- Persistent, one job at a time, shown on a Processing Jobs screen. Survives a crash and
+  continues after the last finished piece, so quota is not spent twice.
+- HTTP 429 and quota: waits as long as the service says, says so in plain words, and
+  continues by itself. These do not use up retries.
+- Network and server errors: exponential backoff with jitter, stops after 6 attempts,
+  then offers Retry from where it stopped. Bad key: stops at once.
+- Cancel, retry, remove, batch from the Library. Notification when finished.
+
+Long audio
+- Split at the quietest moment near each 10-minute limit, encoded as 32 kbps mono Opus
+  (about 2.4 MB per piece, well under the 25 MB limit), merged with correct timestamps.
+
+Transcript viewer
+- Six views: Paragraphs, Timestamped, Speakers, Cleaned, Q&A, Raw.
+- Edit a segment: the provider's original is always kept. Version menu switches between
+  them. Re-transcribing adds a version.
+- Find with next and previous, moving the audio to each match. Select a time to play
+  from there. Current block highlighted and followed during playback.
+- Uncertain text underlined, from the service's confidence. Speakers can be renamed.
+- Urdu and other right-to-left text displays correctly. Save as TXT, SRT or VTT.
+- Transcripts join Library search, in every language. Deleting a recording removes its
+  transcripts, search entries and jobs.
+
+Other screens
+- AI Providers, Usage and Limits (requests and audio per provider, what the service
+  reports, a personal daily reminder), and the key step in onboarding.
+
+FFmpeg add-on (owner's decision)
+- Code is complete: AMR, WMA, 3GP and anything else the built-in decoders refuse gets a
+  second chance through FFmpeg, as a separate process. It reads files only, refuses
+  playlist-type containers and never uses a shell. Installed with npm run fetch:ffmpeg,
+  which verifies the published checksum and refuses GPL or non-free builds.
+- NOT YET RUN. See section 6.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Groq first. Checked against its documentation on 2026-10-31: whisper-large-v3-turbo,
+    verbose_json segments, 25 MB on the free tier, retry-after on 429, and a data policy
+    of no training with logs of up to 30 days for reliability or abuse only.
+D2  Gemini deferred to Phase 4. Its free-tier data may be used to improve Google's
+    products, free limits are unstable (user reports range from 20 to 250 requests a
+    day), and its timestamps come from a prompt rather than from the audio timeline.
+D3  Account-specific limits are not hardcoded. The docs' table shows Developer plan
+    values and the free values were not available. The app shows what the service
+    reports, links to the live page, and lets the user set their own reminder.
+D4  Speakers are never promised. Whisper gives no speaker labels, so that view explains
+    why it is empty. The demo provider exercises the view.
+D5  Cleaned view is a plain text clean-up that works offline (fillers and stutters only).
+    It never rephrases. Rewriting belongs to the AI phases.
+D6  http:// is refused except for this computer, so audio never crosses a network
+    unencrypted.
+D7  The demo provider is visible to users, with a banner on every demo transcript. It
+    lets anyone try the flow, and it cannot be mistaken for a real transcript.
+
+
+4. TESTING (all passing on 2026-10-31)
+--------------------------------------------------------------------------------
+Unit (Vitest), 99 tests in total. New here: chunk planning, merging, every view, subtitle
+writers, Whisper parsing (including malformed responses), error mapping, wait parsing,
+address rules, the queue (429, quota, network, bad key, crash resume, cancel, no speech),
+versions and edits, secrets. The HTTP provider runs against a real local server.
+
+End to end (Playwright, real app), 24 tests in total, 1 skipped (the FFmpeg test). New:
+- Demo provider: transcribe an import, all six views, Urdu direction, edit, restore,
+  library search, find, playback sync, rename speaker.
+- Privacy: a real server counts requests. Zero while offline-only is on, zero after
+  declining consent, one after agreeing.
+- A real local server returns 429, then succeeds. The app waits, explains and continues.
+  The uploaded body is verified as real Ogg audio with no file name or path in it.
+- Key: never shown again, absent from the database file in readable form, and a bad-key
+  error does not repeat what the server echoed.
+- A job killed mid-upload by killing all processes resumes on the next launch. Cancel.
+- Onboarding key step, skip. Batch transcription.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check passes, npm audit (production)
+0 vulnerabilities.
+
+
+5. REVIEW FINDINGS AND FIXES
+--------------------------------------------------------------------------------
+T1  [Bug] Switching the current version broke the one-current-version rule mid-update.
+    Found by test. Fixed with a two-step update.
+T2  [Bug] Canceling an upload caused an unhandled error inside the HTTP library's form
+    stream. Found by test. Fixed by encoding the upload to bytes first.
+T3  [Reliability] A chunk plan could cut outside its search window with coarse peaks, and
+    ties chose the earliest quiet moment. Ties now take the latest, staying near the limit.
+T4  [Security] A service could echo the key in an error. Auth errors now use EchoMind's
+    own message, and a test confirms the echo is not shown.
+T5  [Wording] "Everything is free" over-promised on the providers screen. Reworded.
+
+
+6. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  NOT TESTED AGAINST LIVE GROQ. Everything was tested against a local server following
+    Groq's documented format. A real key is needed to confirm it and to benchmark Urdu and
+    mixed speech (prompt §7).
+L2  FFMPEG NOT RUN. This environment's safety check refused to download and run the
+    executable, even with the owner's approval. The owner needs to run the command once:
+    cd desktop, then npm run fetch:ffmpeg, then npx playwright test ffmpeg.
+    Until then, AMR gets its clear message and the Phase 2 limit L1 remains open.
+L3  No speaker labels with Whisper-based providers.
+L4  No live transcript while recording. Prompt §7 allows Android's recognizer as a preview;
+    desktop has no equivalent free offline option. Post-recording only.
+L5  The daily reminder shows on the usage screen, not before starting a job.
+L6  Native notification click and the real Windows notification were not exercised by the
+    test tools.
+L7  Long audio splitting is tested by unit tests and a short real file. A real multi-hour
+    upload has not been run.
+L8  Everything from the Phase 2 list still applies, such as the real microphone check.
+
+
+7. HOW TO TRY IT
+--------------------------------------------------------------------------------
+cd desktop; npm install; npm run dev
+No key: Settings > AI providers > Demo, then open a recording and select Transcribe.
+Real text: get a free key at https://console.groq.com/keys, paste it in the same screen,
+turn off Offline only, and agree to the disclosure when asked.

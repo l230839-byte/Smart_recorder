@@ -161,3 +161,26 @@ export function parseRange(header: string | null, size: number): { start: number
   }
   return start > end || start >= size ? null : { start, end };
 }
+
+/** Container types that can pull in other files or run sources. Never fed to FFmpeg. */
+const UNSAFE_DEMUXERS = new Set(['hls', 'dash', 'concat', 'ffconcat', 'lavfi', 'sdp', 'rtsp', 'tty', 'image2', 'mov_text', 'subviewer', 'webvtt', 'srt', 'ass']);
+
+export function isUnsafeDemuxer(formatName: string): boolean {
+  const names = formatName.split(',').map((n) => n.trim().toLowerCase());
+  return names.length === 0 || names.some((n) => !n || UNSAFE_DEMUXERS.has(n));
+}
+
+export function ffprobeFormatArgs(input: string): string[] {
+  return ['-v', 'error', '-protocol_whitelist', 'file', '-show_entries', 'format=format_name', '-of', 'default=nw=1:nk=1', input];
+}
+
+/** File access only, audio only, no metadata carried over, no prompts. */
+export function ffmpegNormalizeArgs(input: string, output: string): string[] {
+  return ['-nostdin', '-hide_banner', '-loglevel', 'error', '-protocol_whitelist', 'file', '-i', input, '-map', '0:a:0', '-vn', '-sn', '-dn', '-map_metadata', '-1', '-c:a', 'libopus', '-b:a', '64k', '-f', 'ogg', '-progress', 'pipe:1', '-y', output];
+}
+
+export function parseProgressMs(text: string): number | null {
+  const matches = [...text.matchAll(/out_time_us=(\d+)/g)];
+  const last = matches[matches.length - 1];
+  return last ? Number(last[1]) / 1000 : null;
+}

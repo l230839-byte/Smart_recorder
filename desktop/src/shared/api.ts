@@ -9,8 +9,14 @@ import type {
   RecordingMode,
   Settings,
   StorageInfo,
+  ProcessingJob,
+  ProviderStatus,
   Tag,
+  TranscribeOutcome,
+  Transcript,
+  UsageSummary,
 } from './models';
+import type { TranscriptionProviderId } from './providers';
 
 export interface RecordingEdit {
   title?: string;
@@ -79,18 +85,46 @@ export interface EchoApi {
   finishRecording(sessionId: string, details: { title: string; description: string }): Promise<string | null>;
   discardRecording(sessionId: string): Promise<void>;
   getFreeSpace(): Promise<number>;
+
+  // AI providers. Keys go in and are never returned to the UI.
+  getProviderStatus(provider: TranscriptionProviderId): ProviderStatus;
+  saveProviderKey(provider: TranscriptionProviderId, key: string): void;
+  clearProviderKey(provider: TranscriptionProviderId): void;
+  testProvider(provider: TranscriptionProviderId): Promise<void>;
+  acceptConsent(provider: TranscriptionProviderId): void;
+  revokeConsent(provider: TranscriptionProviderId): void;
+  getUsage(): UsageSummary[];
+
+  // Transcription
+  requestTranscription(recordingId: string, language?: string): TranscribeOutcome;
+  listJobs(): ProcessingJob[];
+  latestJob(recordingId: string): ProcessingJob | null;
+  cancelJob(id: string): void;
+  retryJob(id: string): void;
+  removeJob(id: string): void;
+  clearFinishedJobs(): void;
+
+  getTranscript(recordingId: string, versionId?: string): Transcript | null;
+  editSegment(recordingId: string, idx: number, text: string): void;
+  setCurrentVersion(recordingId: string, versionId: string): void;
+  renameSpeaker(recordingId: string, label: string, name: string): void;
+  /** Saves the transcript as a file the user picks. Returns false if they cancel. */
+  exportTranscript(recordingId: string, format: 'txt' | 'srt' | 'vtt'): Promise<boolean>;
+  openExternal(url: string): void;
 }
 
 /** Events pushed from the main process to the UI. */
 export interface EchoEvents {
   /** Stored data changed; screens re-read what they show. The value names the area. */
-  'data:changed': 'settings' | 'library' | 'imports';
+  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts';
   /** Files arrived from outside the window ("Open with", a second launch). The batch is already queued. */
   'imports:opened': string;
   /** Interrupted recordings were rebuilt at launch. The value is how many. */
   'recordings:recovered': number;
   /** The user chose "Stop and save" when closing during a recording. */
   'recorder:stop-and-quit': null;
+  /** The user clicked a notification about this recording. */
+  'recording:open': string;
 }
 
 export type ApiMethod = keyof EchoApi;

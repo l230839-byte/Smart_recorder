@@ -1,18 +1,25 @@
-import { copyFile, mkdir, rm, statfs } from 'node:fs/promises';
+import { copyFile, mkdir, rm, statfs, writeFile } from 'node:fs/promises';
 import { mkdirSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, shell, type BrowserWindow } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell, type BrowserWindow } from 'electron';
 import type { EchoApi, EchoEvents } from '@shared/api';
 import type { RecordingMode } from '@shared/models';
+import { PROVIDER_INFO, SPEECH_BITRATE, validateBaseUrl, type TranscriptionProviderId } from '@shared/providers';
+import { toPlainText, toSrt, toVtt } from '@shared/transcript';
+import { FakeProvider } from './ai/fake-provider';
+import { WhisperHttpProvider } from './ai/whisper-http';
 import { openDatabase } from './db/database';
 import { ImportRepository, LibraryRepository, SessionRepository } from './db/library';
+import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, UsageRepository, type Cipher } from './db/transcripts';
 import { hardenContents, hardenSession } from './security';
+import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
 import { IngestPipeline } from './services/ingest';
 import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol';
 import { MediaWorker } from './services/media-worker';
 import { RecorderService } from './services/recorder';
 import { SettingsStore } from './services/settings';
+import { keyName, TranscriptionService } from './services/transcription';
 import { createMainWindow } from './window';
 
 // Tests point this at a throwaway folder so they never touch real user data.
@@ -75,9 +82,60 @@ async function start(): Promise<void> {
   const importsChanged = () => emit('data:changed', 'imports');
 
   const media = new MediaWorker();
-  const pipeline = new IngestPipeline(media, library, mediaDir);
+  const ffmpeg = new Ffmpeg();
+  const pipeline = new IngestPipeline(media, library, mediaDir, ffmpeg);
   const imports = new ImportService(importJobs, library, pipeline, tempDir, importsChanged, libraryChanged);
   const recorder = new RecorderService(sessions, pipeline, sessionDir, libraryChanged);
+
+  const cipher: Cipher = {
+    available: () => safeStorage.isEncryptionAvailable(),
+    encrypt: (plain) => safeStorage.encryptString(plain),
+    decrypt: (data) => safeStorage.decryptString(Buffer.from(data)),
+  };
+  const transcripts = new TranscriptRepository(db);
+  const jobs = new JobRepository(db);
+  const usage = new UsageRepository(db);
+  const consents = new ConsentRepository(db);
+  const secrets = new SecretStore(db, cipher);
+  const jobsChanged = () => emit('data:changed', 'jobs');
+
+  const makeProvider = (id: TranscriptionProviderId) => {
+    if (id === 'fake') return new FakeProvider();
+    const key = secrets.get(keyName(id));
+    const baseUrl = id === 'custom' ? settings.get().customBaseUrl : PROVIDER_INFO[id].baseUrl;
+    if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
+    return new WhisperHttpProvider(baseUrl, key);
+  };
+
+  const transcription = new TranscriptionService({
+    jobs,
+    transcripts,
+    library,
+    usage,
+    consents,
+    secrets,
+    settings: () => settings.get(),
+    makeProvider,
+    prepareChunk: async (recordingId, startMs, endMs, outputPath) => {
+      const file = library.mediaFile(recordingId);
+      if (!file) throw new Error('The audio for this recording is missing.');
+      await media.convert(join(mediaDir, file.fileName), outputPath, { container: 'ogg', transcode: true, startMs, endMs, speechBitrate: SPEECH_BITRATE });
+    },
+    tempDir,
+    changed: jobsChanged,
+    transcriptReady: (recordingId, title) => {
+      emit('data:changed', 'transcripts');
+      libraryChanged();
+      if (Notification.isSupported() && !mainWindow?.isFocused()) {
+        const note = new Notification({ title: 'Transcript ready', body: title });
+        note.on('click', () => {
+          mainWindow?.show();
+          emit('recording:open', recordingId);
+        });
+        note.show();
+      }
+    },
+  });
 
   const deleteFiles = async (ids: string[]) => {
     const files = library.deleteForever(ids);
@@ -107,6 +165,11 @@ async function start(): Promise<void> {
   registerApi({
     getSettings: () => settings.get(),
     updateSettings: (patch) => {
+      if (patch.customBaseUrl) {
+        const url = validateBaseUrl(patch.customBaseUrl);
+        if (!url) throw new Error('Use an https:// address. Plain http:// is only allowed on this computer.');
+        patch = { ...patch, customBaseUrl: url };
+      }
       const next = settings.update(patch);
       nativeTheme.themeSource = next.theme;
       emit('data:changed', 'settings');
@@ -119,6 +182,7 @@ async function start(): Promise<void> {
       node: process.versions.node,
       sqlite: sqlite.v,
       dataDirectory: dataDir,
+      ffmpeg: ffmpeg.available,
     }),
     openDataFolder: () => void shell.openPath(dataDir),
 
@@ -225,6 +289,97 @@ async function start(): Promise<void> {
       const fs = await statfs(dataDir);
       return fs.bavail * fs.bsize;
     },
+
+    getProviderStatus: (provider) => ({ hasKey: secrets.has(keyName(provider)), consented: consents.has(provider), secureStorage: cipher.available() }),
+    saveProviderKey: (provider, key) => {
+      const clean = key.trim();
+      if (!clean) throw new Error('Enter a key first.');
+      secrets.set(keyName(provider), clean);
+      emit('data:changed', 'settings');
+    },
+    clearProviderKey: (provider) => {
+      secrets.clear(keyName(provider));
+      emit('data:changed', 'settings');
+    },
+    testProvider: async (provider) => {
+      if (PROVIDER_INFO[provider].local) return;
+      if (settings.get().offlineOnly) throw new Error('Offline only is on, so EchoMind did not contact the service.');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 20_000);
+      try {
+        await makeProvider(provider).testConnection(controller.signal);
+      } catch (e) {
+        if (controller.signal.aborted) throw new Error('The service did not answer in time.');
+        throw e;
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    acceptConsent: (provider) => {
+      consents.accept(provider);
+      emit('data:changed', 'settings');
+    },
+    revokeConsent: (provider) => {
+      consents.revoke(provider);
+      emit('data:changed', 'settings');
+    },
+    getUsage: () => usage.summary(),
+
+    requestTranscription: (recordingId, language) => transcription.request(recordingId, language),
+    listJobs: () => jobs.list().map(({ attempts, model, language, ...job }) => job),
+    latestJob: (recordingId) => {
+      const job = jobs.latestFor(recordingId);
+      if (!job) return null;
+      const { attempts, model, language, ...rest } = job;
+      return rest;
+    },
+    cancelJob: (id) => transcription.cancel(id),
+    retryJob: (id) => transcription.retry(id),
+    removeJob: (id) => {
+      jobs.remove(id);
+      jobsChanged();
+    },
+    clearFinishedJobs: () => {
+      jobs.clearFinished();
+      jobsChanged();
+    },
+
+    getTranscript: (recordingId, versionId) => {
+      const versions = transcripts.versions(recordingId);
+      const version = versions.find((v) => v.id === versionId) ?? versions.find((v) => v.isCurrent);
+      if (!version) return null;
+      return { version, versions, segments: transcripts.segments(version.id), speakers: transcripts.speakerNames(recordingId) };
+    },
+    editSegment: (recordingId, idx, text) => {
+      transcripts.editSegment(recordingId, idx, text);
+      emit('data:changed', 'transcripts');
+    },
+    setCurrentVersion: (recordingId, versionId) => {
+      transcripts.setCurrent(recordingId, versionId);
+      emit('data:changed', 'transcripts');
+    },
+    renameSpeaker: (recordingId, label, name) => {
+      transcripts.renameSpeaker(recordingId, label, name);
+      emit('data:changed', 'transcripts');
+    },
+    exportTranscript: async (recordingId, format) => {
+      const recording = library.getRecording(recordingId);
+      const version = transcripts.current(recordingId);
+      if (!recording || !version) throw new Error('This recording has no transcript yet.');
+      const segments = transcripts.segments(version.id);
+      const names = transcripts.speakerNames(recordingId);
+      const text = format === 'srt' ? toSrt(segments, names) : format === 'vtt' ? toVtt(segments, names) : toPlainText(segments, names);
+      const options = { defaultPath: `${recording.title.replace(/[<>:"/\\|?*]+/g, ' ').trim() || 'transcript'}.${format}`, filters: [{ name: format.toUpperCase(), extensions: [format] }] };
+      const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) return false;
+      await writeFile(result.filePath, `\uFEFF${text}`, 'utf8');
+      return true;
+    },
+    openExternal: (url) => {
+      // Only the provider pages listed in configuration, never an address from content.
+      const known = Object.values(PROVIDER_INFO).flatMap((p) => [p.keyUrl, p.limitsUrl]);
+      if (known.includes(url)) void shell.openExternal(url);
+    },
   });
 
   const openFiles = (argv: string[]) => {
@@ -286,6 +441,7 @@ async function start(): Promise<void> {
     if (count > 0) emit('recordings:recovered', count);
   });
   imports.resume();
+  transcription.resume();
   void purgeTrash();
   openFiles(process.argv.slice(1));
 }

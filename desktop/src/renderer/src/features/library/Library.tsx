@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, ArrowDownUp, CheckSquare, Folder, FolderInput, FolderTree, Import, LibraryBig, RotateCcw, Star, StarOff, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDownUp, CheckSquare, Folder, FolderInput, FolderTree, Import, LibraryBig, RotateCcw, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
 import { plural } from '@shared/format';
 import { LIBRARY_SORT_LABEL, LIBRARY_SORTS, LIBRARY_VIEW_LABEL, LIBRARY_VIEWS, type LibrarySort, type LibraryView } from '@shared/models';
 import { Button, Chip, ConfirmDialog, EmptyState, IconButton, Loading, Menu, PageHeader, SearchField } from '../../design/components';
@@ -8,6 +8,7 @@ import { player } from '../../lib/player';
 import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
 import { CollectionPicker } from '../collections/CollectionPicker';
+import { useTranscribe } from '../transcript/ai-gate';
 import { RecordingRow } from './RecordingRow';
 
 interface ViewMemory {
@@ -41,6 +42,7 @@ export function Library({ collectionId }: { collectionId?: string }) {
   const [dialog, setDialog] = useState<'delete' | 'empty' | 'move' | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const inTrash = view === 'trash';
+  const { start: transcribe, dialogs: transcribeDialogs } = useTranscribe();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(text), 150);
@@ -220,6 +222,16 @@ export function Library({ collectionId }: { collectionId?: string }) {
             </>
           ) : (
             <>
+              <Button
+                size="sm"
+                icon={Sparkles}
+                onClick={() => {
+                  transcribe(selected);
+                  setSelection(null);
+                }}
+              >
+                Transcribe
+              </Button>
               <Button size="sm" icon={allFavorite ? StarOff : Star} onClick={() => act(api.setFavorite(selected, !allFavorite))}>
                 {allFavorite ? 'Remove favorite' : 'Favorite'}
               </Button>
@@ -238,6 +250,7 @@ export function Library({ collectionId }: { collectionId?: string }) {
         </div>
       )}
 
+      {transcribeDialogs}
       {dialog === 'delete' && (
         <ConfirmDialog
           title={`Delete ${plural(selected.length, 'recording')} forever?`}

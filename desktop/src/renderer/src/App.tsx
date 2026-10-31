@@ -10,6 +10,9 @@ import { Onboarding } from './features/onboarding/Onboarding';
 import { RecordScreen } from './features/record/RecordScreen';
 import { Settings } from './features/settings/Settings';
 import { Studio } from './features/studio/Studio';
+import { JobsScreen } from './features/transcript/JobsScreen';
+import { ProvidersScreen, UsageScreen } from './features/transcript/ProvidersScreen';
+import { TranscriptScreen } from './features/transcript/TranscriptScreen';
 import { api, useQuery } from './lib/api';
 import { RouterProvider, useRouter } from './lib/router';
 import { ToastProvider } from './lib/toast';
@@ -39,6 +42,14 @@ function Screen() {
       return <Collections />;
     case 'storage':
       return <Storage />;
+    case 'transcript':
+      return <TranscriptScreen key={route.id} id={route.id} startMs={route.startMs} />;
+    case 'jobs':
+      return <JobsScreen />;
+    case 'providers':
+      return <ProvidersScreen />;
+    case 'usage':
+      return <UsageScreen />;
   }
 }
 

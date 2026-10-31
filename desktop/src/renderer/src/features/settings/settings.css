@@ -30,6 +30,12 @@
   text-align: left;
   cursor: pointer;
 }
+.setting-link + .setting-link {
+  margin-top: var(--s2);
+}
+.job-link {
+  padding: 0 var(--s1);
+}
 .setting-link:hover {
   color: var(--primary);
 }

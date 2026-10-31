@@ -1,4 +1,6 @@
 /** Domain types shared by the main process and the UI. No Electron or DOM imports here, so they stay portable. */
+import type { TranscriptionProviderId } from './providers';
+import type { Segment } from './transcript';
 
 export const RECORDING_MODES = ['lecture', 'meeting', 'interview', 'notes', 'business', 'journal', 'custom'] as const;
 export type RecordingMode = (typeof RECORDING_MODES)[number];
@@ -52,6 +54,7 @@ export interface Recording {
   importedAt: number | null;
   updatedAt: number;
   tags: Tag[];
+  hasTranscript: boolean;
 }
 
 export interface Bookmark {
@@ -122,6 +125,66 @@ export interface ImportJob {
   createdAt: number;
 }
 
+export type JobStatus = 'queued' | 'running' | 'waiting' | 'done' | 'failed' | 'canceled';
+
+export interface ProcessingJob {
+  id: string;
+  kind: 'transcribe';
+  recordingId: string;
+  recordingTitle: string;
+  status: JobStatus;
+  stage: string;
+  progress: number;
+  error: string | null;
+  retryable: boolean;
+  provider: TranscriptionProviderId;
+  nextAttemptAt: number | null;
+  createdAt: number;
+}
+
+export interface TranscriptVersion {
+  id: string;
+  recordingId: string;
+  version: number;
+  kind: 'original' | 'edited';
+  provider: string;
+  model: string;
+  language: string | null;
+  isCurrent: boolean;
+  createdAt: number;
+}
+
+export interface Transcript {
+  version: TranscriptVersion;
+  versions: TranscriptVersion[];
+  segments: Segment[];
+  speakers: Record<string, string>;
+}
+
+export type TranscribeOutcome = { ok: true; jobId: string } | { ok: false; reason: 'offline-only' | 'needs-setup' | 'needs-consent'; provider: TranscriptionProviderId };
+
+export interface ProviderRateInfo {
+  remainingRequests: number | null;
+  limitRequests: number | null;
+  resetsInMs: number | null;
+}
+
+export interface UsageSummary {
+  provider: string;
+  requestsToday: number;
+  audioMsToday: number;
+  requestsMonth: number;
+  audioMsMonth: number;
+  rate: ProviderRateInfo | null;
+  rateUpdatedAt: number | null;
+}
+
+export interface ProviderStatus {
+  hasKey: boolean;
+  consented: boolean;
+  secureStorage: boolean;
+}
+
 export type ThemeSetting = 'system' | 'light' | 'dark';
 export type AudioQuality = 'voice' | 'standard' | 'high';
 
@@ -146,6 +209,13 @@ export interface Settings {
   trashRetentionDays: number;
   playbackSpeed: number;
   skipSilence: boolean;
+  transcriptionProvider: TranscriptionProviderId;
+  /** Null uses the provider's first listed model. */
+  transcriptionModel: string | null;
+  transcriptionLanguage: string;
+  customBaseUrl: string | null;
+  /** Warn past this much audio per day, in minutes. Null means no warning. */
+  dailyAudioLimitMinutes: number | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -162,6 +232,11 @@ export const DEFAULT_SETTINGS: Settings = {
   trashRetentionDays: 30,
   playbackSpeed: 1,
   skipSilence: false,
+  transcriptionProvider: 'groq',
+  transcriptionModel: null,
+  transcriptionLanguage: 'auto',
+  customBaseUrl: null,
+  dailyAudioLimitMinutes: null,
 };
 
 export interface LibraryStats {
@@ -187,4 +262,6 @@ export interface AppInfo {
   node: string;
   sqlite: string;
   dataDirectory: string;
+  /** The optional bundled FFmpeg is present, so extra formats such as AMR can be imported. */
+  ffmpeg: boolean;
 }

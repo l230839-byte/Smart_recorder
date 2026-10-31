@@ -119,6 +119,7 @@ export function GlobalEvents() {
   const { warning, error, lastSavedId, status } = useRecorder();
 
   useEffect(() => onEvent('imports:opened', () => go({ name: 'import' })), [go]);
+  useEffect(() => onEvent('recording:open', (id) => go({ name: 'recording', id })), [go]);
 
   // Space controls playback, as in other media apps, unless the user is typing or pressing a control.
   useEffect(() => {

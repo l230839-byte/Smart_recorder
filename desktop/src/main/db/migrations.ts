@@ -116,4 +116,98 @@ export const MIGRATIONS: readonly string[] = [
     tokenize = 'unicode61 remove_diacritics 2'
   );
   `,
+
+  /* 2: transcription, jobs, usage, consent and encrypted secrets */ `
+  CREATE TABLE processing_jobs (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    progress REAL NOT NULL DEFAULT 0,
+    error TEXT,
+    retryable INTEGER NOT NULL DEFAULT 1,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    language TEXT NOT NULL,
+    next_attempt_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  ) STRICT;
+  CREATE INDEX idx_jobs_status ON processing_jobs(status, next_attempt_at);
+  CREATE INDEX idx_jobs_recording ON processing_jobs(recording_id);
+
+  -- Finished pieces are kept until the whole job is done, so nothing is transcribed twice.
+  CREATE TABLE job_chunks (
+    job_id TEXT NOT NULL REFERENCES processing_jobs(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    result TEXT,
+    language TEXT,
+    PRIMARY KEY (job_id, idx)
+  ) STRICT;
+
+  CREATE TABLE transcript_versions (
+    id TEXT PRIMARY KEY,
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('original', 'edited')),
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    language TEXT,
+    is_current INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    UNIQUE (recording_id, version)
+  ) STRICT;
+  CREATE UNIQUE INDEX idx_transcript_one_current ON transcript_versions(recording_id) WHERE is_current = 1;
+
+  CREATE TABLE transcript_segments (
+    version_id TEXT NOT NULL REFERENCES transcript_versions(id) ON DELETE CASCADE,
+    idx INTEGER NOT NULL,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    speaker TEXT,
+    text TEXT NOT NULL,
+    confidence REAL,
+    PRIMARY KEY (version_id, idx)
+  ) STRICT;
+
+  CREATE TABLE speakers (
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    PRIMARY KEY (recording_id, label)
+  ) STRICT;
+
+  CREATE TABLE ai_usage (
+    provider TEXT NOT NULL,
+    day TEXT NOT NULL,
+    requests INTEGER NOT NULL DEFAULT 0,
+    audio_ms INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (provider, day)
+  ) STRICT;
+
+  CREATE TABLE provider_rate (
+    provider TEXT PRIMARY KEY,
+    info TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  ) STRICT;
+
+  CREATE TABLE provider_consents (
+    provider TEXT PRIMARY KEY,
+    accepted_at INTEGER NOT NULL
+  ) STRICT;
+
+  CREATE TABLE secrets (
+    name TEXT PRIMARY KEY,
+    value BLOB NOT NULL
+  ) STRICT;
+
+  CREATE VIRTUAL TABLE transcript_search USING fts5(
+    recording_id UNINDEXED, segment_idx UNINDEXED, start_ms UNINDEXED, text,
+    tokenize = 'unicode61 remove_diacritics 2'
+  );
+  `,
 ];

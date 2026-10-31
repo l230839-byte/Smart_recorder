@@ -26,6 +26,7 @@ interface RecordingRow {
   imported_at: number | null;
   updated_at: number;
   tags_json: string;
+  has_transcript: number;
 }
 
 const RECORDING_SELECT = `
@@ -33,7 +34,8 @@ const RECORDING_SELECT = `
     SELECT json_group_array(json_object('id', t.id, 'name', t.name))
     FROM recording_tags rt JOIN tags t ON t.id = rt.tag_id
     WHERE rt.recording_id = r.id
-  ) AS tags_json
+  ) AS tags_json,
+  EXISTS (SELECT 1 FROM transcript_versions v WHERE v.recording_id = r.id) AS has_transcript
   FROM recordings r`;
 
 function toRecording(row: RecordingRow): Recording {
@@ -59,6 +61,7 @@ function toRecording(row: RecordingRow): Recording {
     importedAt: row.imported_at,
     updatedAt: row.updated_at,
     tags: tags.sort((a, b) => a.name.localeCompare(b.name)),
+    hasTranscript: row.has_transcript === 1,
   };
 }
 
@@ -190,8 +193,8 @@ export class LibraryRepository {
     const fts = query.text ? toFtsQuery(query.text) : null;
     if (query.text?.trim() && !fts) return [];
     if (fts) {
-      where.push('r.id IN (SELECT recording_id FROM recording_search WHERE recording_search MATCH ?)');
-      params.push(fts);
+      where.push('r.id IN (SELECT recording_id FROM recording_search WHERE recording_search MATCH ? UNION SELECT recording_id FROM transcript_search WHERE transcript_search MATCH ?)');
+      params.push(fts, fts);
     }
     const sql = `${RECORDING_SELECT} WHERE ${where.join(' AND ')} ORDER BY ${SORT_SQL[query.sort]}`;
     return (this.db.prepare(sql).all(...params) as unknown as RecordingRow[]).map(toRecording);
@@ -250,11 +253,13 @@ export class LibraryRepository {
     const getFiles = this.db.prepare('SELECT file_name FROM media_objects WHERE recording_id = ?');
     const remove = this.db.prepare('DELETE FROM recordings WHERE id = ?');
     const removeSearch = this.db.prepare('DELETE FROM recording_search WHERE recording_id = ?');
+    const removeTranscriptSearch = this.db.prepare('DELETE FROM transcript_search WHERE recording_id = ?');
     transaction(this.db, () => {
       for (const id of ids) {
         files.push(...(getFiles.all(id) as { file_name: string }[]).map((r) => r.file_name));
         remove.run(id);
         removeSearch.run(id);
+        removeTranscriptSearch.run(id);
       }
       this.db.exec('DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM recording_tags)');
     });

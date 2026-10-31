@@ -11,7 +11,11 @@ export type Route =
   | { name: 'player'; id: string }
   | { name: 'import'; batchId?: string }
   | { name: 'collections' }
-  | { name: 'storage' };
+  | { name: 'storage' }
+  | { name: 'transcript'; id: string; startMs?: number }
+  | { name: 'jobs' }
+  | { name: 'providers' }
+  | { name: 'usage' };
 
 export type TopLevel = 'home' | 'library' | 'record' | 'studio' | 'settings';
 
@@ -26,6 +30,10 @@ const TOP_LEVEL_OF: Record<Route['name'], TopLevel> = {
   import: 'library',
   collections: 'library',
   storage: 'settings',
+  transcript: 'library',
+  jobs: 'home',
+  providers: 'settings',
+  usage: 'settings',
 };
 
 interface RouterValue {

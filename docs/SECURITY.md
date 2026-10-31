@@ -15,13 +15,17 @@ Every recording is treated as sensitive private data.
 | Close guard | Closing the window during a recording asks first, and stop and save keeps the audio. | `media-pipeline.spec.ts` |
 | Sleep guard | Recording blocks system sleep. | Code review |
 | Permanent delete | Removes the audio file, bookmarks, tags, waveform and search entries. | `library.test.ts`, `media-pipeline.spec.ts` |
+| Encrypted keys | Stored only through Windows DPAPI and never returned to the UI. Refuses to save if encryption is unavailable. | `transcription.test.ts`, `transcription.spec.ts` |
+| Consent gate | Offline only, key and agreement are checked at request and again just before sending. | `transcription.test.ts`, `transcription.spec.ts` (a real server counts requests) |
+| Encrypted transport | Provider addresses must be `https://`. `http://` is accepted only for this computer. | `transcription.test.ts` |
+| FFmpeg sandboxing | Separate process with no shell, files only, playlist-type containers refused. Runs only on copies EchoMind made. | Code review; not yet run |
 | No telemetry | The app makes no network requests of its own. | Code review; Phase 8 adds a network test |
 
 ## Planned
 
 | Control | Phase |
 | --- | --- |
-| Encrypted API keys (`safeStorage`), consent screen before first upload, log scrubbing | 3 |
+| Log scrubbing review | 8 |
 | App lock, encrypted backups | 8 |
 
 ## Rules for contributors

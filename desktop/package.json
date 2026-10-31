@@ -39,6 +39,30 @@
     "test:e2e": "electron-vite build && node scripts/run.mjs playwright test",
     "check:licenses": "node scripts/check-licenses.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run check:licenses",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder --win",
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs"
+  },
+  "build": {
+    "appId": "com.echomind.desktop",
+    "productName": "EchoMind",
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    }
   }
 }

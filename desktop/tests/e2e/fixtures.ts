@@ -5,6 +5,10 @@ import electronPath from 'electron';
 
 export const FIXTURES = resolve('test-fixtures');
 
+export function ffmpegInstalled(): boolean {
+  return existsSync(resolve('resources/bin/ffmpeg.exe'));
+}
+
 export function fixture(name: string): string {
   return resolve(FIXTURES, name);
 }
