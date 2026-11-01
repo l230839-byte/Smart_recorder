@@ -19,7 +19,6 @@ Record or import audio, transcribe it, read and edit the transcript, and generat
 
 1. **FFmpeg:** run `npm run fetch:ffmpeg` in `desktop/`, then `npm run build` and `npx playwright test ffmpeg`. The integration is written but has never run.
 2. **A free Groq key:** needed to confirm real transcription and summaries, and to compare Urdu and mixed speech.
-3. **GitHub access:** this PC is signed in as an account that cannot push to the repository.
 
 ## What is untested
 
