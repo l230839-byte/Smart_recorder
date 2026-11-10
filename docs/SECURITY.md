@@ -18,7 +18,7 @@ Every recording is treated as sensitive private data.
 | Encrypted keys | Stored only through Windows DPAPI and never returned to the UI. Refuses to save if encryption is unavailable. | `transcription.test.ts`, `transcription.spec.ts` |
 | Consent gate | Offline only, key and agreement are checked at request and again just before sending. Consent is separate for audio and text. | `transcription.test.ts`, `transcription.spec.ts` (a real server counts requests) |
 | Encrypted transport | Provider addresses must be `https://`. `http://` is accepted only for this computer. | `transcription.test.ts` |
-| FFmpeg sandboxing | Separate process with no shell, files only, playlist-type containers refused. Runs only on copies EchoMind made. | Code review; not yet run |
+| FFmpeg sandboxing | Separate process with no shell, files only, playlist-type containers refused. Runs only on copies EchoMind made. | `ffmpeg.spec.ts` (HLS, concat and SDP tricks are all refused) |
 | IPC sender checks | App API calls must come from the main window, and file handles from the media worker. | Code review |
 | AI output rendering | Parsed into data and built as elements. No HTML injection, and only citation links survive. | `summaries.test.ts` |
 | Prompt injection defense | The transcript is declared to be data, and citations are verified after the reply. It lowers the risk but cannot remove it. | `summaries.test.ts` |

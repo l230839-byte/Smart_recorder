@@ -9,7 +9,7 @@ Only what is implemented and verified is listed as **Working**.
 | Recording with modes, bookmarks, notes, live waveform | Working (tested with a simulated microphone) |
 | Crash recovery | Working |
 | Import: MP3, WAV, M4A, AAC, OGG, Opus, FLAC, WebM; audio from video | Working |
-| Import: AMR, WMA and others through FFmpeg | Written, not yet run. Needs `npm run fetch:ffmpeg`. |
+| Import: AMR, WMA and others through the FFmpeg add-on | Working (verified 2026-11-10; needs `npm run fetch:ffmpeg` once) |
 | Batch queue, duplicates, corrupt file handling | Working |
 | Library: views, search, sort, tags, nested collections, batch actions, trash | Working |
 | Player: speed, skip silence, voice boost, bookmarks, trim | Working |

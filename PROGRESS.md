@@ -17,13 +17,11 @@ Record or import audio, transcribe it, read and edit the transcript, and generat
 
 ## Needs the owner
 
-1. **FFmpeg:** run `npm run fetch:ffmpeg` in `desktop/`, then `npm run build` and `npx playwright test ffmpeg`. The integration is written but has never run.
-2. **A free Groq key:** needed to confirm real transcription and summaries, and to compare Urdu and mixed speech.
+1. **A free Groq key:** needed to confirm real transcription and summaries, and to compare Urdu and mixed speech.
 
 ## What is untested
 
 - Live Groq and Gemini. Tests use a local server that follows the documented formats.
-- FFmpeg and AMR import.
 - A real microphone, real drag and drop, native file dialogs and native notifications.
 - Any Windows machine other than the development one.
 - A real multi-hour transcription.

@@ -146,3 +146,15 @@ cd desktop; npm install; npm run dev
 No key: Settings > AI providers > Demo, then open a recording and select Transcribe.
 Real text: get a free key at https://console.groq.com/keys, paste it in the same screen,
 turn off Offline only, and agree to the disclosure when asked.
+
+
+UPDATE 2026-11-10: L2 RESOLVED
+--------------------------------------------------------------------------------
+The owner ran npm run fetch:ffmpeg. The script verified the release checksum and confirmed
+an LGPL build with no GPL or non-free code. Results:
+- AMR imports, converts to Ogg/Opus and plays.
+- Fake, corrupt and empty files are still refused with FFmpeg available.
+- New security test: an HLS playlist, a concat list and an SDP file that each point at
+  another file on the computer are all refused, and nothing is imported.
+- Full end-to-end suite with FFmpeg present: 34 passed. The 35th test, for AMR without
+  FFmpeg, now correctly skips.

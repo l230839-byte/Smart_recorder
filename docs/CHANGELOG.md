@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### FFmpeg add-on verified
+
+- The LGPL FFmpeg add-on was installed and tested: AMR imports and plays, damaged files are still refused, and playlist tricks cannot reach other files.
+
 ### Phase 4: Summaries, and an audit of earlier phases
 
 - Summaries: 14 formats, 6 lengths, 8 tones, any language, selected chapters, time ranges, selected text, focus and exclusion controls, custom instructions, saved templates and versions.
