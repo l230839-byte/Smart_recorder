@@ -1,5 +1,7 @@
 import { Loading } from './design/components';
 import { Collections } from './features/collections/Collections';
+import { ChatScreen } from './features/chat/ChatScreen';
+import { SearchScreen } from './features/chat/SearchScreen';
 import { DocumentEditor } from './features/documents/DocumentEditor';
 import { DocumentsScreen } from './features/documents/DocumentsScreen';
 import { NewDocument } from './features/documents/NewDocument';
@@ -63,6 +65,10 @@ function Screen() {
       return <DocumentEditor key={route.id} id={route.id} exportAs={route.exportAs} />;
     case 'documents':
       return <DocumentsScreen />;
+    case 'chat':
+      return <ChatScreen key={route.threadId ?? JSON.stringify(route.scope ?? null)} threadId={route.threadId} scope={route.scope} />;
+    case 'search':
+      return <SearchScreen text={route.text} />;
   }
 }
 

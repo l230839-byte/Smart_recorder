@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpenCheck, CheckSquare, Combine, FileSpreadsheet, FileText, FolderOpen, GraduationCap, Languages, ListChecks, Network, NotebookPen, PenLine, Presentation, ScrollText, Wand2 } from 'lucide-react';
+import { BookOpenCheck, CheckSquare, Combine, FileSpreadsheet, FileText, FolderOpen, GraduationCap, Languages, ListChecks, MessagesSquare, Network, NotebookPen, PenLine, Presentation, ScrollText, Wand2 } from 'lucide-react';
 import type { ExportFormat } from '@shared/documents';
 import { formatDuration } from '@shared/format';
 import type { SummaryOptions } from '@shared/summaries';
@@ -79,9 +79,14 @@ export function Studio() {
         title="AI Studio"
         subtitle="Transform recordings into anything. Tools marked with a phase arrive when that build phase finishes."
         actions={
-          <Button icon={FolderOpen} onClick={() => go({ name: 'documents' })}>
-            Documents
-          </Button>
+          <>
+            <Button variant="primary" icon={MessagesSquare} onClick={() => go({ name: 'chat', scope: { kind: 'library' } })}>
+              Ask AI
+            </Button>
+            <Button icon={FolderOpen} onClick={() => go({ name: 'documents' })}>
+              Documents
+            </Button>
+          </>
         }
       />
       <div className="studio-grid">

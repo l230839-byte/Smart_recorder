@@ -27,12 +27,15 @@ import { IngestPipeline } from './services/ingest';
 import { JobQueue } from './services/job-queue';
 import { DOCUMENT_SCHEME, handleDocumentProtocol, handleMediaProtocol, registerMediaScheme } from './services/media-protocol';
 import { DocumentService } from './services/documents';
+import { ChatService } from './services/chat';
 import { MediaWorker } from './services/media-worker';
 import { RecorderService } from './services/recorder';
 import { SettingsStore } from './services/settings';
 import { SummaryService, textConsentKey } from './services/summaries';
 import { keyName, TranscriptionService } from './services/transcription';
 import { createMainWindow } from './window';
+import { ChatRepository } from './db/chats';
+import { KnowledgeRepository } from './db/knowledge';
 
 // Tests point this at a throwaway folder so they never touch real user data.
 if (process.env.ECHOMIND_USER_DATA) app.setPath('userData', process.env.ECHOMIND_USER_DATA);
@@ -119,6 +122,9 @@ async function start(): Promise<void> {
   const summaries = new SummaryRepository(db);
   const documentRepo = new DocumentRepository(db);
   const documentsChanged = () => emit('data:changed', 'documents');
+  const chatsChanged = () => emit('data:changed', 'chats');
+  const chats = new ChatRepository(db);
+  const knowledge = new KnowledgeRepository(db);
   const jobsChanged = () => emit('data:changed', 'jobs');
   const queue = new JobQueue(jobs, jobsChanged);
 
@@ -213,6 +219,19 @@ async function start(): Promise<void> {
   });
   handleDocumentProtocol((id) => documentService.html(id));
 
+  const chatService = new ChatService({
+    chats,
+    knowledge,
+    library,
+    transcripts,
+    usage,
+    settings: () => settings.get(),
+    makeProvider: makeChatProvider,
+    blockedBy: (provider) => summaryService.blockedBy(provider),
+    changed: chatsChanged,
+  });
+  chatService.recover();
+
   const consentKey = (provider: string, purpose: AiPurpose) => (purpose === 'text' ? textConsentKey(provider) : provider);
 
   const deleteFiles = async (ids: string[]) => {
@@ -223,6 +242,7 @@ async function start(): Promise<void> {
     await Promise.all(files.map((f) => rm(join(mediaDir, f), { force: true })));
     await Promise.all(exported.map((f) => rm(join(exportsDir, f), { force: true })));
     libraryChanged();
+    chatsChanged();
   };
   const purgeTrash = async () => {
     const days = settings.get().trashRetentionDays;
@@ -491,6 +511,26 @@ async function start(): Promise<void> {
       emit('data:changed', 'summaries');
     },
 
+    startChat: (scope) => chatService.start(scope),
+    chatScopeInfo: (scope) => chatService.scopeInfo(scope),
+    listChats: () => chats.list(),
+    getChat: (id) => {
+      const thread = chats.get(id);
+      return thread ? { thread, turns: chats.turns(id) } : null;
+    },
+    askChat: (threadId, question) => chatService.ask(threadId, question),
+    retryChat: (answerId) => chatService.retry(answerId),
+    cancelChat: (answerId) => chatService.cancel(answerId),
+    renameChat: (id, title) => {
+      chats.rename(id, title);
+      chatsChanged();
+    },
+    deleteChat: (id) => {
+      chats.delete(id);
+      chatsChanged();
+    },
+    searchEverything: (query) => knowledge.search(query),
+
     listDocuments: (recordingId) => documentRepo.list(recordingId),
     getDocument: (id) => documentRepo.get(id),
     createDocument: (input) => documentService.create(input),
@@ -601,6 +641,12 @@ async function start(): Promise<void> {
   });
   imports.resume();
   queue.resume();
+  // Transcripts made before chat existed get their passages indexed once, a few at a time so the app
+  // stays responsive. Chat also indexes anything it needs that this has not reached yet.
+  const indexPassages = () => {
+    if (transcripts.indexMissingPassages(10) > 0) setImmediate(indexPassages);
+  };
+  setTimeout(indexPassages, 1500);
   void purgeTrash();
   openFiles(process.argv.slice(1));
 }

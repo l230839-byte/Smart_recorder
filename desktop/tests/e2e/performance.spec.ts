@@ -93,3 +93,79 @@ test('a three-hour document exports to PDF in seconds', async () => {
     removeDir(dataDir);
   }
 });
+
+test('a 300-hour library: passages index once, search and library-wide chat stay quick', async () => {
+  test.setTimeout(240_000);
+  const dataDir = tempDataDir();
+  let { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    await closeApp(app);
+
+    // 300 one-hour recordings with transcripts, written directly, as an older version would have left them.
+    const COUNT = 300;
+    const LINES = 300;
+    const topics = ['neural networks', 'operating systems', 'client requirements', 'budget planning', 'photosynthesis', 'database indexes'];
+    const db = new DatabaseSync(join(dataDir, 'echomind.db'));
+    db.exec('BEGIN');
+    const now = Date.now();
+    const insert = db.prepare("INSERT INTO recordings (id, title, mode, source, format, codec, duration_ms, size_bytes, created_at, updated_at) VALUES (?, ?, 'lecture', 'picker', 'OGG', 'Opus', 3600000, 1000, ?, ?)");
+    const search = db.prepare("INSERT INTO recording_search (recording_id, title, description, tags, notes) VALUES (?, ?, '', '', '')");
+    const versionStmt = db.prepare("INSERT INTO transcript_versions (id, recording_id, version, kind, provider, model, is_current, created_at) VALUES (?, ?, 1, 'original', 'groq', 'm', 1, ?)");
+    const segment = db.prepare('INSERT INTO transcript_segments (version_id, idx, start_ms, end_ms, text) VALUES (?, ?, ?, ?, ?)');
+    const ts = db.prepare('INSERT INTO transcript_search (recording_id, segment_idx, start_ms, text) VALUES (?, ?, ?, ?)');
+    for (let r = 0; r < COUNT; r++) {
+      const id = randomUUID();
+      insert.run(id, `Session ${r}`, now - r * 1000, now);
+      search.run(id, `Session ${r}`);
+      const version = randomUUID();
+      versionStmt.run(version, id, now);
+      for (let i = 0; i < LINES; i++) {
+        const text = `In session ${r} we discussed ${topics[(r + i) % topics.length]} in detail, point ${i}${r === 137 && i === 42 ? ', and the secret deadline is the ninth of March' : ''}.`;
+        segment.run(version, i, i * 12_000, (i + 1) * 12_000, text);
+        ts.run(id, i, i * 12_000, text);
+      }
+    }
+    db.exec('COMMIT');
+    db.close();
+
+    ({ app, page } = await launch(dataDir));
+    await page.getByRole('navigation', { name: 'Main' }).waitFor();
+    const call = <T,>(method: string, ...args: unknown[]) => page.evaluate(([m, a]) => (window.echomind.call as unknown as (m: string, ...x: unknown[]) => Promise<T>)(m as string, ...(a as unknown[])), [method, args] as const);
+
+    // Passages for all 300 transcripts are built once, in the background, shortly after launch.
+    let started = Date.now();
+    await expect
+      .poll(async () => (await call<{ hits: unknown[] }[]>('searchEverything', { text: 'secret deadline' })).length, { timeout: 60_000 })
+      .toBe(1);
+    const firstSearchMs = Date.now() - started;
+
+    started = Date.now();
+    const results = await call<unknown[]>('searchEverything', { text: 'neural networks' });
+    const searchMs = Date.now() - started;
+    expect(results.length).toBeGreaterThan(40);
+
+    await call('updateSettings', { llmProvider: 'fake' });
+    const thread = await call<string>('startChat', { kind: 'library' });
+    // A question across the whole library, asked before the background pass could finish: chat indexes
+    // what it needs first, so the answer is still complete.
+    started = Date.now();
+    await call('askChat', thread, 'When is the secret deadline?');
+    await expect.poll(async () => (await call<{ turns: { status: string; content: string }[] }>('getChat', thread)).turns[1]?.status, { timeout: 30_000 }).toBe('done');
+    const chatMs = Date.now() - started;
+    const answer = (await call<{ turns: { content: string; readNote: string }[] }>('getChat', thread)).turns[1]!;
+    expect(answer.content).toContain('secret deadline');
+    // Once everything is indexed, a question is quicker still.
+    started = Date.now();
+    await call('askChat', thread, 'What did session 12 say about photosynthesis?');
+    await expect.poll(async () => (await call<{ turns: { status: string }[] }>('getChat', thread)).turns[3]?.status, { timeout: 30_000 }).toBe('done');
+    const warmMs = Date.now() - started;
+    console.warn(`performance: 300 one-hour transcripts: search ready ${firstSearchMs} ms after launch, search ${searchMs} ms, first library-wide question ${chatMs} ms including indexing (${answer.readNote}), next question ${warmMs} ms`);
+    expect(searchMs).toBeLessThan(2000);
+    expect(chatMs).toBeLessThan(8000);
+    expect(warmMs).toBeLessThan(2000);
+  } finally {
+    await closeApp(app);
+    removeDir(dataDir);
+  }
+});

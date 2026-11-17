@@ -55,6 +55,13 @@ test('every screen fits the smallest window in dark mode, with no sideways scrol
     await page.getByRole('button', { name: 'Layout and style' }).click();
     await expect(page.frameLocator('iframe[title="Page preview"]').getByRole('heading', { name: 'Heading' })).toBeVisible({ timeout: 10_000 });
     await noSidewaysScroll('document-editor');
+    await page.getByRole('button', { name: 'Search' }).first().click();
+    await page.getByRole('searchbox', { name: 'Search everything' }).fill('recorder');
+    await expect(page.locator('.search-result').first()).toBeVisible();
+    await noSidewaysScroll('search');
+    await page.getByRole('button', { name: /Ask AI about/ }).click();
+    await expect(page.getByRole('textbox', { name: 'Your question' })).toBeVisible();
+    await noSidewaysScroll('chat');
     await nav('Settings');
     await noSidewaysScroll('settings');
   } finally {

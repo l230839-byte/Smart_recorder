@@ -1,7 +1,7 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import { parseInline, parseMarkdown, type Inline } from '@shared/markdown';
 
-function renderInline(nodes: Inline[], onCite: (ms: number) => void): ReactNode[] {
+function renderInline(nodes: Inline[], onCite: (ms: number, recordingId?: string) => void): ReactNode[] {
   return nodes.map((node, i) => {
     switch (node.type) {
       case 'text':
@@ -14,7 +14,7 @@ function renderInline(nodes: Inline[], onCite: (ms: number) => void): ReactNode[
         return <code key={i}>{node.text}</code>;
       case 'cite':
         return (
-          <button key={i} type="button" className="cite tabular" aria-label={`Play source at ${node.label}`} onClick={() => onCite(node.ms)}>
+          <button key={i} type="button" className="cite tabular" aria-label={`Play source at ${node.label}`} onClick={() => onCite(node.ms, node.recordingId)}>
             {node.label}
           </button>
         );
@@ -26,7 +26,7 @@ function renderInline(nodes: Inline[], onCite: (ms: number) => void): ReactNode[
  * Shows AI text as real elements built from parsed data, with no HTML injection anywhere, so nothing a
  * model writes can run or load anything. `dir="auto"` per block keeps mixed Urdu and English correct.
  */
-export const MarkdownView = memo(function MarkdownView({ markdown, onCite }: { markdown: string; onCite: (ms: number) => void }) {
+export const MarkdownView = memo(function MarkdownView({ markdown, onCite }: { markdown: string; onCite: (ms: number, recordingId?: string) => void }) {
   const blocks = useMemo(() => parseMarkdown(markdown), [markdown]);
   return (
     <div className="md selectable">

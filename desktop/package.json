@@ -47,6 +47,7 @@
     "lint": "eslint src tests scripts",
     "test": "vitest run",
     "test:e2e": "electron-vite build && node scripts/run.mjs playwright test",
+    "test:live": "electron-vite build && node scripts/run.mjs playwright test -c playwright.live.config.ts",
     "check:licenses": "node scripts/check-licenses.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run check:licenses",
     "dist": "electron-vite build && electron-builder --win",

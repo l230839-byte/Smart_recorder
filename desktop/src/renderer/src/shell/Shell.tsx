@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { ArrowLeft, Home, Library, Mic, Settings, Sparkles } from 'lucide-react';
+import { useEffect, type ReactNode } from 'react';
+import { ArrowLeft, Home, Library, Mic, Search, Settings, Sparkles } from 'lucide-react';
 import { IconButton, type IconType } from '../design/components';
 import { useRouter, type Route, type TopLevel } from '../lib/router';
 import './shell.css';
@@ -24,7 +24,20 @@ export function BrandMark({ size = 26 }: { size?: number }) {
 }
 
 export function Shell({ children, footer, sidebarExtra }: { children: ReactNode; footer?: ReactNode; sidebarExtra?: ReactNode }) {
-  const { section, switchTo, canGoBack, back } = useRouter();
+  const { section, switchTo, canGoBack, back, go, route } = useRouter();
+
+  // Ctrl+K searches from anywhere, as in other desktop apps.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (route.name !== 'search') go({ name: 'search' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [go, route.name]);
+
   return (
     <div className="shell">
       <nav className="sidebar" aria-label="Main">
@@ -32,6 +45,11 @@ export function Shell({ children, footer, sidebarExtra }: { children: ReactNode;
           <BrandMark />
           <span>EchoMind</span>
         </div>
+        <button type="button" className="sidebar-search" onClick={() => go({ name: 'search' })}>
+          <Search size={15} aria-hidden />
+          Search
+          <kbd>Ctrl K</kbd>
+        </button>
         <ul>
           {SECTIONS.map((s) => (
             <li key={s.key}>

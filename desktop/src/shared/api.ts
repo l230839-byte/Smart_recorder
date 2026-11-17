@@ -27,7 +27,9 @@ import type {
   UsageSummary,
 } from './models';
 import type { LlmProviderId, TranscriptionProviderId } from './providers';
+import type { ChatDetail, ChatScope, ChatThread } from './chat';
 import type { DocumentSettings, ExportFormat } from './documents';
+import type { SearchQuery, SearchResult } from './search';
 import type { Chapter, Suggestions, SummaryOptions } from './summaries';
 
 export interface RecordingEdit {
@@ -139,6 +141,19 @@ export interface EchoApi {
   saveTemplate(name: string, options: SummaryOptions): string;
   deleteTemplate(id: string): void;
 
+  // Chat with recordings, and search across everything
+  startChat(scope: ChatScope): string;
+  chatScopeInfo(scope: ChatScope): { recordings: number; withTranscript: number; label: string };
+  listChats(): ChatThread[];
+  getChat(id: string): ChatDetail | null;
+  /** Starts an answer. `jobId` is the answer's id. */
+  askChat(threadId: string, question: string): AiOutcome;
+  retryChat(answerId: string): AiOutcome;
+  cancelChat(answerId: string): void;
+  renameChat(id: string, title: string): void;
+  deleteChat(id: string): void;
+  searchEverything(query: SearchQuery): SearchResult[];
+
   // Documents
   listDocuments(recordingId?: string): DocumentRecord[];
   getDocument(id: string): DocumentRecord | null;
@@ -161,7 +176,7 @@ export interface EchoApi {
 /** Events pushed from the main process to the UI. */
 export interface EchoEvents {
   /** Stored data changed; screens re-read what they show. The value names the area. */
-  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries' | 'documents';
+  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries' | 'documents' | 'chats';
   /** Files arrived from outside the window ("Open with", a second launch). The batch is already queued. */
   'imports:opened': string;
   /** Interrupted recordings were rebuilt at launch. The value is how many. */

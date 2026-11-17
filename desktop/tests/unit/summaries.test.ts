@@ -53,6 +53,9 @@ describe('citations', () => {
 
   it('accepts the variations models write', () => {
     expect(resolveCitations('x [S12; S15]', segments).used).toBe(2);
+    // Ranges were left as raw text before; they now link both ends.
+    expect(resolveCitations('x [S12-S15] y [S12–S15]', segments)).toMatchObject({ used: 4, dropped: 0 });
+    expect(resolveCitations('x [S12-S15]', segments).markdown).not.toContain('[S');
     expect(resolveCitations('x [S12,15]', segments).used).toBe(2);
     expect(resolveCitations('a normal [link](https://evil.example) and [not a cite]', segments).used).toBe(0);
   });

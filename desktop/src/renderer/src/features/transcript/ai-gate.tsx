@@ -121,5 +121,5 @@ export function useTranscribe() {
       </Dialog>
     );
   }
-  return { start, startSummary, startChapters, startSuggestions, startDocument, dialogs };
+  return { start, startText, startSummary, startChapters, startSuggestions, startDocument, dialogs };
 }

@@ -256,9 +256,14 @@ export class LibraryRepository {
     const removeTranscriptSearch = this.db.prepare('DELETE FROM transcript_search WHERE recording_id = ?');
     const removeSummarySearch = this.db.prepare('DELETE FROM summary_search WHERE recording_id = ?');
     const removeDocumentSearch = this.db.prepare('DELETE FROM document_search WHERE recording_id = ?');
+    const removePassages = this.db.prepare('DELETE FROM transcript_chunks WHERE recording_id = ?');
+    // A chat that was about this recording or quoted it holds its content, so it goes too (prompt §21).
+    const removeChats = this.db.prepare('DELETE FROM chat_threads WHERE id IN (SELECT thread_id FROM chat_thread_recordings WHERE recording_id = ?)');
     transaction(this.db, () => {
       for (const id of ids) {
         files.push(...(getFiles.all(id) as { file_name: string }[]).map((r) => r.file_name));
+        removeChats.run(id);
+        removePassages.run(id);
         remove.run(id);
         removeSearch.run(id);
         removeTranscriptSearch.run(id);

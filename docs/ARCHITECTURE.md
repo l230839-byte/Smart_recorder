@@ -48,3 +48,5 @@ desktop/tests/
 | 3 | Simple typed route stack instead of a router library | The app has no URLs. About 60 lines replace a dependency. |
 | 4 | `useQuery` plus change events instead of a state library | The database is the single source of truth, so there is no client cache to keep consistent. |
 | 5 | Migrations are ordered, transactional SQL strings tracked by `user_version` | Simple and easy to verify. A failed migration leaves the database unchanged. |
+| 6 | Chat retrieval with FTS5/BM25 plus an AI search plan, no embeddings yet | Works offline for search, needs no download or extra provider, and handles Urdu. The prompt allows this when embeddings are not yet practical; a local embedding add-on is the planned upgrade. |
+| 7 | Chat runs outside the job queue | Interactive answers must not wait behind long transcriptions. The same checks apply. |

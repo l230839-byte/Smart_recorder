@@ -26,6 +26,10 @@ Every recording is treated as sensitive private data.
 | Document preview | Served from an internal scheme with its own CSP: no script, no network, only inline styles and embedded fonts. Shown in an iframe sandboxed with no permissions. Every piece of text is escaped. | `documents.test.ts` (hostile titles and Markdown), `documents.spec.ts` |
 | Exported files | Written only inside the app's exports folder, under names made safe for Windows. Opening and copying look files up by id, never by a path from the UI. | `documents.test.ts` |
 | CSV formulas | Cells starting with `=`, `+`, `-` or `@` get a leading quote, so a transcript cannot run a formula in a spreadsheet. | `documents.test.ts` |
+| Chat grounding | Transcript text is declared to be data, not instructions. Citations are checked against the exact lines sent; others are removed and counted. Answers with no checkable source are flagged. | `chat.test.ts` |
+| Chat privacy | A chat sends only the question, recent turns and the chosen passages, after the same offline, key and consent checks as other AI work. Deleting a recording deletes every chat that read any of it. | `chat.test.ts`, `chat.spec.ts` |
+| Search snippets | Matches are marked with control characters and shown as text, never as HTML. | `chat.test.ts`, `chat.spec.ts` |
+| Live tests | Keys come from `desktop/.env.live`, which git ignores. Only generated speech is sent. | `.gitignore` |
 | No telemetry | The app makes no network requests of its own. | Code review; Phase 8 adds a network test |
 
 ## Planned

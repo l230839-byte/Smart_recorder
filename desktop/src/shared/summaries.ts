@@ -220,7 +220,8 @@ export function combineMessages(o: SummaryOptions, mode: RecordingMode, notes: s
   ];
 }
 
-const CITATION = /\[(S\d+(?:\s*[,;]\s*S?\d+)*)\]/g;
+// Lists and ranges both occur: [S12, S15], [S12; S15], [S12-S15]. A range cites its two ends.
+const CITATION = /\[(S\d+(?:\s*[,;–-]\s*S?\d+)*)\]/g;
 
 export interface CitationResult {
   markdown: string;
@@ -236,7 +237,7 @@ export function resolveCitations(markdown: string, segments: Segment[]): Citatio
   let dropped = 0;
   const resolved = markdown.replace(CITATION, (_match, ids: string) => {
     const links: string[] = [];
-    for (const raw of ids.split(/[,;]/)) {
+    for (const raw of ids.split(/[,;–-]/)) {
       const seg = byIdx.get(Number(raw.trim().replace(/^S/, '')));
       if (seg) {
         links.push(`[${formatDuration(seg.startMs)}](cite:${seg.startMs})`);

@@ -1,0 +1,182 @@
+ECHOMIND DESKTOP: PHASE 06, AI CHAT AND SEARCH
+================================================================================
+Status:      COMPLETE for everything testable here. Chat has run on the demo model and
+             scripted model replies, not yet on live Groq or Gemini. A live test is ready
+             and needs only the owner's key (section 7).
+Prompt refs: §9 chat with recordings, §12 intelligent search, §15.2 cross-recording analysis,
+             §15.3 intelligent memory, §15.12 knowledge collections, §17 workflow E,
+             §21 privacy, §22 performance
+Date:        2026-11-17
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Let people talk to their recordings, one or many at a time, and get answers that come from
+what was actually said, with the moments to prove it. Let them find anything in their library
+in one search. Keep improving earlier work along the way.
+
+
+2. WHAT THIS PHASE INCLUDES (THE FEATURES, AS A USER SEES THEM)
+--------------------------------------------------------------------------------
+Ask AI (chat)
+- Ask about one recording, several chosen ones, a collection (with its sub-collections), or
+  the whole library. Start from a recording's page, a Library selection, a collection's
+  menu, search results, Home or AI Studio.
+- Follow-up questions understand the conversation ("explain it more simply").
+- Every statement about a recording cites the moment it came from. Select a time to hear it,
+  in whichever recording it is. Sources lists each quoted line with its recording.
+- When the recordings do not cover something, the answer says so, with a "Not in your
+  recordings" label. General knowledge appears only in a separate, clearly marked box.
+- Each answer says what was read: "Read the full transcript", "Read 9 passages from 2 of 14
+  recordings", or "Searched 14 recordings; nothing matched".
+- Warnings when the AI cited a line it was not given (removed), or when an answer could not
+  be linked to any moment.
+- Chats are saved, named after their first question, and can be renamed or deleted. Stop
+  a running answer; retry a failed one. Starter questions on an empty chat.
+- Example questions from the prompt that work: what the teacher explained about a topic,
+  "summarize the first 20 minutes", homework, deadlines, decisions, what a speaker said,
+  comparing two meetings, finding recordings that discussed a subject.
+
+Search everything (Ctrl+K, or Search at the top of the sidebar)
+- One search across recording names, descriptions, tags and notes, transcripts, chapters,
+  speaker names, summaries and documents. Urdu and English both work.
+- Results grouped by recording, with highlighted snippets and times. A transcript or chapter
+  match opens the transcript at that moment; summary and document matches open them.
+- Filters: kind of content, collection, and time (past week, month, year).
+- "Ask AI about these results" turns a search into a chat about the recordings found.
+- Coming Back from a result keeps the search.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Read whole transcripts whenever they fit. This grounds answers best and makes "not in
+    the recording" trustworthy. The budget follows the provider, capped at 48,000 characters
+    to keep answers fast and inside free limits.
+D2  Otherwise, retrieve with SQLite FTS5 and BM25 over overlapping passages of about 45 to
+    60 seconds, as the prompt allows when embeddings are not yet practical. A short JSON
+    "search plan" from the model resolves follow-ups, adds likely words and other-language
+    terms, and spots time ranges and whole-recording questions. Several searches are merged
+    with reciprocal rank fusion, and the best passage of each recording comes first.
+D3  No embeddings in this phase. A free cloud embedding API would mean sending every
+    transcript to a third party just to index it (Gemini's free tier may use content to
+    improve its products). A local multilingual model is the better option, as an optional
+    add-on like FFmpeg. Recorded as the main follow-up (L3).
+D4  Lines are numbered S1, S2… across all recordings in the request, so the model cites one
+    short id and EchoMind knows exactly which recording and moment it means. Citations are
+    checked against the exact lines sent.
+D5  Answers come back as JSON that separates the recordings' answer, whether it was found,
+    and general knowledge. One retry for unreadable JSON; plain text is accepted only if it
+    is not broken JSON.
+D6  Chat runs straight away, not in the job queue, so a question never waits behind a
+    long transcription. It passes the same offline, key and consent checks. Short rate limits
+    (20 seconds or less) are waited out once; longer ones say when to try again.
+D7  Privacy: a chat records every recording whose text was sent, cited or not. Deleting a
+    recording deletes all of those chats (§21).
+D8  Search groups by recording and ranks within each recording in SQL, so a word used often
+    in a few recordings cannot crowd out the rest.
+
+
+4. FIXES AND IMPROVEMENTS MADE WHILE BUILDING AND REVIEWING
+--------------------------------------------------------------------------------
+F1  [Bug, search quality] Global search took the best 1,500 transcript lines overall, so a
+    common phrase filled them from about 30 recordings and silently dropped the others. Found
+    by the 300-hour test. Now ranked per recording with window functions, with true match
+    counts. Unit test added.
+F2  [Bug, upgrade] Right after updating, a library-wide question could miss older
+    transcripts whose passages were still being built. Chat now indexes anything it needs
+    first, and the startup pass works in small batches so the app stays responsive.
+F3  [Bug, crash] Newer Chromium returns a promise from scrollIntoView. An effect returned it
+    and React treated it as a cleanup, which crashed the chat screen. Fixed, and the whole app
+    was checked for the same pattern.
+F4  [Privacy] Chats first recorded only the recordings they cited. Any recording whose text
+    was sent now counts, so deleting it deletes the chat. Found by a flaky test, now stable
+    over 15 runs.
+F5  [Reliability] If the database closed while an answer was finishing (during quit),
+    saving the failure threw an unhandled error. Guarded; the answer is marked interrupted at
+    next launch.
+F6  [UX] Back from a search result lost the query. It is now kept.
+F7  [Earlier phase, summaries] Citations written as ranges, like [S12-S15], stayed in
+    summaries as raw text. They now link both ends. Tested.
+F8  [Earlier phases] Links can now point at another recording's moment; copying text handles
+    them. Home has an Ask action. The Library selection, collections and AI Studio gained
+    Ask AI.
+F9  [Tooling] The demo model now answers chat with the lines that share the most words with
+    the question, and says when none do, so the whole flow works with no key.
+F10 [Tests] A test helper waited a fixed number of ticks and was slow (9 s) and
+    timing-dependent; it now waits for the real condition (under 1 s).
+
+
+5. DESIGN REVIEW (FROM SCREENSHOTS IN desktop/test-shots)
+--------------------------------------------------------------------------------
+R1  Chat: questions on the right, answers on the left with citation chips, a "Not in your
+    recordings" badge, and a dashed box for general knowledge so it never looks like
+    evidence. The composer stays at the bottom. The chat list collapses on narrow windows.
+R2  "1 recording with transcripts" corrected to "1 recording with a transcript", and the
+    no-transcript message now speaks of "this recording" when there is only one.
+R3  Search: one large field, three filters, results as cards with highlighted matches and
+    time chips. Checked at 860x600 in dark mode with no sideways scrolling, as was chat.
+
+
+6. TESTING (all passing on 2026-11-17)
+--------------------------------------------------------------------------------
+Unit (Vitest): 215 tests, 29 of them new.
+- Passages: size, overlap, very long lines, empty lines, no repeated single lines.
+- Search terms in English and Urdu, FTS5 safety, rank fusion, even sampling.
+- Context numbering across recordings, skipped stretches, speaker names; citations for one
+  and several recordings, ranges, invented ids removed; old links still read.
+- Plans and answers validated, including slips out of JSON and broken JSON; history.
+- On a real database: passages follow edits; older transcripts indexed once; a small
+  recording is read whole with no plan request; a large library is searched using the plan;
+  not found with general knowledge apart; time ranges; follow-ups; rate limits waited or
+  reported, then retried; nothing stored or sent when blocked or without transcripts; one
+  answer at a time; stop; recovery after quit; deleting a recording deletes chats that read
+  it; deleted collections; global search for every kind of content with filters and the
+  trash excluded; a common word across 70 recordings.
+
+End to end (Playwright, the real app): 41 tests; 40 pass and 1 is skipped (AMR without FFmpeg,
+skipped because FFmpeg is installed). New:
+- Chat from a recording: answer, citation plays, sources, a not-found answer, chat list,
+  scope picker with chosen recordings, Ask AI from a Library selection, rename, the Offline
+  only dialog with nothing stored, and deleting a recording removing every chat that read it.
+- Search: Ctrl+K, snippets with highlighted matches and times, Urdu, tags, filters, opening
+  a match at its moment, Back, and Ask AI about the results.
+- Chat and search at 860x600 in dark mode.
+
+Measured on this machine:
+- 300 one-hour recordings (90,000 transcript lines): search 0.25 s; the first library-wide
+  question 3.5 s including building the passage index; the next question 0.57 s.
+- Earlier figures still hold: 2,000 recordings open in under 1 s, PDF of 2,500 paragraphs in
+  1.4 to 2.4 s.
+
+Live test, ready: `npm run test:live` generates a 70-second two-voice meeting (checked on
+this machine), then runs Groq transcription, a summary, chapters, title and tags, a Meeting
+Minutes document with PDF and Word export, and four chat questions (two answerable, one
+not covered, one general knowledge). With a Gemini key it repeats the text tasks on Gemini.
+Every output is checked against 12 known facts and written to
+test-results/live/live-report.md.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check passes, no new dependencies.
+
+
+7. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  NOT YET RUN ON LIVE GROQ OR GEMINI. Needs the owner's key in desktop/.env.live, then
+    `npm run test:live`. I will read the report and judge transcription, summaries,
+    documents and chat against the known facts.
+L2  Urdu quality cannot be judged with generated speech: Windows here has no Urdu voice. An
+    Urdu recording from the owner would close this.
+L3  Matching is by words, not meaning. A question that shares no words with the transcript
+    can miss the right passage when the library is too large to read whole. The search plan
+    reduces this with likely words and translations. Local semantic search (a small
+    multilingual model, downloaded on request) is the planned upgrade.
+L4  Very large scopes are searched, not read whole, so a question about "everything" in a big
+    library sees an even sample or the best passages, and the answer says what it read.
+L5  Answers are not streamed word by word; they appear when complete (usually a few seconds).
+L6  Everything else from earlier reports still applies.
+
+
+8. NEXT: PHASE 7, AI STUDIO, STUDY TOOLS AND TASKS
+--------------------------------------------------------------------------------
+Flashcards and quizzes (multiple choice, true or false, short and long answers) with saved
+attempts; study guides; action items and tasks with reminders; translation; mind maps;
+recording comparison; rewrite and custom studios; batch processing.

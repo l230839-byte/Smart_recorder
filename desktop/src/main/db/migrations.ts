@@ -304,4 +304,47 @@ export const MIGRATIONS: readonly string[] = [
     tokenize = 'unicode61 remove_diacritics 2'
   );
   `,
+
+  /* 5: passages for retrieval, and chats */ `
+  CREATE VIRTUAL TABLE transcript_chunks USING fts5(
+    recording_id UNINDEXED, first_idx UNINDEXED, last_idx UNINDEXED, start_ms UNINDEXED, end_ms UNINDEXED, text,
+    tokenize = 'unicode61 remove_diacritics 2'
+  );
+
+  CREATE TABLE chat_threads (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    scope_kind TEXT NOT NULL CHECK (scope_kind IN ('recordings', 'collection', 'library')),
+    collection_id TEXT REFERENCES collections(id) ON DELETE SET NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  ) STRICT;
+
+  -- Every recording a chat is about or has quoted, so deleting a recording can delete those chats.
+  CREATE TABLE chat_thread_recordings (
+    thread_id TEXT NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    in_scope INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (thread_id, recording_id)
+  ) STRICT;
+  CREATE INDEX idx_chat_thread_recordings_recording ON chat_thread_recordings(recording_id);
+
+  CREATE TABLE chat_messages (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL REFERENCES chat_threads(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'done', 'failed')),
+    error TEXT,
+    found TEXT CHECK (found IN ('yes', 'partly', 'no')),
+    general TEXT NOT NULL DEFAULT '',
+    sources TEXT NOT NULL DEFAULT '[]',
+    read_note TEXT NOT NULL DEFAULT '',
+    dropped_citations INTEGER NOT NULL DEFAULT 0,
+    provider TEXT,
+    model TEXT,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+  CREATE INDEX idx_chat_messages_thread ON chat_messages(thread_id, created_at);
+  `,
 ];

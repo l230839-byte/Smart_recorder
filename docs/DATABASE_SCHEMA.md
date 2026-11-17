@@ -58,4 +58,13 @@ Deleting a recording cascades to all of these except the FTS index, which the re
 
 Deleting a recording deletes its documents, their versions and export records by cascade. The app deletes the exported files and the FTS rows at the same time.
 
-Later phases add chat, study material and tasks through new migrations.
+## Migration 5: passages and chats
+
+| Change | Purpose |
+| --- | --- |
+| `transcript_chunks` | FTS5 table of overlapping passages (about 45 to 60 seconds each) of every current transcript, ranked with BM25 for chat. Rebuilt with the transcript; older transcripts are indexed once at launch. |
+| `chat_threads` | A chat and its scope: chosen recordings, a collection (set to null if the collection is deleted), or the whole library |
+| `chat_thread_recordings` | The recordings a chat is about and every recording whose text it has read, so deleting a recording deletes those chats |
+| `chat_messages` | Questions and answers: Markdown with checked citations, whether the recordings answered it, general knowledge kept apart, sources, and what was read |
+
+Later phases add study material and tasks through new migrations.

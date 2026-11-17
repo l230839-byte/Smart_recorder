@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, FolderOpen, FolderPlus, MoreVertical, Plus } from 'lucide-react';
+import { Folder, FolderOpen, FolderPlus, MessagesSquare, MoreVertical, Plus } from 'lucide-react';
 import { plural } from '@shared/format';
 import type { Collection } from '@shared/models';
 import { Button, ConfirmDialog, EmptyState, Loading, Menu, PageHeader, TextPromptDialog } from '../../design/components';
@@ -73,6 +73,7 @@ export function Collections() {
                 icon={MoreVertical}
                 label={`Options for ${collection.name}`}
                 items={[
+                  { label: 'Ask AI about it', icon: MessagesSquare, onSelect: () => go({ name: 'chat', scope: { kind: 'collection', collectionId: collection.id } }) },
                   { label: 'New sub-collection', icon: FolderPlus, onSelect: () => setDialog({ kind: 'create', parent: collection }) },
                   { label: 'Rename', onSelect: () => setDialog({ kind: 'rename', collection }) },
                   { label: 'Move', onSelect: () => setDialog({ kind: 'move', collection }) },

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Phase 6: AI chat and search
+
+- Ask questions about one recording, several, a collection or the whole library, with follow-ups and saved chats.
+- Every answer cites the moments it came from; citations play and are checked against what the AI actually read. Answers say plainly when the recordings do not cover something, and keep general knowledge in a separate box.
+- Retrieval reads whole transcripts when they fit, and otherwise searches passages with BM25, guided by a short AI plan that resolves follow-ups, time ranges ("the first 20 minutes") and other languages.
+- Search everything at once (Ctrl+K): names, tags, notes, transcripts, chapters, speakers, summaries and documents, with highlighted snippets, times and filters.
+- Ask AI from a recording, a Library selection, a collection, search results, Home and AI Studio.
+- Deleting a recording deletes every chat that read it.
+- `npm run test:live` runs everything against real Groq and Gemini with your own key, using generated speech, and writes a report.
+- Fixed while building: search could hide recordings when a word was common, an effect crashed with newer Chromium, chats on just-upgraded libraries missed older transcripts, and Back lost the search query.
+
 ### Phase 5: Documents and export
 
 - Documents from any transcribed recording: nine templates, written by AI, laid out from the transcript, built from a summary, or started blank.

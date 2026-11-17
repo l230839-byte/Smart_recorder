@@ -1,3 +1,4 @@
+import type { ChatScope } from '@shared/chat';
 import type { DocumentSource, ExportFormat } from '@shared/documents';
 import type { SummaryOptions } from '@shared/summaries';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -21,7 +22,10 @@ export type Route =
   | { name: 'summaries'; id: string; preset?: Partial<SummaryOptions>; scope?: { startMs: number; endMs: number; label: string } }
   | { name: 'document-new'; recordingId?: string; template?: string; source?: DocumentSource; summaryId?: string; exportAs?: ExportFormat }
   | { name: 'document'; id: string; exportAs?: ExportFormat }
-  | { name: 'documents' };
+  | { name: 'documents' }
+  /** A chat: an existing one, or a new one about this scope (created when the first question is sent). */
+  | { name: 'chat'; threadId?: string; scope?: ChatScope }
+  | { name: 'search'; text?: string };
 
 export type TopLevel = 'home' | 'library' | 'record' | 'studio' | 'settings';
 
@@ -44,6 +48,8 @@ const TOP_LEVEL_OF: Record<Route['name'], TopLevel> = {
   'document-new': 'studio',
   document: 'studio',
   documents: 'studio',
+  chat: 'studio',
+  search: 'library',
 };
 
 interface RouterValue {

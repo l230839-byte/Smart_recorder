@@ -3,7 +3,7 @@
  * can run or load anything. Only `cite:` links survive; any other link becomes its visible text.
  */
 
-export type Inline = { type: 'text'; text: string } | { type: 'bold'; children: Inline[] } | { type: 'italic'; children: Inline[] } | { type: 'code'; text: string } | { type: 'cite'; label: string; ms: number };
+export type Inline = { type: 'text'; text: string } | { type: 'bold'; children: Inline[] } | { type: 'italic'; children: Inline[] } | { type: 'code'; text: string } | { type: 'cite'; label: string; ms: number; recordingId?: string };
 
 export type Block =
   | { type: 'heading'; level: 1 | 2 | 3; children: Inline[] }
@@ -29,8 +29,9 @@ export function parseInline(text: string): Inline[] {
     else if (m[4] !== undefined) out.push({ type: 'italic', children: parseInline(m[4]) });
     else if (m[5] !== undefined) out.push({ type: 'code', text: m[5] });
     else {
-      const cite = /^cite:(\d+)$/.exec(m[7]!);
-      if (cite) out.push({ type: 'cite', label: m[6]!, ms: Number(cite[1]) });
+      // "cite:185000" is a moment in this recording; "cite:185000@<id>" names the recording too (chat).
+      const cite = /^cite:(\d+)(?:@([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))?$/.exec(m[7]!);
+      if (cite) out.push(cite[2] ? { type: 'cite', label: m[6]!, ms: Number(cite[1]), recordingId: cite[2] } : { type: 'cite', label: m[6]!, ms: Number(cite[1]) });
       else out.push({ type: 'text', text: m[6]! });
     }
     rest = rest.slice(m.index + m[0].length);
@@ -112,5 +113,5 @@ export function parseMarkdown(markdown: string): Block[] {
 
 /** Plain text for copying. Citations become readable times. */
 export function markdownToClipboard(markdown: string): string {
-  return markdown.replace(/\[([^\]]+)\]\(cite:\d+\)/g, '[$1]');
+  return markdown.replace(/\[([^\]]+)\]\(cite:[^)\s]+\)/g, '[$1]');
 }

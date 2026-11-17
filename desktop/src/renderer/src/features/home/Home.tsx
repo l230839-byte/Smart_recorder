@@ -1,4 +1,4 @@
-import { FileUp, ListChecks, Mic } from 'lucide-react';
+import { FileUp, ListChecks, MessagesSquare, Mic } from 'lucide-react';
 import { formatBytes, formatDurationLong } from '@shared/format';
 import { Button, Card, EmptyState, PageHeader, SectionTitle } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
@@ -43,6 +43,15 @@ export function Home() {
           <span>
             <h2>Import</h2>
             <span className="muted small">Voice notes, recorder files, video</span>
+          </span>
+        </button>
+        <button type="button" className="home-action" onClick={() => go({ name: 'chat', scope: { kind: 'library' } })}>
+          <span className="home-action-icon">
+            <MessagesSquare size={22} aria-hidden />
+          </span>
+          <span>
+            <h2>Ask</h2>
+            <span className="muted small">Questions answered from your recordings</span>
           </span>
         </button>
       </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleAlert, Clock, FileText, Heading, ListTree, RotateCcw, Sparkles, Tag, Type, X } from 'lucide-react';
+import { CircleAlert, Clock, FileText, Heading, ListTree, MessagesSquare, RotateCcw, Sparkles, Tag, Type, X } from 'lucide-react';
 import { formatDuration } from '@shared/format';
 import type { ProcessingJob, Recording } from '@shared/models';
 import { PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES } from '@shared/providers';
@@ -130,6 +130,9 @@ export function AiCard({ recording }: { recording: Recording }) {
           <div className="ai-actions">
             <Button size="sm" variant="tonal" icon={Sparkles} onClick={() => go({ name: 'summaries', id: recording.id })}>
               Summaries
+            </Button>
+            <Button size="sm" variant="tonal" icon={MessagesSquare} onClick={() => go({ name: 'chat', scope: { kind: 'recordings', recordingIds: [recording.id] } })}>
+              Ask AI
             </Button>
             <Button size="sm" icon={ListTree} onClick={() => startChapters(recording.id)}>
               {chapters.data?.length ? 'Find chapters again' : 'Find chapters'}

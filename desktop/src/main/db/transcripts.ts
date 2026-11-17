@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { JobKind, JobStatus, ProcessingJob, ProviderRateInfo, TranscriptVersion, UsageSummary } from '@shared/models';
+import { chunkSegments } from '@shared/retrieval';
 import type { ChunkSegment, Segment } from '@shared/transcript';
 import { transaction, type Db } from './database';
 
@@ -41,7 +42,25 @@ export class TranscriptRepository {
     this.db.prepare('UPDATE transcript_versions SET is_current = 1 WHERE id = ?').run(versionId);
     this.db.prepare('DELETE FROM transcript_search WHERE recording_id = ?').run(recordingId);
     const insert = this.db.prepare('INSERT INTO transcript_search (recording_id, segment_idx, start_ms, text) VALUES (?, ?, ?, ?)');
-    for (const s of this.segments(versionId)) insert.run(recordingId, s.idx, s.startMs, s.text);
+    const segments = this.segments(versionId);
+    for (const s of segments) insert.run(recordingId, s.idx, s.startMs, s.text);
+    this.indexPassages(recordingId, segments);
+  }
+
+  /** The passages chat searches. Rebuilt with the transcript, so edits are found immediately. */
+  indexPassages(recordingId: string, segments: Segment[]): void {
+    this.db.prepare('DELETE FROM transcript_chunks WHERE recording_id = ?').run(recordingId);
+    const insert = this.db.prepare('INSERT INTO transcript_chunks (recording_id, first_idx, last_idx, start_ms, end_ms, text) VALUES (?, ?, ?, ?, ?, ?)');
+    for (const c of chunkSegments(segments)) insert.run(recordingId, c.firstIdx, c.lastIdx, c.startMs, c.endMs, c.text);
+  }
+
+  /** Indexes transcripts made before passages existed, up to `limit` of them. Cheap when there is nothing to do. */
+  indexMissingPassages(limit = Number.MAX_SAFE_INTEGER): number {
+    const missing = this.db
+      .prepare('SELECT v.recording_id AS rid, v.id AS vid FROM transcript_versions v WHERE v.is_current = 1 AND v.recording_id NOT IN (SELECT recording_id FROM transcript_chunks) LIMIT ?')
+      .all(limit) as { rid: string; vid: string }[];
+    for (const m of missing) transaction(this.db, () => this.indexPassages(m.rid, this.segments(m.vid)));
+    return missing.length;
   }
 
   /** A provider's result. Always a new version, so re-transcribing never destroys earlier work. */

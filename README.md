@@ -26,6 +26,7 @@ Optional: `npm run fetch:ffmpeg` installs the LGPL FFmpeg add-on, which lets Ech
 cd desktop
 npm run check      # types, lint, unit tests, dependency licences
 npm run test:e2e   # builds, then drives the real app, including a simulated microphone
+npm run test:live  # real Groq/Gemini run with your key in desktop/.env.live; writes a report
 ```
 
 ## Repository

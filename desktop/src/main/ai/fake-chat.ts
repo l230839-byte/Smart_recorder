@@ -34,6 +34,23 @@ export class FakeChatProvider implements ChatProvider {
       const chapters = found.filter((_, i) => i % step === 0).map((l, i) => ({ title: `Demo chapter ${i + 1}`, summary: l.text.slice(0, 80), start: l.id }));
       return JSON.stringify({ chapters });
     }
+    if (request.task === 'chat-plan') {
+      const question = /NEW QUESTION: (.*)$/s.exec(prompt)?.[1]?.trim() ?? '';
+      return JSON.stringify({ search: question ? [question] : [], from_minute: null, to_minute: null, overview: false });
+    }
+    if (request.task === 'chat') {
+      // The lines sharing the most words with the question, quoted with their real ids.
+      const question = /QUESTION: (.*)$/s.exec(prompt)?.[1]?.trim() ?? '';
+      const words = new Set(question.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 3));
+      const scored = found
+        .map((l) => ({ ...l, score: l.text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => words.has(w)).length }))
+        .filter((l) => l.score > 0)
+        .sort((a, b) => b.score - a.score || a.id - b.id)
+        .slice(0, 3);
+      if (!scored.length) return JSON.stringify({ answer: 'Demo answer: no transcript line shares words with this question, so the recordings may not cover it.', found: 'no', general: '' });
+      const list = scored.map((l) => `- ${l.text} [S${l.id}]`).join('\n');
+      return JSON.stringify({ answer: `Demo answer. These lines match your question best:\n\n${list}`, found: 'partly', general: '' });
+    }
     if (request.task === 'suggest') {
       return JSON.stringify({ title: `Demo title: ${found[0]?.text.slice(0, 40) ?? 'Recording'}`, tags: ['demo', 'placeholder'], topics: ['Demo topic'] });
     }

@@ -29,6 +29,10 @@ Only what is implemented and verified is listed as **Working**.
 | Export: PDF, DOCX, PPTX, HTML, Markdown, text; transcript also CSV | Working (files validated by reading them back) |
 | Urdu in exports | Working. In PDFs Urdu displays correctly in Nastaliq, but only part of it can be copied out of the PDF (see Phase 5 report, L2). |
 | Export center: open, show in folder, save a copy, delete, missing-file detection | Working |
-| AI chat, global search with snippets | Phase 6 |
+| Chat with one recording, several, a collection or the whole library; follow-up questions; chat history | Working (tested with the demo model and scripted model replies) |
+| Answers grounded in transcripts: citations that play, checked against what was read; "not in your recordings"; general knowledge kept apart | Working |
+| Retrieval: whole transcripts when they fit, otherwise BM25 search over passages, guided by a short AI search plan (follow-ups, time ranges, other languages) | Working. Keyword-based: there is no semantic (embedding) search yet. |
+| Global search: names, tags, notes, transcripts, chapters, speakers, summaries, documents; snippets with times; filters; Ctrl+K | Working |
+| Chat on live Groq or Gemini | Written, not yet run. Needs a key (`npm run test:live`). |
 | AI Studio, study tools, tasks | Phase 7 |
 | App lock, backup, installer | Phase 8 |
