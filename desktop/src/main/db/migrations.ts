@@ -261,4 +261,47 @@ export const MIGRATIONS: readonly string[] = [
     tokenize = 'unicode61 remove_diacritics 2'
   );
   `,
+
+  /* 4: documents, their versions and exported files */ `
+  CREATE TABLE documents (
+    id TEXT PRIMARY KEY,
+    recording_id TEXT REFERENCES recordings(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    template TEXT NOT NULL,
+    settings TEXT NOT NULL,
+    markdown TEXT NOT NULL,
+    dropped_citations INTEGER NOT NULL DEFAULT 0,
+    truncated INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  ) STRICT;
+  CREATE INDEX idx_documents_recording ON documents(recording_id);
+
+  CREATE TABLE document_versions (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    title TEXT NOT NULL,
+    markdown TEXT NOT NULL,
+    settings TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE (document_id, version)
+  ) STRICT;
+
+  CREATE TABLE document_exports (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    format TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+  CREATE INDEX idx_document_exports_document ON document_exports(document_id);
+
+  CREATE VIRTUAL TABLE document_search USING fts5(
+    recording_id UNINDEXED, document_id UNINDEXED, text,
+    tokenize = 'unicode61 remove_diacritics 2'
+  );
+  `,
 ];

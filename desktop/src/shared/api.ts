@@ -4,6 +4,11 @@ import type {
   AppInfo,
   Bookmark,
   Collection,
+  CreateDocumentInput,
+  CreateDocumentOutcome,
+  DocumentExport,
+  DocumentRecord,
+  DocumentVersionInfo,
   ImportJob,
   JobKind,
   LibraryQuery,
@@ -22,6 +27,7 @@ import type {
   UsageSummary,
 } from './models';
 import type { LlmProviderId, TranscriptionProviderId } from './providers';
+import type { DocumentSettings, ExportFormat } from './documents';
 import type { Chapter, Suggestions, SummaryOptions } from './summaries';
 
 export interface RecordingEdit {
@@ -115,7 +121,7 @@ export interface EchoApi {
   setCurrentVersion(recordingId: string, versionId: string): void;
   renameSpeaker(recordingId: string, label: string, name: string): void;
   /** Saves the transcript as a file the user picks. Returns false if they cancel. */
-  exportTranscript(recordingId: string, format: 'txt' | 'srt' | 'vtt'): Promise<boolean>;
+  exportTranscript(recordingId: string, format: 'txt' | 'srt' | 'vtt' | 'csv'): Promise<boolean>;
   openExternal(url: string): void;
 
   // Summaries, chapters, suggestions. All read the stored transcript; none transcribes again.
@@ -132,12 +138,30 @@ export interface EchoApi {
   listTemplates(): SummaryTemplate[];
   saveTemplate(name: string, options: SummaryOptions): string;
   deleteTemplate(id: string): void;
+
+  // Documents
+  listDocuments(recordingId?: string): DocumentRecord[];
+  getDocument(id: string): DocumentRecord | null;
+  createDocument(input: CreateDocumentInput): CreateDocumentOutcome;
+  updateDocument(id: string, patch: { title?: string; markdown?: string; settings?: DocumentSettings }): void;
+  saveDocumentVersion(id: string, label: string): void;
+  listDocumentVersions(id: string): DocumentVersionInfo[];
+  restoreDocumentVersion(id: string, versionId: string): void;
+  deleteDocument(id: string): Promise<void>;
+  documentJob(id: string): ProcessingJob | null;
+  exportDocument(id: string, format: ExportFormat): Promise<DocumentExport>;
+  listExports(): DocumentExport[];
+  openExport(id: string): Promise<void>;
+  showExport(id: string): void;
+  /** Copies an export to a place the user picks. Returns false if they cancel. */
+  saveExportCopy(id: string): Promise<boolean>;
+  deleteExport(id: string): Promise<void>;
 }
 
 /** Events pushed from the main process to the UI. */
 export interface EchoEvents {
   /** Stored data changed; screens re-read what they show. The value names the area. */
-  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries';
+  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries' | 'documents';
   /** Files arrived from outside the window ("Open with", a second launch). The batch is already queued. */
   'imports:opened': string;
   /** Interrupted recordings were rebuilt at launch. The value is how many. */

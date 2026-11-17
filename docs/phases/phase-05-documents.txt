@@ -1,0 +1,206 @@
+ECHOMIND DESKTOP: PHASE 05, DOCUMENTS AND EXPORT
+================================================================================
+Status:      COMPLETE for everything testable here. AI-written drafts have run only on the
+             demo provider and the local test server, not on live Groq or Gemini (section 7).
+Prompt refs: §11 documents and export, §10 meeting minutes, §15.5 templates, §21 privacy,
+             §22 reliability, §26 design, §27 testing
+Date:        2026-11-17
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Turn any transcribed recording into a real, well-formatted document that the person can edit,
+version and export as PDF, Word, PowerPoint, HTML, Markdown or text. Urdu has to look right
+and nothing may be presented as working that is not. The owner also asked for earlier work to
+keep improving, so the phase includes fixes found along the way (section 4).
+
+
+2. WHAT THIS PHASE INCLUDES (THE FEATURES, AS A USER SEES THEM)
+--------------------------------------------------------------------------------
+Making a document
+- Nine templates from the prompt: Academic Notes, Detailed Lecture Report, Meeting Minutes,
+  Business Report, Interview Transcript, Study Guide, Executive Summary, Research Notes, and
+  Custom Document.
+- Four starting points: written by AI from the transcript, the full transcript laid out with
+  speakers and times (no AI), a summary already made (no new AI work), or a blank page.
+- For AI documents: output language and extra instructions. The Custom template asks what
+  the document should contain.
+- Entry points: New on a recording's page, Make a document on any summary, the Documents
+  screen, and AI Studio's PDF, Word, Presentation and Meeting Minutes tools. Those tools also
+  set the main export button (Export PDF, Export Word, and so on).
+
+Editing
+- Text on one side, the real page on the other. Write, Both and Page views.
+- Toolbar: heading, subheading, bold, italic, bulleted and numbered lists, quote, table and
+  divider. Pressing a button again removes the format. Ctrl+B and Ctrl+I work. Every toolbar
+  change can be undone with Ctrl+Z, because it goes through the text box's own undo.
+- Saved automatically half a second after typing stops. Ctrl+S saves at once. The status
+  reads Editing, Saving, Saved or Not saved (with Try again). Nothing is lost when leaving.
+- The preview is the exact page that becomes the PDF, scaled to fit the pane, and it follows
+  the section being edited.
+- Times such as [3:05] stay linked to the moment in the recording.
+
+Layout and style (every option listed in prompt §11)
+- Cover page with subtitle, author and date. Table of contents.
+- Page size A4, Letter or Legal. Narrow, normal or wide margins. Page numbers. Header and
+  footer text.
+- Sans serif or serif. Nastaliq or Naskh for Urdu and Arabic. Size, line spacing, paragraph
+  spacing, three heading styles, three bullet styles, three numbering styles, five accent
+  colours.
+- Text direction (automatic, left to right, right to left) and document language.
+- Times shown or hidden. A source note naming the recording. The full transcript as an
+  appendix, with or without times and speaker names.
+
+Versions
+- An AI draft or a transcript document is kept as "First draft".
+- Save a version with any name. Restore any version: the current draft is saved as a version
+  first, so a restore can never lose work.
+
+Export
+- PDF: printed by Chromium with HarfBuzz text shaping and embedded fonts. It has a document
+  outline, tagged structure, running header and footer, and page numbers as X / Y.
+- Word: real headings, lists, tables and quotes, an updatable table of contents, right-to-left
+  paragraphs for Urdu, page numbers, header and footer.
+- PowerPoint: a title slide, then one slide per section. Long sections continue on new slides
+  (at most 7 points each), tables split across slides, and Urdu runs right to left.
+- HTML: one self-contained file with fonts embedded and no script. Markdown and text: UTF-8
+  with a byte order mark, so Windows apps show Urdu correctly.
+- Transcripts also export to CSV, with protection against spreadsheet formulas.
+
+Documents screen (the export center)
+- Every document, searchable, with its template, recording, last change and version count.
+- Every exported file, with Open, Show in folder, Save a copy and Delete. A file moved or
+  deleted outside EchoMind is marked Missing instead of failing.
+- Library search finds a recording by text inside its documents.
+- Deleting a recording forever deletes its documents, versions and exported files (§21).
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  One source of truth. A document is Markdown plus layout settings. One renderer makes the
+    preview, the PDF and the HTML, so what you see is what you get. Word and PowerPoint are
+    built from the same parsed blocks.
+D2  PDF through Chromium's printToPDF, not a PDF library. It is already in the app, shapes
+    Urdu correctly with HarfBuzz, and adds no dependency.
+D3  Word through docx (MIT) and PowerPoint through PptxGenJS (MIT). Its zip library, JSZip,
+    is dual licensed MIT or GPL and is used under MIT. The licence check now accepts a choice
+    when one option is allowed.
+D4  Fonts come from Fontsource (SIL OFL), embedded as data so exports look the same on any
+    computer. Only the character sets each document needs are embedded.
+D5  The preview runs on its own internal scheme with a strict CSP (no script, no network) in
+    an iframe sandboxed with no permissions. The page cannot run code or reach the app.
+D6  AI documents reuse the summary pipeline: same queue, citation checks, splitting, retries
+    and consent. The request is checked before the document exists, so a refusal (offline
+    only, no key, no consent) never leaves an empty document.
+D7  Exports are kept in EchoMind's own folder and listed, so they can be opened, shared and
+    copied later. "Save a copy" puts one anywhere.
+D8  Autosave does not broadcast changes, so typing never makes other screens reload.
+
+
+4. FIXES AND IMPROVEMENTS MADE WHILE BUILDING AND REVIEWING
+--------------------------------------------------------------------------------
+F1  [Quality, Urdu] Urdu in PDFs and the preview used Windows' Segoe UI instead of the
+    embedded Nastaliq. Segoe UI also has Arabic letters and came first in the font list. The
+    embedded Urdu face now comes before any system font. Found by checking the fonts inside
+    the PDF and confirmed by rendering it (section 6). Tested for all four font combinations.
+F2  [Size] The font loader matched "arabic" anywhere in a rule's name, and the Naskh
+    package's own name contains it, so unneeded Latin files were embedded. It now matches the
+    character set exactly. Tested.
+F3  [Bug] Hiding times also rewrote the person's own spacing ("Note : x" became "Note: x").
+    Now only the space before a removed time goes. Tested.
+F4  [Bug] Two exports of the same format in the same second shared one file, so deleting
+    one entry deleted the other's file. Each export now gets its own name. Tested.
+F5  [Bug] Stored export names used Windows backslashes, so the list showed the whole path.
+    They are now stored with "/".
+F6  [Bug] The preview was blocked by a CSP rule I had written (frame-ancestors does not match
+    the app's own file: page). Removed, since the scheme only exists inside EchoMind.
+F7  [Reliability] A failed font load was cached forever, so every later export would fail.
+    The next export now tries again.
+F8  [Direction] Mixed Urdu and English lines now follow their first strong letter, as
+    browsers do. The page direction comes from the body, so an English title on Urdu notes no
+    longer flips the page.
+F9  [Slides] A table continuing a section is now titled "(continued)".
+F10 [Security, dependency] npm audit flagged image-size, a dependency PptxGenJS declares but
+    never loads. It is now pinned to the fixed 2.x line. Production audit: 0 vulnerabilities.
+F11 [Earlier phases] Transcripts gain CSV export. Summaries gain Make a document. AI Studio's
+    Meeting Minutes tool is live through its template. The recording page lists its documents.
+F12 [Tooling] Vitest fails completely when started from Git Bash, because the drive letter's
+    case differs from what Node resolves. Documented in TESTING.md.
+
+
+5. DESIGN REVIEW (FROM SCREENSHOTS IN desktop/test-shots)
+--------------------------------------------------------------------------------
+R1  New document: the four starting points took so much room that the Create button sat
+    below the fold. They are now a compact 2x2 choice, with the chosen one's description
+    underneath.
+R2  Editor: the page preview needed sideways scrolling at the default window size. It is now
+    scaled to fit, showing whole pages.
+R3  Smallest window (860x600) in dark mode: the document screens fit with no sideways
+    scrolling. The panes stack. Added to the responsive test.
+R4  The exported PDF's third page was captured with Chromium's own PDF viewer
+    (documents-pdf-page3.png). Nastaliq renders correctly inline in English bullets and as a
+    right-aligned paragraph. Times use the accent colour.
+
+
+6. TESTING (all passing on 2026-11-17)
+--------------------------------------------------------------------------------
+Unit (Vitest): 186 tests, 41 of them new.
+- Templates, direction rules, HTML escaping of hostile titles and Markdown, every block type,
+  every content switch, the font order for Urdu, and the embedded character sets.
+- Markdown and text exports, CSV quoting and formula protection, transcript documents, slide
+  planning (continued slides, split tables, long text), Windows-safe file names.
+- Word files opened as zip and read: content, Urdu, w:bidi and w:rtl, the table of contents
+  field, tables, numbering, header, and page size.
+- PowerPoint files read: the slides, their text, Urdu and rtl.
+- The document service: a refused AI request leaves nothing behind; AI, transcript, summary
+  and blank documents; versions and safe restore; every format writes a real file of the
+  right type; same-second exports; missing files; deletion with a document or its recording;
+  trashed recordings refused.
+- Editor commands: bold, italic, lists, headings, quote, table, divider, toggling off, and
+  following the cursor to the page's real anchors.
+
+End to end (Playwright, the real app): 38 tests, 37 pass and 1 is skipped (AMR without
+FFmpeg, skipped because FFmpeg is installed). New:
+- Full flow from a recording: template, AI draft (demo, labelled as such), typing, toolbar,
+  Ctrl+B, undo and redo, autosave, preview contents, layout changes reaching the page,
+  exports to PDF, Word and PowerPoint, versions and restore, the Documents screen, deleting a
+  file, and deleting the recording removing its documents and files.
+- The PDF is read back with pdf.js: page count, title, header, text, Urdu, and the Inter and
+  Noto Nastaliq Urdu fonts embedded. Then Chromium's PDF viewer renders it to an image.
+- Studio's PDF tool, a transcript document with no AI, Back skipping the finished form, a
+  summary becoming a document, a blank page, the exact Markdown export, CSV on transcripts.
+- The document screens at the smallest window size in dark mode.
+
+Measured on this machine:
+- A three-hour transcript (5,000 segments): HTML 43 ms, Word 0.7 s, PowerPoint 0.2 s.
+- A PDF of 2,500 paragraphs, Urdu included: 1.4 to 1.6 s in the real app, 1.8 MB.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check passes (37 production packages),
+npm audit (production) 0 vulnerabilities.
+
+
+7. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  AI DOCUMENTS NOT RUN ON LIVE GROQ OR GEMINI. They use the same tested pipeline as
+    summaries, but the quality of real drafts, especially in Urdu, needs a key.
+L2  Urdu in PDFs displays correctly, but only part of it can be copied or searched in a PDF
+    reader. Chromium's PDF writer cannot map Nastaliq's joined letter forms back to
+    characters. Word, Markdown, text and HTML keep the text exactly. Recorded in FEATURES.md.
+L3  Word and PowerPoint files are checked by reading their XML, not by opening them in Office.
+    Office and LibreOffice are not installed here. The owner opening one of each would close
+    this gap.
+L4  Word asks to update fields when a document with a table of contents opens. That is how
+    Word fills the table in. Choosing Yes fills it.
+L5  The PDF's running header and footer use the system font, because Chromium draws them
+    separately. Urdu there shows in Naskh style, not Nastaliq.
+L6  The editor is Markdown with a toolbar, not a word processor. Formatting beyond headings,
+    lists, tables, quotes, bold and italic is set through the layout panel.
+L7  Everything else from earlier reports still applies, such as the real microphone check.
+
+
+8. NEXT: PHASE 6, AI CHAT AND SEARCH
+--------------------------------------------------------------------------------
+Grounded chat with one recording, several, a collection or the whole library, with every
+answer citing the moments it came from. Retrieval works without paid embeddings (FTS5/BM25),
+with optional embeddings where a free provider offers them. Global search with snippets and
+timestamps across recordings, transcripts, summaries and documents.

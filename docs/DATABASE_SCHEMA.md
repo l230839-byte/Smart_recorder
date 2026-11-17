@@ -46,4 +46,16 @@ Deleting a recording cascades to all of these except the FTS index, which the re
 | `summary_templates` | Reusable settings |
 | `summary_search` | FTS5 index over summary text |
 
-Later phases add documents, chat, study material and tasks through new migrations.
+## Migration 4: documents
+
+| Change | Purpose |
+| --- | --- |
+| `documents` | The editable draft: Markdown plus layout settings (JSON), its template, and the recording it came from (optional) |
+| `document_versions` | Snapshots: the first draft, versions the user saves, and the draft kept before a restore |
+| `document_exports` | Each exported file, by its name inside the exports folder |
+| `document_search` | FTS5 index over documents, so Library search finds them |
+| `processing_jobs` | Gains the `document` kind. Its options name the document being written. |
+
+Deleting a recording deletes its documents, their versions and export records by cascade. The app deletes the exported files and the FTS rows at the same time.
+
+Later phases add chat, study material and tasks through new migrations.

@@ -40,10 +40,14 @@ All of these read the stored transcript, so changing a format never transcribes 
 
 Chapters and suggestions ask for JSON, validate it, and retry once if it cannot be read. HTTP 413 retries with smaller pieces. All jobs share `JobQueue`.
 
+## Documents
+
+An AI document is a `document` job on the same queue and pipeline as summaries: the same transcript, ids, citation checks, splitting and retries. The template supplies length, tone and instructions, and the person can add their own. Nothing is created if the request would be refused (offline only, no key, no consent), so there are never empty documents. The result is kept as the document's first version. Documents from the transcript, a summary or a blank page use no AI at all.
+
 ## Adding a provider
 
 Implement `TranscriptionProvider` or `ChatProvider` in `desktop/src/main/ai/types.ts`, add its facts to `desktop/src/shared/providers.ts`, and connect it in `makeProvider` or `makeChatProvider` in `desktop/src/main/index.ts`. A service with an OpenAI-compatible API needs only its address and models.
 
 ## Planned
 
-Documents (Phase 5), chat and retrieval (Phase 6), study tools and AI Studio (Phase 7).
+Chat and retrieval (Phase 6), study tools and the rest of AI Studio (Phase 7).

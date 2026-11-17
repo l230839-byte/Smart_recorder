@@ -216,6 +216,13 @@ export class JobRepository {
     return row ? toJob(row) : null;
   }
 
+  latestForDocument(documentId: string): StoredJob | null {
+    const row = this.db
+      .prepare(`${JOB_SELECT} WHERE j.kind = 'document' AND json_extract(j.options, '$.documentId') = ? ORDER BY j.created_at DESC, j.rowid DESC LIMIT 1`)
+      .get(documentId) as JobRow | undefined;
+    return row ? toJob(row) : null;
+  }
+
   activeForRecording(recordingId: string): StoredJob[] {
     return (this.db.prepare(`${JOB_SELECT} WHERE j.recording_id = ? AND j.status IN ('queued', 'running', 'waiting')`).all(recordingId) as unknown as JobRow[]).map(toJob);
   }

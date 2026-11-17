@@ -1,5 +1,6 @@
 /** Domain types shared by the main process and the UI. No Electron or DOM imports here, so they stay portable. */
 import type { LlmProviderId, TranscriptionProviderId } from './providers';
+import type { DocumentSettings, DocumentSource, ExportFormat } from './documents';
 import type { SummaryOptions } from './summaries';
 import type { Segment } from './transcript';
 
@@ -128,13 +129,14 @@ export interface ImportJob {
 
 export type JobStatus = 'queued' | 'running' | 'waiting' | 'done' | 'failed' | 'canceled';
 
-export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest';
+export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest' | 'document';
 
 export const JOB_KIND_LABEL: Record<JobKind, string> = {
   transcribe: 'Transcript',
   summarize: 'Summary',
   chapters: 'Chapters',
   suggest: 'Title and tags',
+  document: 'Document',
 };
 
 export interface Summary {
@@ -152,6 +154,53 @@ export interface Summary {
   truncated: boolean;
   createdAt: number;
 }
+
+export interface DocumentRecord {
+  id: string;
+  recordingId: string | null;
+  recordingTitle: string | null;
+  title: string;
+  template: string;
+  settings: DocumentSettings;
+  markdown: string;
+  droppedCitations: number;
+  truncated: boolean;
+  createdAt: number;
+  updatedAt: number;
+  versionCount: number;
+}
+
+export interface DocumentVersionInfo {
+  id: string;
+  version: number;
+  label: string;
+  createdAt: number;
+}
+
+export interface DocumentExport {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  format: ExportFormat;
+  /** Relative to EchoMind's exports folder. */
+  fileName: string;
+  sizeBytes: number;
+  createdAt: number;
+  /** False when the file was removed from the folder outside EchoMind. */
+  exists: boolean;
+}
+
+export interface CreateDocumentInput {
+  recordingId: string | null;
+  template: string;
+  source: DocumentSource;
+  summaryId?: string;
+  title?: string;
+  language?: string;
+  instructions?: string;
+}
+
+export type CreateDocumentOutcome = { ok: true; documentId: string } | Exclude<AiOutcome, { ok: true }>;
 
 export interface SummaryTemplate {
   id: string;

@@ -18,6 +18,7 @@ function contentSecurityPolicy(): Plugin {
         "font-src 'self'",
         "img-src 'self' data:",
         'media-src echomind-media:',
+        'frame-src echomind-doc:',
         dev ? "style-src 'self' 'unsafe-inline'" : "style-src 'self'",
         dev ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'",
         dev ? "connect-src 'self' ws: echomind-media:" : "connect-src 'self' echomind-media:",

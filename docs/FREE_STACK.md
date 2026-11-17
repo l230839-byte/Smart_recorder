@@ -11,7 +11,14 @@ EchoMind uses free and open-source software only. `npm run check:licenses` fails
 | Mediabunny | Media probing, demuxing, muxing and conversion | MPL-2.0 (file-level copyleft; no effect on app code) |
 | lucide-react | Icons | ISC |
 | Inter (via Fontsource) | Typeface | SIL OFL 1.1 |
+| Noto Serif, Noto Nastaliq Urdu, Noto Naskh Arabic (via Fontsource) | Document typefaces, including Urdu. Embedded in PDFs and HTML exports. | SIL OFL 1.1 |
+| docx | Word files | MIT |
+| PptxGenJS | PowerPoint files | MIT |
+| JSZip (used by PptxGenJS) | Zip packaging | Dual MIT or GPL-3.0; used under MIT |
+| pako (used by JSZip) | Compression | MIT and Zlib |
 | FFmpeg, optional add-on | Reads formats the built-in decoders cannot, such as AMR and WMA | LGPL (BtbN shared build) |
+
+PDFs are printed by the Chromium inside Electron, so no PDF library is needed. Test-only tools (not shipped): pdf.js (Apache-2.0) reads exported PDFs back, JSZip checks Word and PowerPoint files.
 
 ### FFmpeg notes
 

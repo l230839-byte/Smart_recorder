@@ -23,6 +23,9 @@ Every recording is treated as sensitive private data.
 | AI output rendering | Parsed into data and built as elements. No HTML injection, and only citation links survive. | `summaries.test.ts` |
 | Prompt injection defense | The transcript is declared to be data, and citations are verified after the reply. It lowers the risk but cannot remove it. | `summaries.test.ts` |
 | Trash stops AI work | Trashing or deleting a recording cancels its jobs. | `transcription.spec.ts` |
+| Document preview | Served from an internal scheme with its own CSP: no script, no network, only inline styles and embedded fonts. Shown in an iframe sandboxed with no permissions. Every piece of text is escaped. | `documents.test.ts` (hostile titles and Markdown), `documents.spec.ts` |
+| Exported files | Written only inside the app's exports folder, under names made safe for Windows. Opening and copying look files up by id, never by a path from the UI. | `documents.test.ts` |
+| CSV formulas | Cells starting with `=`, `+`, `-` or `@` get a leading quote, so a transcript cannot run a formula in a spreadsheet. | `documents.test.ts` |
 | No telemetry | The app makes no network requests of its own. | Code review; Phase 8 adds a network test |
 
 ## Planned

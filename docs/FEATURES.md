@@ -23,7 +23,12 @@ Only what is implemented and verified is listed as **Working**.
 | Citations checked against the transcript | Working |
 | Chapters, suggested titles and tags | Working |
 | Summaries on live Groq or Gemini | Written, not yet run. Needs a key. |
-| Documents and export | Phase 5 |
+| Documents: 9 templates; from AI, the transcript, a summary or a blank page | Working (AI drafts tested with the demo provider and a local server format) |
+| Document editor: autosave, formatting toolbar, live page preview, versions with safe restore | Working |
+| Layout: cover, contents, page size, margins, fonts, Urdu script style, spacing, headings, bullets, numbering, accent, header, footer, page numbers, times, source note, transcript appendix, direction, language | Working |
+| Export: PDF, DOCX, PPTX, HTML, Markdown, text; transcript also CSV | Working (files validated by reading them back) |
+| Urdu in exports | Working. In PDFs Urdu displays correctly in Nastaliq, but only part of it can be copied out of the PDF (see Phase 5 report, L2). |
+| Export center: open, show in folder, save a copy, delete, missing-file detection | Working |
 | AI chat, global search with snippets | Phase 6 |
 | AI Studio, study tools, tasks | Phase 7 |
 | App lock, backup, installer | Phase 8 |

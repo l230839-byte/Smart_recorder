@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CircleAlert, Clock, Copy, Download, FileText, RotateCcw, Save, Sparkles, Trash2, X } from 'lucide-react';
+import { CircleAlert, Clock, Copy, Download, FilePlus, FileText, RotateCcw, Save, Sparkles, Trash2, X } from 'lucide-react';
 import { formatDateTime, formatDuration, plural } from '@shared/format';
 import { markdownToClipboard } from '@shared/markdown';
 import { providerLabel } from '@shared/providers';
@@ -293,6 +293,7 @@ export function SummariesScreen({ id, preset, scope }: { id: string; preset?: Pa
                       void navigator.clipboard.writeText(markdownToClipboard(selected.markdown)).then(() => toast.show('Copied'), toast.showError);
                     }}
                   />
+                  <IconButton icon={FilePlus} label="Make a document from this summary" onClick={() => go({ name: 'document-new', recordingId: id, template: 'custom', source: 'summary', summaryId: selected.id })} />
                   <IconButton icon={Download} label="Save as Markdown" onClick={() => void api.exportSummary(selected.id, 'md').then((saved) => saved && toast.show('Summary saved'), toast.showError)} />
                   <IconButton icon={RotateCcw} label="Use these settings" onClick={() => setOptions(selected.options)} />
                   <IconButton icon={Trash2} label="Delete this version" onClick={() => setDialog('delete')} />

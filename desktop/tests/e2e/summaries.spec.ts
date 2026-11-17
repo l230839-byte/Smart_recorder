@@ -167,7 +167,7 @@ test('summaries search, Studio entry and selecting transcript text', async () =>
 
     // AI Studio: working tools are buttons, and later ones say when they arrive.
     await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'AI Studio', exact: true }).click();
-    await expect(page.getByText('Phase 5').first()).toBeVisible();
+    await expect(page.getByText('Phase 7').first()).toBeVisible();
     await page.screenshot({ path: 'test-shots/studio.png' });
     await page.getByRole('button', { name: /^Lecture Notes/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: /recorder/ }).click();

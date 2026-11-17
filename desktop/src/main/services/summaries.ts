@@ -43,6 +43,8 @@ export interface SummaryDeps {
   makeProvider: (id: LlmProviderId) => ChatProvider;
   changed: () => void;
   ready: (recordingId: string, title: string, kind: JobKind) => void;
+  /** An AI-written document draft is ready. */
+  documentReady: (documentId: string, markdown: string, droppedCitations: number, truncated: boolean) => void;
 }
 
 interface SummaryJobOptions {
@@ -50,6 +52,8 @@ interface SummaryJobOptions {
   language?: string;
   /** Lowered when a service says a piece was too large, up to a limit. */
   maxChars?: number;
+  /** Set when the result is a document draft rather than a summary. */
+  documentId?: string;
 }
 
 export function textConsentKey(provider: string): string {
@@ -62,7 +66,7 @@ export function textConsentKey(provider: string): string {
  */
 export class SummaryService implements JobHandler {
   constructor(private readonly deps: SummaryDeps) {
-    for (const kind of ['summarize', 'chapters', 'suggest'] as const) deps.queue.register(kind, this);
+    for (const kind of ['summarize', 'chapters', 'suggest', 'document'] as const) deps.queue.register(kind, this);
   }
 
   blockedBy(provider: LlmProviderId): Exclude<AiOutcome, { ok: true }> | null {
@@ -82,18 +86,25 @@ export class SummaryService implements JobHandler {
     return blocked.reason === 'offline-only' ? 'Offline only is on, so nothing was sent. Turn it off in Settings, then retry.' : 'This provider needs setup or your agreement before anything is sent. Retry from the recording.';
   }
 
-  request(recordingId: string, kind: 'summarize' | 'chapters' | 'suggest', options: SummaryJobOptions = {}): AiOutcome {
-    const { library, jobs, transcripts, settings } = this.deps;
+  /** Everything `request` checks, without starting anything. */
+  check(recordingId: string): AiOutcome {
+    const { library, transcripts, settings } = this.deps;
     const recording = library.getRecording(recordingId);
     if (!recording) throw new Error('This recording no longer exists.');
     if (recording.deletedAt !== null) throw new Error('Restore this recording before using AI features.');
     if (!transcripts.current(recordingId)) return { ok: false, reason: 'needs-transcript' };
-    const active = jobs.activeFor(recordingId, kind);
+    return this.blockedBy(settings().llmProvider) ?? { ok: true, jobId: '' };
+  }
+
+  request(recordingId: string, kind: 'summarize' | 'chapters' | 'suggest' | 'document', options: SummaryJobOptions = {}): AiOutcome {
+    const { jobs, settings } = this.deps;
+    const checked = this.check(recordingId);
+    if (!checked.ok) return checked;
+    // Each document is its own piece of work, so several can be written for one recording.
+    const active = kind === 'document' ? null : jobs.activeFor(recordingId, kind);
     if (active) return { ok: true, jobId: active.id };
 
     const s = settings();
-    const blocked = this.blockedBy(s.llmProvider);
-    if (blocked) return blocked;
     const model = s.llmModel ?? LLM_PROVIDER_INFO[s.llmProvider].models[0]!;
     const id = jobs.create(recordingId, s.llmProvider, model, 'auto', kind, JSON.stringify(options));
     this.deps.changed();
@@ -213,6 +224,10 @@ export class SummaryService implements JobHandler {
     }
 
     const { markdown, dropped } = resolveCitations(text, allSegments);
+    if (options.documentId) {
+      this.deps.documentReady(options.documentId, markdown, dropped, truncated);
+      return;
+    }
     this.deps.summaries.add({ recordingId: job.recordingId, label: summaryLabel(summary), options: summary, markdown, provider: job.provider, model: job.model, transcriptVersionId: versionId, droppedCitations: dropped, truncated });
   }
 }

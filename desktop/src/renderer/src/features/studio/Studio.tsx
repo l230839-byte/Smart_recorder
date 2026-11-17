@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BookOpenCheck, CheckSquare, Combine, FileSpreadsheet, FileText, GraduationCap, Languages, ListChecks, Network, NotebookPen, PenLine, Presentation, ScrollText, Wand2 } from 'lucide-react';
+import { BookOpenCheck, CheckSquare, Combine, FileSpreadsheet, FileText, FolderOpen, GraduationCap, Languages, ListChecks, Network, NotebookPen, PenLine, Presentation, ScrollText, Wand2 } from 'lucide-react';
+import type { ExportFormat } from '@shared/documents';
 import { formatDuration } from '@shared/format';
 import type { SummaryOptions } from '@shared/summaries';
 import { Button, Card, Dialog, EmptyState, PageHeader, type IconType } from '../../design/components';
@@ -13,20 +14,23 @@ interface Tool {
   icon: IconType;
   /** The build phase that delivers it. Tools are only clickable once they work (prompt §16). */
   phase: number;
+  /** A summary tool: opens Summaries with these settings for the recording chosen. */
   preset?: Partial<SummaryOptions>;
+  /** A document tool: opens New document with this template and export format. */
+  document?: { template?: string; exportAs?: ExportFormat };
 }
 
 const TOOLS: Tool[] = [
   { name: 'Smart Summarizer', hint: 'Bullets, paragraphs, structured notes and more', icon: ScrollText, phase: 4, preset: {} },
   { name: 'Lecture Notes', hint: 'Topics, definitions, explanations, examples', icon: NotebookPen, phase: 4, preset: { format: 'academic', length: 'detailed', tone: 'academic' } },
-  { name: 'PDF Generator', hint: 'Professionally formatted PDFs', icon: FileText, phase: 5 },
-  { name: 'Word Generator', hint: 'Editable DOCX files', icon: FileSpreadsheet, phase: 5 },
-  { name: 'Presentations', hint: 'Slides from recording content', icon: Presentation, phase: 5 },
+  { name: 'PDF Generator', hint: 'Professionally formatted PDFs', icon: FileText, phase: 5, document: { exportAs: 'pdf' } },
+  { name: 'Word Generator', hint: 'Editable DOCX files', icon: FileSpreadsheet, phase: 5, document: { exportAs: 'docx' } },
+  { name: 'Presentations', hint: 'Slides from recording content', icon: Presentation, phase: 5, document: { exportAs: 'pptx' } },
   { name: 'Flashcards', hint: 'Question and answer cards', icon: BookOpenCheck, phase: 7 },
   { name: 'Quiz Generator', hint: 'MCQ, true/false, short and long questions', icon: GraduationCap, phase: 7 },
   { name: 'Mind Map', hint: 'A visual map of concepts', icon: Network, phase: 7 },
   { name: 'Action Items', hint: 'Tasks, deadlines, responsibilities', icon: CheckSquare, phase: 7 },
-  { name: 'Meeting Minutes', hint: 'Formal meeting documentation', icon: ListChecks, phase: 7 },
+  { name: 'Meeting Minutes', hint: 'Formal meeting documentation', icon: ListChecks, phase: 5, document: { template: 'meeting-minutes' } },
   { name: 'Translation Studio', hint: 'Transcripts and generated content', icon: Languages, phase: 7 },
   { name: 'Comparison', hint: 'Differences, themes, changing decisions', icon: Combine, phase: 7 },
   { name: 'Rewrite Studio', hint: 'Reports, articles, emails, explanations', icon: PenLine, phase: 7 },
@@ -67,14 +71,23 @@ function RecordingPicker({ tool, onClose }: { tool: Tool; onClose: () => void })
 }
 
 export function Studio() {
+  const { go } = useRouter();
   const [picking, setPicking] = useState<Tool | null>(null);
   return (
     <div className="page">
-      <PageHeader title="AI Studio" subtitle="Transform recordings into anything. Tools marked with a phase arrive when that build phase finishes." />
+      <PageHeader
+        title="AI Studio"
+        subtitle="Transform recordings into anything. Tools marked with a phase arrive when that build phase finishes."
+        actions={
+          <Button icon={FolderOpen} onClick={() => go({ name: 'documents' })}>
+            Documents
+          </Button>
+        }
+      />
       <div className="studio-grid">
         {TOOLS.map((t) =>
-          t.preset ? (
-            <button key={t.name} type="button" className="card studio-tool" onClick={() => setPicking(t)}>
+          t.preset || t.document ? (
+            <button key={t.name} type="button" className="card studio-tool" onClick={() => (t.document ? go({ name: 'document-new', ...t.document }) : setPicking(t))}>
               <t.icon size={20} aria-hidden />
               <span className="grow">
                 <h3>{t.name}</h3>

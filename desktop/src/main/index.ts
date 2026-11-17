@@ -1,4 +1,5 @@
 import { copyFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 import { mkdirSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { app, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
@@ -7,20 +8,25 @@ import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
 import { markdownToClipboard } from '@shared/markdown';
 import { LLM_PROVIDER_INFO, PROVIDER_INFO, SPEECH_BITRATE, validateBaseUrl, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
 import { toPlainText, toSrt, toVtt } from '@shared/transcript';
+import { EXPORT_FORMATS, transcriptToCsv } from '@shared/documents';
 import { ChatHttpProvider } from './ai/chat-http';
 import { FakeChatProvider } from './ai/fake-chat';
 import { FakeProvider } from './ai/fake-provider';
 import { WhisperHttpProvider } from './ai/whisper-http';
 import { openDatabase } from './db/database';
 import { ImportRepository, LibraryRepository, SessionRepository } from './db/library';
+import { DocumentRepository } from './db/documents';
 import { SummaryRepository } from './db/summaries';
+import { loadFontCss } from './documents/fonts';
+import { renderPdf } from './documents/pdf';
 import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, UsageRepository, type Cipher } from './db/transcripts';
 import { hardenContents, hardenSession } from './security';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
 import { IngestPipeline } from './services/ingest';
 import { JobQueue } from './services/job-queue';
-import { handleMediaProtocol, registerMediaScheme } from './services/media-protocol';
+import { DOCUMENT_SCHEME, handleDocumentProtocol, handleMediaProtocol, registerMediaScheme } from './services/media-protocol';
+import { DocumentService } from './services/documents';
 import { MediaWorker } from './services/media-worker';
 import { RecorderService } from './services/recorder';
 import { SettingsStore } from './services/settings';
@@ -74,7 +80,8 @@ async function start(): Promise<void> {
   const mediaDir = join(dataDir, 'media');
   const tempDir = join(dataDir, 'tmp');
   const sessionDir = join(dataDir, 'sessions');
-  await Promise.all([mediaDir, tempDir, sessionDir].map((d) => mkdir(d, { recursive: true })));
+  const exportsDir = join(dataDir, 'exports');
+  await Promise.all([mediaDir, tempDir, sessionDir, exportsDir].map((d) => mkdir(d, { recursive: true })));
 
   // Anything here was left by an interrupted run; imports restart from their originals.
   for (const name of await readdir(tempDir)) await rm(join(tempDir, name), { force: true, recursive: true });
@@ -110,6 +117,8 @@ async function start(): Promise<void> {
   const consents = new ConsentRepository(db);
   const secrets = new SecretStore(db, cipher);
   const summaries = new SummaryRepository(db);
+  const documentRepo = new DocumentRepository(db);
+  const documentsChanged = () => emit('data:changed', 'documents');
   const jobsChanged = () => emit('data:changed', 'jobs');
   const queue = new JobQueue(jobs, jobsChanged);
 
@@ -176,17 +185,43 @@ async function start(): Promise<void> {
     makeProvider: makeChatProvider,
     changed: jobsChanged,
     ready: (recordingId, title, kind) => {
-      emit('data:changed', 'summaries');
+      emit('data:changed', kind === 'document' ? 'documents' : 'summaries');
       notifyReady(recordingId, title, JOB_KIND_LABEL[kind]);
     },
+    documentReady: (documentId, markdown, dropped, truncated) => {
+      // The user may have deleted the document while it was being written.
+      if (documentRepo.get(documentId)) documentRepo.setGenerated(documentId, markdown, dropped, truncated);
+    },
   });
+
+  let fontCss: Promise<string> | null = null;
+  const documentService = new DocumentService({
+    documents: documentRepo,
+    library,
+    transcripts,
+    summaries,
+    requestAi: (recordingId, documentId, options) => (documentId ? summaryService.request(recordingId, 'document', { summary: options, documentId }) : summaryService.check(recordingId)),
+    exportsDir,
+    // Loaded once and kept; a failed load is forgotten so the next export tries again.
+    fontCss: () =>
+      (fontCss ??= loadFontCss(join(app.getAppPath(), 'node_modules')).catch((e: unknown) => {
+        fontCss = null;
+        throw e;
+      })),
+    renderPdf: (documentId, documentSettings) => renderPdf(`${DOCUMENT_SCHEME}://preview/${documentId}`, documentSettings),
+    changed: documentsChanged,
+  });
+  handleDocumentProtocol((id) => documentService.html(id));
 
   const consentKey = (provider: string, purpose: AiPurpose) => (purpose === 'text' ? textConsentKey(provider) : provider);
 
   const deleteFiles = async (ids: string[]) => {
     queue.cancelForRecordings(ids);
+    // Everything made from a recording goes with it, including exported documents (prompt §21).
+    const exported = documentRepo.exportFilesForRecordings(ids);
     const files = library.deleteForever(ids);
     await Promise.all(files.map((f) => rm(join(mediaDir, f), { force: true })));
+    await Promise.all(exported.map((f) => rm(join(exportsDir, f), { force: true })));
     libraryChanged();
   };
   const purgeTrash = async () => {
@@ -414,7 +449,7 @@ async function start(): Promise<void> {
       if (!recording || !version) throw new Error('This recording has no transcript yet.');
       const segments = transcripts.segments(version.id);
       const names = transcripts.speakerNames(recordingId);
-      const text = format === 'srt' ? toSrt(segments, names) : format === 'vtt' ? toVtt(segments, names) : toPlainText(segments, names);
+      const text = format === 'srt' ? toSrt(segments, names) : format === 'vtt' ? toVtt(segments, names) : format === 'csv' ? transcriptToCsv(segments, names) : toPlainText(segments, names);
       const options = { defaultPath: `${recording.title.replace(/[<>:"/\\|?*]+/g, ' ').trim() || 'transcript'}.${format}`, filters: [{ name: format.toUpperCase(), extensions: [format] }] };
       const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
       if (result.canceled || !result.filePath) return false;
@@ -455,6 +490,47 @@ async function start(): Promise<void> {
       summaries.deleteTemplate(id);
       emit('data:changed', 'summaries');
     },
+
+    listDocuments: (recordingId) => documentRepo.list(recordingId),
+    getDocument: (id) => documentRepo.get(id),
+    createDocument: (input) => documentService.create(input),
+    updateDocument: (id, patch) => {
+      documentRepo.update(id, patch);
+    },
+    saveDocumentVersion: (id, label) => {
+      documentRepo.saveVersion(id, label);
+      documentsChanged();
+    },
+    listDocumentVersions: (id) => documentRepo.versions(id),
+    restoreDocumentVersion: (id, versionId) => {
+      documentRepo.restoreVersion(id, versionId);
+      documentsChanged();
+    },
+    deleteDocument: (id) => documentService.delete(id),
+    documentJob: (id) => {
+      const job = jobs.latestForDocument(id);
+      if (!job) return null;
+      const { attempts, model, language, options, ...rest } = job;
+      return rest;
+    },
+    exportDocument: (id, format) => documentService.export(id, format),
+    listExports: () => documentService.listExports(),
+    openExport: async (id) => {
+      const error = await shell.openPath(documentService.exportPath(id));
+      if (error) throw new Error(`Windows could not open this file: ${error}`);
+    },
+    showExport: (id) => shell.showItemInFolder(documentService.exportPath(id)),
+    saveExportCopy: async (id) => {
+      const path = documentService.exportPath(id);
+      const ext = extname(path).slice(1);
+      const format = Object.values(EXPORT_FORMATS).find((f) => f.extension === ext);
+      const options = { defaultPath: basename(path), filters: [{ name: format?.label ?? ext.toUpperCase(), extensions: [ext] }] };
+      const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) return false;
+      await copyFile(path, result.filePath);
+      return true;
+    },
+    deleteExport: (id) => documentService.deleteExport(id),
 
     openExternal: (url) => {
       // Only the provider pages listed in configuration, never an address from content.

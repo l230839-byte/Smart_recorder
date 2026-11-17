@@ -18,7 +18,14 @@ const seen = new Map();
 })(tree);
 
 const packages = [...seen.values()];
-const bad = packages.filter((p) => p.license === 'UNKNOWN' || FORBIDDEN.test(p.license));
+/** "(MIT OR GPL-3.0)" lets us choose MIT, so a choice is acceptable when any one option is. */
+const allowed = (license) =>
+  license !== 'UNKNOWN' &&
+  license
+    .replace(/[()]/g, '')
+    .split(/\s+OR\s+/i)
+    .some((option) => !FORBIDDEN.test(option));
+const bad = packages.filter((p) => !allowed(p.license));
 const summary = Object.entries(Object.groupBy(packages, (p) => p.license)).map(([license, list]) => `${license}: ${list.length}`);
 console.log(`${packages.length} production packages. ${summary.join(', ')}`);
 if (bad.length) {

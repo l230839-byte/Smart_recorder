@@ -1,3 +1,4 @@
+import type { DocumentSource, ExportFormat } from '@shared/documents';
 import type { SummaryOptions } from '@shared/summaries';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
@@ -17,7 +18,10 @@ export type Route =
   | { name: 'jobs' }
   | { name: 'providers' }
   | { name: 'usage' }
-  | { name: 'summaries'; id: string; preset?: Partial<SummaryOptions>; scope?: { startMs: number; endMs: number; label: string } };
+  | { name: 'summaries'; id: string; preset?: Partial<SummaryOptions>; scope?: { startMs: number; endMs: number; label: string } }
+  | { name: 'document-new'; recordingId?: string; template?: string; source?: DocumentSource; summaryId?: string; exportAs?: ExportFormat }
+  | { name: 'document'; id: string; exportAs?: ExportFormat }
+  | { name: 'documents' };
 
 export type TopLevel = 'home' | 'library' | 'record' | 'studio' | 'settings';
 
@@ -37,6 +41,9 @@ const TOP_LEVEL_OF: Record<Route['name'], TopLevel> = {
   providers: 'settings',
   usage: 'settings',
   summaries: 'library',
+  'document-new': 'studio',
+  document: 'studio',
+  documents: 'studio',
 };
 
 interface RouterValue {
@@ -47,6 +54,8 @@ interface RouterValue {
   go: (route: Route) => void;
   /** Switches sidebar section: clears the stack, so Back never crosses sections. */
   switchTo: (route: Route) => void;
+  /** Swaps the current screen, so Back skips it (for example a form that has done its job). */
+  replace: (route: Route) => void;
   back: () => void;
 }
 
@@ -57,6 +66,7 @@ export function RouterProvider({ children }: { children: ReactNode }) {
 
   const go = useCallback((route: Route) => setStack((s) => [...s, route]), []);
   const switchTo = useCallback((route: Route) => setStack([route]), []);
+  const replace = useCallback((route: Route) => setStack((s) => [...s.slice(0, -1), route]), []);
   const back = useCallback(() => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)), []);
 
   // Mouse back button and Alt+Left, as in other desktop apps.
@@ -77,8 +87,8 @@ export function RouterProvider({ children }: { children: ReactNode }) {
 
   const route = stack[stack.length - 1]!;
   const value = useMemo(
-    () => ({ route, section: TOP_LEVEL_OF[route.name], canGoBack: stack.length > 1, go, switchTo, back }),
-    [route, stack.length, go, switchTo, back],
+    () => ({ route, section: TOP_LEVEL_OF[route.name], canGoBack: stack.length > 1, go, switchTo, replace, back }),
+    [route, stack.length, go, switchTo, replace, back],
   );
   return <RouterContext.Provider value={value}>{children}</RouterContext.Provider>;
 }

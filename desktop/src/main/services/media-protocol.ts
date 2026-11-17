@@ -9,8 +9,41 @@ import type { LibraryRepository } from '../db/library';
 export const MEDIA_SCHEME = 'echomind-media';
 
 /** Must run before the app is ready. */
+export const DOCUMENT_SCHEME = 'echomind-doc';
+
+/** Must run before the app is ready, and only once, so every scheme is registered here. */
 export function registerMediaScheme(): void {
-  protocol.registerSchemesAsPrivileged([{ scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled: true } }]);
+  protocol.registerSchemesAsPrivileged([
+    { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled: true } },
+    { scheme: DOCUMENT_SCHEME, privileges: { standard: true, secure: true } },
+  ]);
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Serves a document page for the preview frame and for printing. The page carries no script and its
+ * policy forbids any, along with every network request, so content from an AI can never act.
+ */
+export function handleDocumentProtocol(render: (documentId: string) => Promise<string>): void {
+  protocol.handle(DOCUMENT_SCHEME, async (request) => {
+    const url = new URL(request.url);
+    const id = url.pathname.replace(/^\//, '');
+    if (url.hostname !== 'preview' || !UUID.test(id)) return new Response('Not found', { status: 404 });
+    try {
+      const html = await render(id);
+      return new Response(html, {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          // No script, no network, nothing but its own styles and embedded fonts. Framing is allowed (the
+          // editor shows it in a sandboxed frame); the scheme exists only inside EchoMind.
+          'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:; script-src 'none'; base-uri 'none'; form-action 'none'",
+        },
+      });
+    } catch {
+      return new Response('Not found', { status: 404 });
+    }
+  });
 }
 
 /**

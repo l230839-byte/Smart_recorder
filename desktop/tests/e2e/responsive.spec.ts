@@ -45,6 +45,16 @@ test('every screen fits the smallest window in dark mode, with no sideways scrol
     await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click();
     await nav('AI Studio');
     await noSidewaysScroll('studio');
+    await page.getByRole('button', { name: 'Documents', exact: true }).click();
+    await noSidewaysScroll('documents');
+    await page.getByRole('button', { name: 'New document' }).first().click();
+    await noSidewaysScroll('document-new');
+    await page.getByRole('radio', { name: /Blank page/ }).check();
+    await page.getByRole('button', { name: 'Create document' }).click();
+    await page.getByRole('textbox', { name: 'Document text' }).fill('## Heading\n\nSome text for the page.');
+    await page.getByRole('button', { name: 'Layout and style' }).click();
+    await expect(page.frameLocator('iframe[title="Page preview"]').getByRole('heading', { name: 'Heading' })).toBeVisible({ timeout: 10_000 });
+    await noSidewaysScroll('document-editor');
     await nav('Settings');
     await noSidewaysScroll('settings');
   } finally {

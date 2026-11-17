@@ -74,3 +74,22 @@ test('a large library and a very long transcript stay quick', async () => {
     removeDir(dataDir);
   }
 });
+
+test('a three-hour document exports to PDF in seconds', async () => {
+  const dataDir = tempDataDir();
+  const { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    const markdown = Array.from({ length: 2500 }, (_, i) => `${i % 50 === 0 ? `## Part ${i / 50 + 1}\n\n` : ''}**Speaker ${i % 2 ? 'A' : 'B'}:** Sentence number ${i} about neural networks and گفتگو. [${Math.floor(i / 30)}:${String((i * 2) % 60).padStart(2, '0')}](cite:${i * 4000})\n`).join('\n');
+    const { documentId } = (await page.evaluate(() => window.echomind.call('createDocument', { recordingId: null, template: 'custom', source: 'blank', title: 'Long' }))) as { documentId: string };
+    await page.evaluate(([id, md]) => window.echomind.call('updateDocument', id, { markdown: md }), [documentId, markdown] as const);
+    const started = Date.now();
+    const exported = await page.evaluate((id) => window.echomind.call('exportDocument', id, 'pdf'), documentId);
+    const pdfMs = Date.now() - started;
+    console.warn(`performance: PDF of 2,500 paragraphs: ${pdfMs} ms, ${(exported.sizeBytes / 1024).toFixed(0)} KB`);
+    expect(pdfMs).toBeLessThan(20_000);
+  } finally {
+    await closeApp(app);
+    removeDir(dataDir);
+  }
+});

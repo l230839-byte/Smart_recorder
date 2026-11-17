@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import type { AiPurpose } from '@shared/models';
+import type { AiOutcome, AiPurpose, CreateDocumentInput } from '@shared/models';
 import { LLM_PROVIDER_INFO, PROVIDER_INFO, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
 import type { SummaryOptions } from '@shared/summaries';
 import { Button, ConfirmDialog, Dialog } from '../../design/components';
@@ -46,10 +46,13 @@ export function useTranscribe() {
 
   /** Runs text AI work. `request` is asked again after each obstacle is cleared. */
   const startText = useCallback(
-    (request: () => ReturnType<typeof api.requestSummary>) => {
+    <T extends { ok: true }>(request: () => Promise<T | Exclude<AiOutcome, { ok: true }>>, onStarted?: (outcome: T) => void) => {
       const run = async () => {
         const outcome = await request();
-        if (outcome.ok) return;
+        if (outcome.ok) {
+          onStarted?.(outcome);
+          return;
+        }
         if (outcome.reason === 'needs-transcript') {
           toast.showError(new Error('Create a transcript first.'));
           return;
@@ -64,6 +67,11 @@ export function useTranscribe() {
   const startSummary = useCallback((id: string, options: SummaryOptions) => startText(() => api.requestSummary(id, options)), [startText]);
   const startChapters = useCallback((id: string) => startText(() => api.requestChapters(id)), [startText]);
   const startSuggestions = useCallback((id: string) => startText(() => api.requestSuggestions(id)), [startText]);
+  /** Creates a document. AI documents pass the same checks as any other AI work before anything exists. */
+  const startDocument = useCallback(
+    (input: CreateDocumentInput, onCreated: (documentId: string) => void) => startText(() => api.createDocument(input), (outcome) => onCreated(outcome.documentId)),
+    [startText],
+  );
 
   const close = () => setBlocked(null);
   let dialogs: ReactNode = null;
@@ -113,5 +121,5 @@ export function useTranscribe() {
       </Dialog>
     );
   }
-  return { start, startSummary, startChapters, startSuggestions, dialogs };
+  return { start, startSummary, startChapters, startSuggestions, startDocument, dialogs };
 }

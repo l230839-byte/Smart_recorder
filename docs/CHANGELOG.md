@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Phase 5: Documents and export
+
+- Documents from any transcribed recording: nine templates, written by AI, laid out from the transcript, built from a summary, or started blank.
+- Editor with autosave, a formatting toolbar with Ctrl+B and Ctrl+I, and a live, sandboxed preview of the real page that follows the section being edited.
+- Every layout choice from the prompt, applied to the preview and every format.
+- Export to PDF, Word, PowerPoint, HTML, Markdown and text. Urdu uses embedded Noto Nastaliq or Naskh fonts. Transcripts also export to CSV, protected against spreadsheet formulas.
+- Versions: the first draft is kept, and restoring an older version saves the current draft first.
+- Documents and exported files in one place, with open, show in folder, save a copy and delete. Deleting a recording deletes its documents and files.
+- AI Studio: PDF, Word, Presentation and Meeting Minutes tools are live.
+- Fixed while building: hidden times no longer change the rest of the text, two exports in the same second no longer share a file, and Urdu no longer falls back to a system font.
+
 ### FFmpeg add-on verified
 
 - The LGPL FFmpeg add-on was installed and tested: AMR imports and plays, damaged files are still refused, and playlist tricks cannot reach other files.

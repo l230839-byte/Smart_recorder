@@ -299,7 +299,7 @@ describe('summary jobs', () => {
     transcriptionCalls = 0;
     queue = new JobQueue(jobs, () => undefined, { schedule: () => undefined });
     new TranscriptionService({ jobs, transcripts, library, usage, consents, secrets, settings: () => settings, makeProvider: () => ({ transcribe: async () => { transcriptionCalls++; throw new Error('must not run'); }, testConnection: async () => undefined }), prepareChunk: async () => undefined, tempDir: tmpdir(), changed: () => undefined, transcriptReady: () => undefined, queue });
-    service = new SummaryService({ jobs, queue, transcripts, library, summaries, usage, consents, secrets, settings: () => settings, makeProvider: () => provider, changed: () => undefined, ready: (rid) => ready.push(rid) });
+    service = new SummaryService({ jobs, queue, transcripts, library, summaries, usage, consents, secrets, settings: () => settings, makeProvider: () => provider, changed: () => undefined, ready: (rid) => ready.push(rid), documentReady: () => undefined });
     id = library.insertRecording({ title: 'T', mode: 'lecture', source: 'picker', format: 'OGG', codec: 'Opus', durationMs: 60_000, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: 'f.ogg', mime: 'audio/ogg', peaks: new Uint8Array(8) });
     transcripts.addOriginal(id, 'groq', 'm', 'en', [seg(0, 0, 'Neural networks learn.'), seg(1, 5000, 'The exam is on Friday.')]);
   });

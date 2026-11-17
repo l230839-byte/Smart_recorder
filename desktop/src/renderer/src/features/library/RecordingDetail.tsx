@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Archive, ArchiveRestore, Bookmark, Download, FileAudio, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Bookmark, Download, FileAudio, FileText, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
 import { formatBytes, formatDateTime, formatDuration } from '@shared/format';
 import { clampPosition } from '@shared/media';
 import { TRANSCRIPT_LANGUAGES } from '@shared/providers';
+import { templateById } from '@shared/documents';
 import { MODE_INFO, RECORDING_MODES, SOURCE_LABEL, type Recording, type RecordingMode } from '@shared/models';
 import { Button, Card, ConfirmDialog, Dialog, EmptyState, IconButton, Loading, Menu, SectionTitle, TextPromptDialog } from '../../design/components';
 import { Waveform } from '../../design/Waveform';
@@ -11,6 +12,7 @@ import { player, usePlayer } from '../../lib/player';
 import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
 import { CollectionPicker } from '../collections/CollectionPicker';
+import { TEMPLATE_ICONS } from '../documents/NewDocument';
 import { AiCard } from '../transcript/AiCard';
 import { ModeBadge } from './RecordingRow';
 
@@ -125,6 +127,7 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
   const collections = useQuery(() => api.listCollections(), [], ['library']);
   const peaks = useQuery(() => api.getPeaks(id), [id]);
   const transcript = useQuery(() => api.getTranscript(id), [id], ['transcripts']);
+  const documents = useQuery(() => api.listDocuments(id), [id], ['documents']);
   const playback = usePlayer();
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [noteAt, setNoteAt] = useState(0);
@@ -242,6 +245,39 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
           </Card>
 
           {!inTrash && <AiCard recording={recording} />}
+
+          {!inTrash && (
+            <section>
+              <SectionTitle
+                title="Documents"
+                action={
+                  <Button size="sm" variant="ghost" icon={Plus} onClick={() => go({ name: 'document-new', recordingId: id })}>
+                    New
+                  </Button>
+                }
+              />
+              <Card>
+                {!documents.data?.length ? (
+                  <p className="muted small">Turn this recording into notes, minutes, a report or slides, then export them as PDF, Word, PowerPoint and more.</p>
+                ) : (
+                  <div className="doc-mini-list">
+                    {documents.data.map((d) => {
+                      const Icon = TEMPLATE_ICONS[d.template] ?? FileText;
+                      return (
+                        <button key={d.id} type="button" className="doc-mini" onClick={() => go({ name: 'document', id: d.id })}>
+                          <Icon size={15} aria-hidden />
+                          <span className="grow doc-row-title truncate" dir="auto">
+                            {d.title}
+                          </span>
+                          <span className="muted small">{templateById(d.template).name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </section>
+          )}
 
           <section>
             <SectionTitle

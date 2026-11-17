@@ -9,4 +9,6 @@
 - **End-to-end tests** (`tests/e2e`, Playwright) launch the built app against a throwaway data folder set through `ECHOMIND_USER_DATA`, so real user data is never touched. Chromium's simulated microphone lets recording tests run with no hardware.
 - Screenshots go to `test-shots/` and are reviewed by eye at the end of each phase.
 
+Run Vitest from PowerShell or cmd, not Git Bash. Git Bash reports the drive as `D:` while Node resolves the project as `d:`, so Vitest loads twice and every test fails with "failed to find the current suite".
+
 Terminals inside VS Code set `ELECTRON_RUN_AS_NODE`, which stops Electron from starting as an app. The `dev`, `start` and `test:e2e` scripts clear it through `scripts/run.mjs`.

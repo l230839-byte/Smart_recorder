@@ -243,7 +243,7 @@ export function TranscriptScreen({ id, startMs }: { id: string; startMs?: number
             <Menu
               icon={Download}
               label="Export transcript"
-              items={(['txt', 'srt', 'vtt'] as const).map((format) => ({
+              items={(['txt', 'srt', 'vtt', 'csv'] as const).map((format) => ({
                 label: `Save as ${format.toUpperCase()}`,
                 onSelect: () => void api.exportTranscript(id, format).then((saved) => saved && toast.show('Transcript saved'), toast.showError),
               }))}

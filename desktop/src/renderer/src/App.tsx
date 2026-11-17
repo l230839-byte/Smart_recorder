@@ -1,5 +1,8 @@
 import { Loading } from './design/components';
 import { Collections } from './features/collections/Collections';
+import { DocumentEditor } from './features/documents/DocumentEditor';
+import { DocumentsScreen } from './features/documents/DocumentsScreen';
+import { NewDocument } from './features/documents/NewDocument';
 import { Home } from './features/home/Home';
 import { ImportScreen } from './features/library/ImportScreen';
 import { Library } from './features/library/Library';
@@ -54,6 +57,12 @@ function Screen() {
       return <UsageScreen />;
     case 'summaries':
       return <SummariesScreen key={route.id} id={route.id} preset={route.preset} scope={route.scope} />;
+    case 'document-new':
+      return <NewDocument {...route} />;
+    case 'document':
+      return <DocumentEditor key={route.id} id={route.id} exportAs={route.exportAs} />;
+    case 'documents':
+      return <DocumentsScreen />;
   }
 }
 
