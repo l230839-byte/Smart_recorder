@@ -14,10 +14,13 @@
   --ember-soft: #fde8db;
   --record: #dc2626;
   --record-hover: #b91c1c;
+  /* Behind white text, in both themes: keeps the record button's label at AA contrast. */
+  --record-strong: #dc2626;
   --record-soft: #fde4e4;
   --success: #15803d;
   --success-soft: #dcf5e4;
-  --warning: #a16207;
+  /* Darker than amber-700 so warning text on its soft background meets WCAG AA (4.5:1). */
+  --warning: #854d0e;
   --warning-soft: #fbf0cf;
   --danger: #b91c1c;
   --danger-soft: #fde4e4;

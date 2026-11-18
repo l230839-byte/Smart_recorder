@@ -309,6 +309,10 @@ export interface Settings {
   llmProvider: LlmProviderId;
   llmModel: string | null;
   llmBaseUrl: string | null;
+  /** Start EchoMind, minimized, when Windows starts, so task reminders appear on time. */
+  openAtLogin: boolean;
+  /** When the last backup finished. Set by EchoMind, not the user. */
+  lastBackupAt: number | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -333,7 +337,18 @@ export const DEFAULT_SETTINGS: Settings = {
   llmProvider: 'groq',
   llmModel: null,
   llmBaseUrl: null,
+  openAtLogin: false,
+  lastBackupAt: null,
 };
+
+export interface AppLockState {
+  enabled: boolean;
+  locked: boolean;
+  /** 0 means never lock by itself. */
+  autoLockMinutes: number;
+  /** After too many wrong PINs, when the next try is allowed. */
+  waitUntil: number | null;
+}
 
 export interface LibraryStats {
   recordings: number;

@@ -1,0 +1,60 @@
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--s6);
+  background: var(--bg);
+  -webkit-app-region: drag;
+}
+.lock-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  width: min(360px, 100%);
+  padding: var(--s8) var(--s6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  -webkit-app-region: no-drag;
+}
+.lock-card h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 20px;
+}
+.lock-pin {
+  width: 100%;
+  font-size: 22px;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+.lock-card .btn {
+  width: 100%;
+}
+.lock-message {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+.lock-recording {
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--record-soft);
+  color: var(--record);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+/* No box of its own, so the shell keeps its full-height layout; inert and visibility still reach everything inside. */
+.app-root {
+  display: contents;
+}
+.app-locked {
+  visibility: hidden;
+}

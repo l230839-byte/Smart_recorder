@@ -1,4 +1,5 @@
 import type {
+  AppLockState,
   AiOutcome,
   AiPurpose,
   AppInfo,
@@ -176,6 +177,30 @@ export interface EchoApi {
   /** Saves an image (a mind map) where the user picks. Returns false if they cancel. */
   saveImage(defaultName: string, format: 'png' | 'svg', data: Uint8Array): Promise<boolean>;
 
+  // App lock. While locked, the main process refuses everything except unlocking.
+  getAppLockState(): AppLockState;
+  setAppPin(pin: string, currentPin: string | null): AppLockState;
+  disableAppLock(currentPin: string): AppLockState;
+  setAutoLock(minutes: number): AppLockState;
+  lockApp(): void;
+  /** Returns the new state: still locked when the PIN was wrong. Throws while a wait applies. */
+  unlockApp(pin: string): AppLockState;
+
+  // Backup, restore and share bundles
+  /** Asks where to save, then writes an encrypted backup. Null if the user cancels. */
+  createBackup(password: string): Promise<{ sizeBytes: number; recordings: number } | null>;
+  /** Asks for a backup file and reads what it holds. The choice is remembered for restoreBackup. */
+  pickBackup(): Promise<{ createdAt: number; appVersion: string; recordings: number | null; encrypted: boolean; name: string } | null>;
+  /** Checks and unpacks the chosen backup. It replaces the library when EchoMind restarts. */
+  restoreBackup(password: string): Promise<{ recordings: number; createdAt: number }>;
+  restartToRestore(): void;
+  cancelRestore(): Promise<void>;
+  previousData(): Promise<{ sizeBytes: number } | null>;
+  deletePreviousData(): Promise<void>;
+  /** Saves a recording with its transcript, summaries, chapters and documents as one file. */
+  exportBundle(recordingId: string): Promise<boolean>;
+  importBundle(): Promise<{ recordingId: string; title: string } | null>;
+
   // Documents
   listDocuments(recordingId?: string): DocumentRecord[];
   getDocument(id: string): DocumentRecord | null;
@@ -205,6 +230,10 @@ export interface EchoEvents {
   'recordings:recovered': number;
   /** The user chose "Stop and save" when closing during a recording. */
   'recorder:stop-and-quit': null;
+  /** The app was locked or unlocked. */
+  'lock:changed': AppLockState;
+  /** Progress of a backup, restore or bundle, in bytes. */
+  'archive:progress': { done: number; total: number };
   /** The user clicked a task reminder. */
   'tasks:open': null;
   /** The user clicked a notification about this recording. */

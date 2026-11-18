@@ -18,6 +18,8 @@ EchoMind uses free and open-source software only. `npm run check:licenses` fails
 | pako (used by JSZip) | Compression | MIT and Zlib |
 | FFmpeg, optional add-on | Reads formats the built-in decoders cannot, such as AMR and WMA | LGPL (BtbN shared build) |
 
+Build and test tools (not shipped): electron-builder and NSIS (MIT and zlib licences) make the installer; axe-core (MPL-2.0) runs the accessibility audit.
+
 PDFs are printed by the Chromium inside Electron, so no PDF library is needed. Test-only tools (not shipped): pdf.js (Apache-2.0) reads exported PDFs back, JSZip checks Word and PowerPoint files.
 
 ### FFmpeg notes

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleAlert, CircleCheck, Copy, FileAudio, FileUp, Loader2, RotateCcw, Trash2 } from 'lucide-react';
+import { CircleAlert, CircleCheck, Copy, FileAudio, FileUp, Loader2, Package, RotateCcw, Trash2 } from 'lucide-react';
 import { formatBytes, plural } from '@shared/format';
 import { MODE_INFO, RECORDING_MODES, type ImportJob, type RecordingMode } from '@shared/models';
 import { Button, Card, IconButton, PageHeader, ProgressBar } from '../../design/components';
@@ -64,6 +64,7 @@ function JobRow({ job }: { job: ImportJob }) {
 
 export function ImportScreen() {
   const toast = useToast();
+  const { go } = useRouter();
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
   const jobs = useQuery(() => api.listImports(), [], ['imports']);
   const info = useQuery(() => api.getAppInfo(), []);
@@ -96,6 +97,19 @@ export function ImportScreen() {
           </select>
           <Button variant="primary" icon={FileAudio} onClick={() => void api.pickAndImport(selected).catch(toast.showError)}>
             Choose files
+          </Button>
+          <Button
+            icon={Package}
+            title="A recording someone shared from EchoMind, with its transcript, summaries and documents"
+            onClick={() =>
+              void api.importBundle().then((imported) => {
+                if (!imported) return;
+                toast.show(`Imported "${imported.title}"`);
+                go({ name: 'recording', id: imported.recordingId });
+              }, toast.showError)
+            }
+          >
+            Import a shared bundle
           </Button>
         </div>
       </div>

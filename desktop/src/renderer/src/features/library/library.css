@@ -486,7 +486,6 @@
 }
 .home-action.primary .muted {
   color: inherit;
-  opacity: 0.8;
 }
 .home-action-icon {
   flex: none;

@@ -5,6 +5,7 @@ import { Button, Card, ConfirmDialog, Loading, PageHeader, Segmented, SwitchRow 
 import { api, useQuery } from '../../lib/api';
 import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
+import { SecuritySettings } from '../security/SecuritySettings';
 import './settings.css';
 
 const THEMES: { value: ThemeSetting; label: string }[] = [
@@ -79,6 +80,11 @@ export function Settings() {
             onChange={(offlineOnly) => (offlineOnly ? update({ offlineOnly }) : setConfirmOnline(true))}
           />
         </Card>
+      </section>
+
+      <section className="stack" aria-labelledby="s-security">
+        <h2 id="s-security">Security and backup</h2>
+        <SecuritySettings settings={s} update={update} />
       </section>
 
       <section className="stack" aria-labelledby="s-ai">

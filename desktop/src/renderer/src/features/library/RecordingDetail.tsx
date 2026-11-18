@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Archive, ArchiveRestore, Bookmark, CheckSquare, Download, FileAudio, FileText, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Bookmark, CheckSquare, Package, Download, FileAudio, FileText, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
 import { formatBytes, formatDateTime, formatDuration } from '@shared/format';
 import { clampPosition } from '@shared/media';
 import { TRANSCRIPT_LANGUAGES } from '@shared/providers';
@@ -196,6 +196,7 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
           items={[
             { label: 'Trim into new recording', icon: Scissors, onSelect: () => setDialog('trim') },
             { label: 'Save a copy of the audio', icon: Download, onSelect: () => void api.exportAudio(id).then((saved) => saved && toast.show('Audio saved'), toast.showError) },
+            { label: 'Share as a bundle', icon: Package, onSelect: () => void api.exportBundle(id).then((saved) => saved && toast.show('Bundle saved. Anyone you send it to can open it in EchoMind.'), toast.showError) },
             { label: 'Move to collection', icon: FolderInput, onSelect: () => setDialog('move') },
             recording.archived
               ? { label: 'Unarchive', icon: ArchiveRestore, onSelect: () => void api.setArchived([id], false) }

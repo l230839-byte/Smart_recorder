@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { logError } from '../log';
 import { createReadStream } from 'node:fs';
 import { open, readdir, rm, stat, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -118,7 +119,7 @@ export class RecorderService {
       } catch (e) {
         if (await this.dropIfNothingCaptured(session.id, e)) continue;
         // Keep the session and its file: a later version may be able to read it. Never delete audio on doubt.
-        console.error('Could not recover an interrupted recording', e instanceof Error ? e.message : e);
+        logError('Could not recover an interrupted recording', e);
       }
     }
     await this.removeOrphans();

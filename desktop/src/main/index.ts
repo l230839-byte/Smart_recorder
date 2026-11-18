@@ -1,8 +1,12 @@
 import { copyFile, mkdir, readdir, rm, statfs, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { app, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import { app, dialog, ipcMain, nativeTheme, Notification, powerMonitor, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import { AppLock } from './services/app-lock';
+import { inspectArchive } from './services/archive';
+import { applyPendingRestore, BackupService } from './services/backup';
+import { BundleService } from './services/bundles';
 import type { EchoApi, EchoEvents } from '@shared/api';
 import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
 import { markdownToClipboard } from '@shared/markdown';
@@ -50,6 +54,10 @@ const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'fla
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'mkv', 'm4v', 'ts'];
 
 let mainWindow: BrowserWindow | null = null;
+let appLock: AppLock | null = null;
+
+/** What still works while the app is locked: unlocking, what the lock screen shows, and keeping a recording safe. */
+const ALLOWED_WHILE_LOCKED = new Set<string>(['getAppLockState', 'unlockApp', 'getSettings', 'getAppInfo', 'appendRecording']);
 let closeConfirmed = false;
 
 function emit<E extends keyof EchoEvents>(event: E, payload: EchoEvents[E]): void {
@@ -61,6 +69,7 @@ function registerApi(api: EchoApi): void {
     ipcMain.handle(`api:${method}`, (event: IpcMainInvokeEvent, ...args: unknown[]) => {
       // Only the main window may use the app's API, not the media worker or anything else.
       if (event.sender !== mainWindow?.webContents) throw new Error('Not allowed.');
+      if (appLock?.isLocked() && !ALLOWED_WHILE_LOCKED.has(method)) throw new Error('EchoMind is locked.');
       return (api[method] as (...a: unknown[]) => unknown)(...args);
     });
   }
@@ -92,6 +101,8 @@ async function start(): Promise<void> {
   // Anything here was left by an interrupted run; imports restart from their originals.
   for (const name of await readdir(tempDir)) await rm(join(tempDir, name), { force: true, recursive: true });
 
+  // A backup checked and unpacked before the last restart takes its place now, before anything opens.
+  const restored = await applyPendingRestore(dataDir).catch(() => false);
   const db = openDatabase(join(dataDir, 'echomind.db'));
   const settings = new SettingsStore(db);
   const library = new LibraryRepository(db);
@@ -101,7 +112,9 @@ async function start(): Promise<void> {
 
   hardenSession();
   hardenContents();
-  handleMediaProtocol(library, mediaDir);
+  const lock = new AppLock(db);
+  appLock = lock;
+  handleMediaProtocol(library, mediaDir, () => lock.isLocked());
 
   const libraryChanged = () => emit('data:changed', 'library');
   const importsChanged = () => emit('data:changed', 'imports');
@@ -137,7 +150,8 @@ async function start(): Promise<void> {
 
   const notifyReady = (recordingId: string, title: string, what: string) => {
     if (Notification.isSupported() && !mainWindow?.isFocused()) {
-      const note = new Notification({ title: `${what} ready`, body: title });
+      // While locked, a notification must not reveal what a recording is called.
+      const note = new Notification({ title: `${what} ready`, body: appLock?.isLocked() ? 'Unlock EchoMind to see it.' : title });
       note.on('click', () => {
         mainWindow?.show();
         emit('recording:open', recordingId);
@@ -228,7 +242,7 @@ async function start(): Promise<void> {
     renderPdf: (documentId, documentSettings) => renderPdf(`${DOCUMENT_SCHEME}://preview/${documentId}`, documentSettings),
     changed: documentsChanged,
   });
-  handleDocumentProtocol((id) => documentService.html(id));
+  handleDocumentProtocol((id) => documentService.html(id), () => lock.isLocked());
 
   const chatService = new ChatService({
     chats,
@@ -270,7 +284,8 @@ async function start(): Promise<void> {
     tasksChanged();
     if (!Notification.isSupported()) return;
     for (const task of due) {
-      const note = new Notification({ title: 'Reminder', body: task.dueDate ? `${task.title} (due ${task.dueDate})` : task.title });
+      const body = lock.isLocked() ? 'You have a task reminder. Unlock EchoMind to see it.' : task.dueDate ? `${task.title} (due ${task.dueDate})` : task.title;
+      const note = new Notification({ title: 'Reminder', body });
       note.on('click', () => {
         mainWindow?.show();
         emit('tasks:open', null);
@@ -306,7 +321,106 @@ async function start(): Promise<void> {
 
 
   const sqlite = db.prepare('SELECT sqlite_version() AS v').get() as { v: string };
+
+  // Starting with Windows, minimized, so task reminders appear on time. Only an installed copy registers,
+  // so a development build never adds itself to startup.
+  const applyLoginItem = (on: boolean) => {
+    if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: on, args: ['--minimized'] });
+  };
+
+  const lockChanged = () => emit('lock:changed', lock.state());
+  const refreshAll = () => {
+    for (const area of ['settings', 'library', 'imports', 'jobs', 'transcripts', 'summaries', 'documents', 'chats', 'studio', 'tasks'] as const) emit('data:changed', area);
+  };
+  const lockNow = () => {
+    if (lock.lock()) lockChanged();
+  };
+  // Locks when the computer has been idle for the chosen time, when Windows locks, and before sleep.
+  setInterval(() => {
+    if (lock.idle(powerMonitor.getSystemIdleTime())) lockChanged();
+  }, 15_000);
+  powerMonitor.on('lock-screen', lockNow);
+  powerMonitor.on('suspend', lockNow);
+
+  const backups = new BackupService(db, dataDir, app.getVersion());
+  const bundles = new BundleService({ library, transcripts, summaries, documents: documentRepo, pipeline, mediaDir, tempDir, appVersion: app.getVersion() });
+  let pickedBackup: string | null = null;
+  const progress = (done: number, total: number) => emit('archive:progress', { done, total });
+  const saveDialog = (options: Electron.SaveDialogOptions) => (mainWindow ? dialog.showSaveDialog(mainWindow, options) : dialog.showSaveDialog(options));
+  const openDialog = (options: Electron.OpenDialogOptions) => (mainWindow ? dialog.showOpenDialog(mainWindow, options) : dialog.showOpenDialog(options));
+  const stamp = () => new Date().toISOString().slice(0, 10);
+
   registerApi({
+    getAppLockState: () => lock.state(),
+    setAppPin: (pin, currentPin) => {
+      lock.setPin(pin, currentPin);
+      return lock.state();
+    },
+    disableAppLock: (currentPin) => {
+      lock.disable(currentPin);
+      lockChanged();
+      return lock.state();
+    },
+    setAutoLock: (minutes) => {
+      lock.setAutoLock(minutes);
+      return lock.state();
+    },
+    lockApp: lockNow,
+    unlockApp: (pin) => {
+      if (lock.unlock(pin)) {
+        lockChanged();
+        refreshAll();
+      }
+      return lock.state();
+    },
+
+    createBackup: async (password) => {
+      const result = await saveDialog({ title: 'Save backup', defaultPath: `EchoMind backup ${stamp()}.echomind-backup`, filters: [{ name: 'EchoMind backup', extensions: ['echomind-backup'] }] });
+      if (result.canceled || !result.filePath) return null;
+      const done = await backups.create(result.filePath, password, progress);
+      settings.update({ lastBackupAt: Date.now() });
+      emit('data:changed', 'settings');
+      return done;
+    },
+    pickBackup: async () => {
+      const result = await openDialog({ title: 'Restore from backup', properties: ['openFile'], filters: [{ name: 'EchoMind backup', extensions: ['echomind-backup'] }] });
+      const file = result.filePaths[0];
+      if (result.canceled || !file) return null;
+      const info = await inspectArchive(file);
+      if (info.kind !== 'backup') throw new Error('This is a share bundle, not a backup. Use Import bundle in the Library instead.');
+      pickedBackup = file;
+      const recordings = typeof info.summary.recordings === 'number' ? info.summary.recordings : null;
+      return { createdAt: info.createdAt, appVersion: info.appVersion, recordings, encrypted: info.encrypted, name: file.split(/[\\/]/).pop() ?? file };
+    },
+    restoreBackup: async (password) => {
+      if (!pickedBackup) throw new Error('Choose a backup first.');
+      return backups.prepareRestore(pickedBackup, password, progress);
+    },
+    restartToRestore: () => {
+      closeConfirmed = true;
+      app.relaunch();
+      app.quit();
+    },
+    cancelRestore: () => backups.cancelRestore(),
+    previousData: () => backups.previousData(),
+    deletePreviousData: () => backups.deletePreviousData(),
+    exportBundle: async (recordingId) => {
+      const rec = library.getRecording(recordingId);
+      if (!rec) throw new Error('This recording no longer exists.');
+      const result = await saveDialog({ title: 'Share as bundle', defaultPath: `${rec.title.replace(/[<>:"/\\|?*]+/g, ' ').trim() || 'recording'}.echomind`, filters: [{ name: 'EchoMind bundle', extensions: ['echomind'] }] });
+      if (result.canceled || !result.filePath) return false;
+      await bundles.export(recordingId, result.filePath);
+      return true;
+    },
+    importBundle: async () => {
+      const result = await openDialog({ title: 'Import a shared recording', properties: ['openFile'], filters: [{ name: 'EchoMind bundle', extensions: ['echomind'] }] });
+      const file = result.filePaths[0];
+      if (result.canceled || !file) return null;
+      const imported = await bundles.import(file);
+      refreshAll();
+      return imported;
+    },
+
     getSettings: () => settings.get(),
     updateSettings: (patch) => {
       for (const field of ['customBaseUrl', 'llmBaseUrl'] as const) {
@@ -316,8 +430,10 @@ async function start(): Promise<void> {
         if (!url) throw new Error('Use an https:// address. Plain http:// is only allowed on this computer.');
         patch = { ...patch, [field]: url };
       }
+      const before = settings.get();
       const next = settings.update(patch);
       nativeTheme.themeSource = next.theme;
+      if (next.openAtLogin !== before.openAtLogin) applyLoginItem(next.openAtLogin);
       emit('data:changed', 'settings');
       return next;
     },
@@ -692,13 +808,24 @@ async function start(): Promise<void> {
   });
 
   const openFiles = (argv: string[]) => {
+    // A shared bundle opened with EchoMind is imported whole, with its transcript and documents.
+    for (const bundle of argv.filter((a) => a.toLowerCase().endsWith('.echomind') && existsSync(a))) {
+      void bundles.import(bundle).then(
+        (imported) => {
+          refreshAll();
+          emit('recording:open', imported.recordingId);
+        },
+        (e: unknown) => void dialog.showMessageBox({ type: 'error', message: 'This bundle could not be imported.', detail: e instanceof Error ? e.message : String(e) }),
+      );
+    }
     const files = filesFromArgs(argv);
     if (!files.length) return;
     void imports.enqueue(files, 'opened', settings.get().defaultMode).then((batch) => emit('imports:opened', batch));
   };
 
-  const window = createMainWindow();
+  const window = createMainWindow({ minimized: process.argv.includes('--minimized') });
   mainWindow = window;
+  if (restored) window.once('ready-to-show', () => void dialog.showMessageBox(window, { type: 'info', message: 'Your backup has been restored.', detail: 'Your previous library was kept aside. You can remove it in Settings > Backup once you have checked everything. API keys are not part of backups, so add them again in Settings > AI providers.' }));
   window.on('closed', () => {
     mainWindow = null;
     // The hidden media worker is also a window, so "all windows closed" alone would never fire.

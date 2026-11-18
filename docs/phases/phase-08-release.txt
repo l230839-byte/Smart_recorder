@@ -1,0 +1,146 @@
+ECHOMIND DESKTOP: PHASE 08, HARDENING AND RELEASE
+================================================================================
+Status:      COMPLETE. The desktop app is finished, packaged and tested as installed.
+             Not code-signed (paid certificates). Live AI providers still await the
+             owner's key (section 7).
+Prompt refs: §15.6-15.9 offline, collaboration bundles, backup; §16 app lock and settings
+             screens; §21 privacy and security; §22 reliability; §25 testing;
+             §27 documentation; §29 acceptance
+Date:        2026-11-18
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Make EchoMind safe and dependable enough for daily use, prove the prompt's definition of
+success end to end, and ship it as a Windows installer.
+
+
+2. WHAT THIS PHASE INCLUDES (THE FEATURES, AS A USER SEES THEM)
+--------------------------------------------------------------------------------
+App lock (Settings > Security and backup)
+- A PIN of 4 to 12 digits, asked when EchoMind opens, after idle time (1 minute to 1 hour,
+  or never), when Windows locks, and before the computer sleeps. "Lock now" too.
+- While locked, nothing can be read: the main process refuses all data, recordings cannot
+  play, and notifications say "unlock to see" instead of naming recordings or tasks.
+  A recording in progress keeps recording.
+- Wrong PINs: 5 free tries, then waits of 30 seconds doubling to 15 minutes, which survive
+  a restart.
+
+Backup and restore (Settings > Backup and restore)
+- One encrypted file with every recording, transcript, summary, document, chat, Studio
+  result, task and setting, saved wherever you choose (USB drive, another disk, or a
+  folder your cloud drive syncs). Progress shown; the last backup date is remembered.
+- Restoring checks the password at once, checks the whole file for damage or tampering,
+  and puts the library in place when EchoMind restarts. The replaced library is kept until
+  you remove it. API keys are never in backups.
+
+Share bundles
+- More > Share as a bundle on any recording: one ".echomind" file with the audio,
+  transcript and speaker names, summaries, chapters, documents, tags and bookmarks.
+- Import it from Home > Import, or double-click it once EchoMind is installed.
+
+Start with Windows
+- Opens EchoMind minimized when you sign in, so task reminders appear on time.
+
+The installer
+- EchoMind-Setup-0.1.0.exe: per-user (no administrator rights), choice of folder, Start
+  menu and desktop shortcuts, the EchoMind icon, the .echomind file association, and the
+  FFmpeg add-on. Uninstalling keeps your library.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  The lock is enforced in the main process, not drawn over the screens: a locked app
+    answers only "unlock" (and keeps an ongoing recording safe).
+D2  PIN only. Windows Hello is not available to Electron apps, so it is not offered.
+D3  App lock is not disk encryption, and the app says so. BitLocker is the right tool for
+    files at rest; EchoMind's job is to keep its own window and data API closed.
+D4  One archive format for backups (encrypted) and bundles (plain): streamed, so libraries
+    of many gigabytes never sit in memory, with names and sizes checked on the way in.
+D5  AES-256-GCM with scrypt (N=2^16) and a fresh salt and IV per backup; a small encrypted
+    check catches a wrong password before the whole file is read.
+D6  Restores swap at the next launch, before the database opens, so old and new data can
+    never mix, and the previous library is kept aside.
+D7  Bundle audio goes through the normal import pipeline, so a shared file is checked like
+    any other, and every manifest field is validated and limited.
+D8  "Start with Windows" registers only from the installed app, so development builds never
+    add themselves to startup.
+
+
+4. FIXES AND IMPROVEMENTS MADE WHILE BUILDING AND REVIEWING
+--------------------------------------------------------------------------------
+F1  [Accessibility] The audit found three WCAG AA colour-contrast failures: amber warning
+    text (4.2:1), white text on the dark-theme record button, and the dimmed hint on Home's
+    primary action. Fixed at the design-token level; every main screen now passes in both
+    themes.
+F2  [Privacy] A recovery error could log a file path. All main-process logging now goes
+    through one helper that removes paths and key-like strings. Tested.
+F3  [Layout] The lock wrapper briefly broke the shell's full-height layout (seen in a
+    screenshot); fixed with a box-less wrapper.
+F4  [Bug] A size check in bundle import was written with the wrong operator precedence and
+    would not have limited anything. Caught in review and fixed.
+
+
+5. DESIGN REVIEW (FROM SCREENSHOTS IN desktop/test-shots)
+--------------------------------------------------------------------------------
+R1  Lock screen: one centred card with the brand mark, a large PIN field, and a plain
+    sentence that a forgotten PIN cannot be recovered.
+R2  Backup: two clear actions, the last backup date, live progress, and the previous
+    library offered for removal only after a restore.
+R3  Settings now groups App lock, Start with Windows and Backup under "Security and backup".
+
+
+6. TESTING (all passing on 2026-11-18)
+--------------------------------------------------------------------------------
+Unit (Vitest): 245 tests, 12 of them new.
+- Archives with and without a password: round trips, a wrong password at once, tampering
+  caught with nothing left behind, unsafe names, wrong kind, size limits, other files.
+- Backup then restore at the next launch on a real database: content back, keys and lock
+  left out, previous data kept; a backup from a newer version refused.
+- Bundles between two libraries: audio, transcript, speakers, summaries, chapters, documents,
+  tags, bookmarks; hostile manifests cleaned.
+- App lock: setting, changing and removing the PIN, locked at launch, growing waits across
+  restarts, idle locking. Log scrubbing.
+
+End to end (Playwright, the real app): 50 tests; 49 pass and 1 is skipped (AMR without
+FFmpeg, skipped because FFmpeg is installed). New:
+- §29 acceptance, twice: recorded in EchoMind and imported from a phone recorder. Through
+  the screens: Library, transcript with times, an edit, three summary formats, chat with a
+  playable source, flashcards and a quiz, a Detailed Lecture Report, its preview, PDF and
+  Word files checked, found in Documents, and a copy saved elsewhere.
+- Accessibility: axe-core's WCAG 2.1 A/AA rules on 13 screens, light and dark: 0 problems.
+- App lock through the screens, including the refused API and media while locked, and a
+  locked new launch. Backup, wrong password, restore across a relaunch, keys left out,
+  removing the previous library. Bundles from one library to another.
+- A whole session with demo providers (import, transcribe, summary, chat, PDF, playback)
+  makes no external network request.
+
+Packaged app (`npm run test:packaged`): the installed layout of EchoMind.exe starts,
+imports M4A and AMR (through the bundled FFmpeg), transcribes, and exports a PDF with the
+fonts from inside the package.
+
+Installer: EchoMind-Setup-0.1.0.exe, 191 MB,
+SHA-256 550F699AA83E70155E061E3EF133FD860126F9B029CA3EA195BC4E551DDD9B94.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check passes (36 production packages),
+production npm audit 0 vulnerabilities at last check.
+
+
+7. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  LIVE GROQ AND GEMINI NOT YET RUN. Everything else in the AI pipeline is tested with demo
+    and scripted providers. `npm run test:live` is ready and needs only the owner's key.
+L2  Not code-signed: SmartScreen warns once. Documented in RELEASE.md, with the SHA-256.
+L3  The installer was built and the packaged app was tested, but the setup program itself
+    was not run on this computer, to avoid changing the owner's Windows. Running it once on a
+    spare user account is the last check (RELEASE.md).
+L4  Accessibility is checked automatically; it has not been tried with a screen reader by
+    a person.
+L5  Urdu quality needs a real Urdu recording (no Urdu voice here to generate one).
+L6  Everything else from earlier reports still applies.
+
+
+8. NEXT
+--------------------------------------------------------------------------------
+Desktop Phases 1 to 8 are complete. Following the plan: the Android app (Kotlin and
+Compose, reusing the same pipeline design), then the optional self-hosted Server mode.

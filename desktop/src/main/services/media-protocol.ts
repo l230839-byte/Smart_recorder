@@ -25,8 +25,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
  * Serves a document page for the preview frame and for printing. The page carries no script and its
  * policy forbids any, along with every network request, so content from an AI can never act.
  */
-export function handleDocumentProtocol(render: (documentId: string) => Promise<string>): void {
+export function handleDocumentProtocol(render: (documentId: string) => Promise<string>, locked: () => boolean = () => false): void {
   protocol.handle(DOCUMENT_SCHEME, async (request) => {
+    if (locked()) return new Response('Locked', { status: 403 });
     const url = new URL(request.url);
     const id = url.pathname.replace(/^\//, '');
     if (url.hostname !== 'preview' || !UUID.test(id)) return new Response('Not found', { status: 404 });
@@ -50,8 +51,10 @@ export function handleDocumentProtocol(render: (documentId: string) => Promise<s
  * Serves a recording's audio to the player, with the range support seeking needs. The URL holds only a
  * recording id, which is resolved through the database, so no path from the UI ever reaches the disk.
  */
-export function handleMediaProtocol(library: LibraryRepository, mediaDir: string): void {
+export function handleMediaProtocol(library: LibraryRepository, mediaDir: string, locked: () => boolean = () => false): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
+    // While the app is locked, no recording can be played or read.
+    if (locked()) return new Response('Locked', { status: 403 });
     const id = new URL(request.url).pathname.replace(/^\//, '');
     const media = library.mediaFile(id);
     if (!media) return new Response('Not found', { status: 404 });

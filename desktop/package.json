@@ -13,6 +13,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.14.1",
     "electron": "^45.2.1",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
@@ -51,7 +52,9 @@
     "check:licenses": "node scripts/check-licenses.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run check:licenses",
     "dist": "electron-vite build && electron-builder --win",
-    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs"
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
+    "icon": "node scripts/run.mjs electron scripts/make-icon.mjs",
+    "test:packaged": "node scripts/run.mjs playwright test -c playwright.packaged.config.ts"
   },
   "build": {
     "appId": "com.echomind.desktop",
@@ -61,7 +64,8 @@
       "package.json"
     ],
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "extraResources": [
       {
@@ -73,7 +77,26 @@
       }
     ],
     "win": {
-      "target": "nsis"
-    }
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EchoMind",
+      "artifactName": "EchoMind-Setup-${version}.${ext}",
+      "deleteAppDataOnUninstall": false
+    },
+    "fileAssociations": [
+      {
+        "ext": "echomind",
+        "name": "EchoMind bundle",
+        "description": "A recording shared from EchoMind",
+        "role": "Editor"
+      }
+    ]
   }
 }

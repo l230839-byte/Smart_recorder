@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Phase 8: Hardening and release
+
+- App lock with a PIN. While locked, the main process refuses all data and media, notifications hide titles, and wrong PINs cost growing waits that survive restarts.
+- Encrypted backup and restore to any folder. A wrong password is caught at once and tampering at the end; nothing changes until the next launch, and the replaced library is kept.
+- Share bundles that carry a recording with everything made from it; double-click to import.
+- Start with Windows (minimized), so task reminders arrive on time.
+- Windows installer with icon and `.echomind` file association, and a test that drives the packaged app.
+- Accessibility: three colour-contrast problems fixed; every main screen passes an automated WCAG 2.1 AA check in both themes.
+- Security: logs strip file paths and keys; a test proves a full session sends no network request with the demo providers.
+- The §29 acceptance workflow runs end to end for a recorded and an imported recording.
+
 ### Phase 7: AI Studio, study tools and tasks
 
 - Every AI Studio tool works: flashcards, quizzes, mind maps, study notes, translation, comparison, rewrite and custom, plus saved templates. Every result is kept with its recordings and can be exported to PDF or Word.

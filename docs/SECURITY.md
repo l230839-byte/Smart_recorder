@@ -32,14 +32,18 @@ Every recording is treated as sensitive private data.
 | Live tests | Keys come from `desktop/.env.live`, which git ignores. Only generated speech is sent. | `.gitignore` |
 | Tasks stay local | Found tasks need approval. Reminders are local notifications. Nothing is added to a calendar or sent to anyone (§14). | `studio.test.ts`, `studio.spec.ts` |
 | Studio grounding | Every flashcard, question, map point and task must point at a real transcript line; invalid ones are removed and counted. Explanations beyond the recording are labelled. | `studio.test.ts` |
+| App lock | PIN of 4 to 12 digits stored as a salted scrypt hash. While locked the main process refuses every API call except unlocking (and saving an ongoing recording), the media and document schemes return 403, and notifications hide titles. 5 free attempts, then waits from 30 seconds doubling to 15 minutes, kept across restarts. It is not disk encryption: use BitLocker for that. | `safety.test.ts`, `safety.spec.ts` |
+| Backups | AES-256-GCM with a key from scrypt (N=2^16) and a fresh salt and IV per backup. A small encrypted check finds a wrong password at once; the GCM tag finds tampering, and then nothing extracted is kept. Restores are unpacked aside and swapped in at the next launch, keeping the previous library. Keys and the app lock are not included. | `safety.test.ts`, `safety.spec.ts` |
+| Archive safety | Entry names are checked (no `..`, absolute paths, drive letters or control characters) and sizes limited, so a crafted backup or bundle cannot write outside its folder or fill the disk. Bundle manifests are validated field by field, and their audio goes through the normal import checks. | `safety.test.ts` |
+| Logging | All main-process logging goes through `log.ts`, which removes file paths and key-like strings. | `safety.test.ts` |
+| Network | With demo providers, a full session (import, transcribe, summarize, chat, PDF, playback) makes no external request. | `safety.spec.ts` |
 | No telemetry | The app makes no network requests of its own. | Code review; Phase 8 adds a network test |
 
-## Planned
+## Not done
 
-| Control | Phase |
+| Control | Why |
 | --- | --- |
-| Log scrubbing review | 8 |
-| App lock, encrypted backups | 8 |
+| Code signing | Certificates are paid, and EchoMind uses free tools only. See RELEASE.md. |
 
 ## Rules for contributors
 

@@ -40,4 +40,9 @@ Only what is implemented and verified is listed as **Working**.
 | Action items: found in recordings, reviewed and approved by you, due dates, owners, priority, reminders as Windows notifications, search, history | Working. Reminders appear only while EchoMind is running. |
 | Batch processing of several recordings (separate or combined results) | Working |
 | Studio tools on live Groq or Gemini | Written, not yet run. Needs a key (`npm run test:live`). |
-| App lock, backup, installer | Phase 8 |
+| App lock with a PIN, enforced by the main process; auto-lock after idle, on Windows lock and before sleep | Working |
+| Encrypted backup and restore (AES-256-GCM, scrypt), to any folder; previous library kept after a restore | Working (API keys are not included by design) |
+| Share bundles: a recording with its transcript, summaries, chapters and documents in one file; opens with a double-click | Working |
+| Start with Windows, minimized, for task reminders | Working in the installed app |
+| Windows installer (NSIS, per user, file association) | Working. Not code-signed, so SmartScreen warns once. |
+| Accessibility: WCAG 2.1 A/AA automated audit of every main screen, light and dark | Passing (axe-core). Not yet checked with a screen reader by a person. |

@@ -30,7 +30,8 @@ export type Route =
   | { name: 'search'; text?: string }
   | { name: 'studio-tool'; kind: StudioKind; recordingIds?: string[] }
   | { name: 'studio-output'; id: string }
-  | { name: 'tasks' };
+  | { name: 'tasks' }
+  | { name: 'backup' };
 
 export type TopLevel = 'home' | 'library' | 'record' | 'studio' | 'settings';
 
@@ -58,6 +59,7 @@ const TOP_LEVEL_OF: Record<Route['name'], TopLevel> = {
   'studio-tool': 'studio',
   'studio-output': 'studio',
   tasks: 'home',
+  backup: 'settings',
 };
 
 interface RouterValue {

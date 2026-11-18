@@ -22,7 +22,12 @@ import { SummariesScreen } from './features/summary/SummariesScreen';
 import { JobsScreen } from './features/transcript/JobsScreen';
 import { ProvidersScreen, UsageScreen } from './features/transcript/ProvidersScreen';
 import { TranscriptScreen } from './features/transcript/TranscriptScreen';
-import { api, useQuery } from './lib/api';
+import { useEffect, useState } from 'react';
+import type { AppLockState } from '@shared/models';
+import { BackupScreen } from './features/security/BackupScreen';
+import { LockScreen } from './features/security/LockScreen';
+import { api, onEvent, useQuery } from './lib/api';
+import { player } from './lib/player';
 import { RouterProvider, useRouter } from './lib/router';
 import { ToastProvider } from './lib/toast';
 import { DropTarget, GlobalEvents, MiniPlayer, RecordingIndicator } from './shell/Overlays';
@@ -78,6 +83,8 @@ function Screen() {
       return <StudioOutputScreen key={route.id} id={route.id} />;
     case 'tasks':
       return <TasksScreen />;
+    case 'backup':
+      return <BackupScreen />;
   }
 }
 
@@ -90,8 +97,22 @@ function ScreenWithBoundary() {
   );
 }
 
+/** Watches the app lock; while locked, the app underneath is hidden, inert and its playback paused. */
+function useAppLock() {
+  const [state, setState] = useState<AppLockState | null>(null);
+  useEffect(() => {
+    void api.getAppLockState().then(setState);
+    return onEvent('lock:changed', setState);
+  }, []);
+  useEffect(() => {
+    if (state?.locked && player.state.playing) player.toggle();
+  }, [state?.locked]);
+  return [state, setState] as const;
+}
+
 export function App() {
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
+  const [lock, setLock] = useAppLock();
   return (
     <ToastProvider>
       {!settings.data ? (
@@ -99,13 +120,18 @@ export function App() {
       ) : !settings.data.onboardingComplete ? (
         <Onboarding onDone={settings.reload} />
       ) : (
-        <RouterProvider>
-          <Shell footer={<MiniPlayer />} sidebarExtra={<RecordingIndicator />}>
-            <ScreenWithBoundary />
-          </Shell>
-          <DropTarget />
-          <GlobalEvents />
-        </RouterProvider>
+        <>
+          <div className={lock?.locked ? 'app-root app-locked' : 'app-root'} inert={lock?.locked ?? true}>
+            <RouterProvider>
+              <Shell footer={<MiniPlayer />} sidebarExtra={<RecordingIndicator />}>
+                <ScreenWithBoundary />
+              </Shell>
+              <DropTarget />
+              <GlobalEvents />
+            </RouterProvider>
+          </div>
+          {lock?.locked && <LockScreen state={lock} onUnlocked={setLock} />}
+        </>
       )}
     </ToastProvider>
   );

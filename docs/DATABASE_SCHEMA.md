@@ -77,4 +77,12 @@ Deleting a recording deletes its documents, their versions and export records by
 | `tasks` | Action items: found (waiting for review), open, done or dismissed; due date, owner, priority, reminder, and the words and moment they came from |
 | `studio_templates` | Saved options for a Studio tool |
 
+## Migration 7: app lock
+
+| Change | Purpose |
+| --- | --- |
+| `app_lock` | One row when the lock is on: a random salt, the scrypt hash of the PIN, the auto-lock time, and the wrong-attempt count and wait. The PIN itself is never stored. |
+
+Backups leave out `secrets` (API keys) and `app_lock`.
+
 Deleting a recording deletes its Studio results and the tasks found in it that were never approved. Approved tasks belong to the user and stay, with the link to the recording and its quoted words removed.

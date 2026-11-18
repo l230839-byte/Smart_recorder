@@ -409,4 +409,15 @@ export const MIGRATIONS: readonly string[] = [
     created_at INTEGER NOT NULL
   ) STRICT;
   `,
+
+  /* 7: app lock. One row; the PIN is stored only as a salted scrypt hash. */ `
+  CREATE TABLE app_lock (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    salt BLOB NOT NULL,
+    hash BLOB NOT NULL,
+    auto_lock_minutes INTEGER NOT NULL DEFAULT 5,
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until INTEGER NOT NULL DEFAULT 0
+  ) STRICT;
+  `,
 ];

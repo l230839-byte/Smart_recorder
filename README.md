@@ -6,6 +6,10 @@ EchoMind is an AI recorder and knowledge app built entirely on free tools. Recor
 
 > **Status:** in active development, built phase by phase, Windows desktop first. See [PROGRESS.md](PROGRESS.md) for what works today and [the plan](docs/IMPLEMENTATION_PLAN.md) for what is coming. Features that are not built yet are labelled in the app.
 
+## Install
+
+Download `EchoMind-Setup-<version>.exe` and run it. It installs for your Windows account without administrator rights. It is not code-signed, so Windows SmartScreen asks once: choose **More info**, then **Run anyway**. See the [user guide](docs/USER_GUIDE.md) to get started and [RELEASE.md](docs/RELEASE.md) to build it yourself.
+
 ## Run the desktop app from source
 
 Requires Node.js 24 or newer on Windows.
@@ -40,4 +44,4 @@ npm run test:live  # real Groq/Gemini run with your key in desktop/.env.live; wr
 
 ## Documentation
 
-[Plan](docs/IMPLEMENTATION_PLAN.md) · [Architecture](docs/ARCHITECTURE.md) · [Features](docs/FEATURES.md) · [Database](docs/DATABASE_SCHEMA.md) · [Internal API](docs/API_DOCUMENTATION.md) · [AI pipeline](docs/AI_PIPELINE.md) · [Security](docs/SECURITY.md) · [Testing](docs/TESTING.md) · [Free stack](docs/FREE_STACK.md) · [Changelog](docs/CHANGELOG.md)
+[User guide](docs/USER_GUIDE.md) · [Release](docs/RELEASE.md) · [Plan](docs/IMPLEMENTATION_PLAN.md) · [Architecture](docs/ARCHITECTURE.md) · [Features](docs/FEATURES.md) · [Database](docs/DATABASE_SCHEMA.md) · [Internal API](docs/API_DOCUMENTATION.md) · [AI pipeline](docs/AI_PIPELINE.md) · [Security](docs/SECURITY.md) · [Testing](docs/TESTING.md) · [Free stack](docs/FREE_STACK.md) · [Changelog](docs/CHANGELOG.md)

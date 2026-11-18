@@ -12,7 +12,8 @@ export function backgroundColor(): string {
   return nativeTheme.shouldUseDarkColors ? '#14131A' : '#F7F6F2';
 }
 
-export function createMainWindow(): BrowserWindow {
+/** `minimized` is for starting with Windows: EchoMind runs for reminders without covering the desktop. */
+export function createMainWindow(options: { minimized?: boolean } = {}): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -40,7 +41,8 @@ export function createMainWindow(): BrowserWindow {
   nativeTheme.on('updated', onTheme);
   win.on('closed', () => nativeTheme.off('updated', onTheme));
 
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => (options.minimized ? win.showInactive() : win.show()));
+  if (options.minimized) win.once('ready-to-show', () => win.minimize());
 
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void win.loadFile(join(__dirname, '../renderer/index.html'));

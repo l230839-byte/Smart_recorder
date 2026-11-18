@@ -171,11 +171,11 @@ h3 {
   background: var(--surface-hover);
 }
 .btn-record {
-  background: var(--record);
+  background: var(--record-strong);
   color: #fff;
 }
 .btn-record:hover:not(:disabled) {
-  background: var(--record-hover);
+  background: #b91c1c;
 }
 .btn-danger {
   background: var(--danger-soft);
