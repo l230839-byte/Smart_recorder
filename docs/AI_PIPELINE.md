@@ -55,10 +55,19 @@ Chat answers straight away rather than through the job queue, so a question neve
 
 Keyword retrieval cannot match a paraphrase with no shared words. The plan step reduces this by adding likely words and translations. There are no embeddings yet.
 
+## AI Studio
+
+Every Studio tool is a `studio` job on the shared queue. Lines are numbered S1, S2… across all chosen recordings and split into pieces that fit the provider.
+
+- **Structured tools** (flashcards, quiz, action items, line-by-line translation) ask each piece for JSON with the count shared out by size, validate every item (a real source line, a correct option among distinct options, a real date), ask once more if the reply cannot be read, then merge pieces evenly and remove repeats.
+- **Mind maps** need the whole picture, so long material is read as an even selection.
+- **Written tools** (study notes, rewrite, comparison, custom, summary translation) use one request when the material fits; otherwise notes per piece, then one combined result. Citations are checked as in chat.
+- Each finished piece is stored, so a retry continues where it stopped. "Too large" halves the piece size and starts again.
+
 ## Adding a provider
 
 Implement `TranscriptionProvider` or `ChatProvider` in `desktop/src/main/ai/types.ts`, add its facts to `desktop/src/shared/providers.ts`, and connect it in `makeProvider` or `makeChatProvider` in `desktop/src/main/index.ts`. A service with an OpenAI-compatible API needs only its address and models.
 
 ## Planned
 
-Study tools and the rest of AI Studio (Phase 7). Optional local semantic search (embeddings) is a candidate add-on.
+Optional local semantic search (embeddings) is a candidate add-on.

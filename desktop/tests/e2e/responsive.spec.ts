@@ -62,6 +62,15 @@ test('every screen fits the smallest window in dark mode, with no sideways scrol
     await page.getByRole('button', { name: /Ask AI about/ }).click();
     await expect(page.getByRole('textbox', { name: 'Your question' })).toBeVisible();
     await noSidewaysScroll('chat');
+    await page.goBack().catch(() => undefined);
+    await nav('AI Studio');
+    await page.getByRole('button', { name: /^Quiz Generator/ }).click();
+    await noSidewaysScroll('studio-tool');
+    await nav('Home');
+    await page.evaluate(() => window.echomind.call('createTask', { title: 'A task with a fairly long title to check wrapping on small windows', dueDate: '2020-01-01' }));
+    await page.getByRole('button', { name: /task to do/ }).click();
+    await expect(page.locator('.task-row')).toHaveCount(1);
+    await noSidewaysScroll('tasks');
     await nav('Settings');
     await noSidewaysScroll('settings');
   } finally {

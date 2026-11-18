@@ -85,7 +85,7 @@ export const DEFAULT_DOCUMENT_SETTINGS: DocumentSettings = {
   language: '',
 };
 
-export type DocumentSource = 'ai' | 'transcript' | 'summary' | 'blank';
+export type DocumentSource = 'ai' | 'transcript' | 'summary' | 'blank' | 'studio';
 
 export interface DocumentTemplate {
   id: string;

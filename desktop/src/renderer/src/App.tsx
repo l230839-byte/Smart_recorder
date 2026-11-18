@@ -3,6 +3,9 @@ import { Collections } from './features/collections/Collections';
 import { ChatScreen } from './features/chat/ChatScreen';
 import { SearchScreen } from './features/chat/SearchScreen';
 import { DocumentEditor } from './features/documents/DocumentEditor';
+import { StudioOutputScreen } from './features/studio/StudioOutputScreen';
+import { StudioTool } from './features/studio/StudioTool';
+import { TasksScreen } from './features/tasks/TasksScreen';
 import { DocumentsScreen } from './features/documents/DocumentsScreen';
 import { NewDocument } from './features/documents/NewDocument';
 import { Home } from './features/home/Home';
@@ -36,7 +39,7 @@ function Screen() {
     case 'record':
       return <RecordScreen />;
     case 'studio':
-      return <Studio />;
+      return <Studio key={route.recordingId ?? ''} recordingId={route.recordingId} />;
     case 'settings':
       return <Settings />;
     case 'recording':
@@ -69,6 +72,12 @@ function Screen() {
       return <ChatScreen key={route.threadId ?? JSON.stringify(route.scope ?? null)} threadId={route.threadId} scope={route.scope} />;
     case 'search':
       return <SearchScreen text={route.text} />;
+    case 'studio-tool':
+      return <StudioTool key={`${route.kind}:${route.recordingIds?.join() ?? ''}`} kind={route.kind} recordingIds={route.recordingIds} />;
+    case 'studio-output':
+      return <StudioOutputScreen key={route.id} id={route.id} />;
+    case 'tasks':
+      return <TasksScreen />;
   }
 }
 

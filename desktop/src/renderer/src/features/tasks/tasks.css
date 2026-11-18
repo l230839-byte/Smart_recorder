@@ -1,0 +1,73 @@
+.task-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  list-style: none;
+}
+.task-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+}
+.task-row:last-child {
+  border-bottom: 0;
+}
+.task-check {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.task-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.task-title {
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.task-row.done .task-title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  color: var(--text-muted);
+}
+.task-meta svg {
+  vertical-align: -2px;
+}
+.task-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.due.overdue {
+  color: var(--danger);
+  font-weight: 600;
+}
+.due.today {
+  color: var(--warning);
+  font-weight: 600;
+}
+.prio.high {
+  color: var(--danger);
+}
+.task-quote {
+  margin: 4px 0 0;
+  padding-inline-start: var(--s3);
+  border-inline-start: 3px solid var(--border-strong);
+  color: var(--text-muted);
+}

@@ -259,10 +259,18 @@ export class LibraryRepository {
     const removePassages = this.db.prepare('DELETE FROM transcript_chunks WHERE recording_id = ?');
     // A chat that was about this recording or quoted it holds its content, so it goes too (prompt §21).
     const removeChats = this.db.prepare('DELETE FROM chat_threads WHERE id IN (SELECT thread_id FROM chat_thread_recordings WHERE recording_id = ?)');
+    // Studio results made from it go. Found tasks not yet approved go; approved tasks are the user's own and
+    // stay, without the recording's words (the link itself is cleared by the foreign key).
+    const removeStudio = this.db.prepare('DELETE FROM studio_outputs WHERE id IN (SELECT output_id FROM studio_output_recordings WHERE recording_id = ?)');
+    const removeSuggested = this.db.prepare("DELETE FROM tasks WHERE recording_id = ? AND status IN ('suggested', 'dismissed')");
+    const clearTaskQuotes = this.db.prepare("UPDATE tasks SET source_text = '', start_ms = NULL WHERE recording_id = ?");
     transaction(this.db, () => {
       for (const id of ids) {
         files.push(...(getFiles.all(id) as { file_name: string }[]).map((r) => r.file_name));
         removeChats.run(id);
+        removeStudio.run(id);
+        removeSuggested.run(id);
+        clearTaskQuotes.run(id);
         removePassages.run(id);
         remove.run(id);
         removeSearch.run(id);

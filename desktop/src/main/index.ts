@@ -28,6 +28,9 @@ import { JobQueue } from './services/job-queue';
 import { DOCUMENT_SCHEME, handleDocumentProtocol, handleMediaProtocol, registerMediaScheme } from './services/media-protocol';
 import { DocumentService } from './services/documents';
 import { ChatService } from './services/chat';
+import { StudioService } from './services/studio';
+import { StudioRepository, TaskRepository } from './db/studio';
+import { scoreQuiz, studioMarkdown } from '@shared/studio';
 import { MediaWorker } from './services/media-worker';
 import { RecorderService } from './services/recorder';
 import { SettingsStore } from './services/settings';
@@ -124,6 +127,10 @@ async function start(): Promise<void> {
   const documentsChanged = () => emit('data:changed', 'documents');
   const chatsChanged = () => emit('data:changed', 'chats');
   const chats = new ChatRepository(db);
+  const studioRepo = new StudioRepository(db);
+  const taskRepo = new TaskRepository(db);
+  const studioChanged = () => emit('data:changed', 'studio');
+  const tasksChanged = () => emit('data:changed', 'tasks');
   const knowledge = new KnowledgeRepository(db);
   const jobsChanged = () => emit('data:changed', 'jobs');
   const queue = new JobQueue(jobs, jobsChanged);
@@ -206,6 +213,10 @@ async function start(): Promise<void> {
     library,
     transcripts,
     summaries,
+    studioMarkdown: (id) => {
+      const output = studioRepo.get(id);
+      return output?.content && output.content.type !== 'tasks' ? { title: output.title, markdown: studioMarkdown(output.content, output.title) } : null;
+    },
     requestAi: (recordingId, documentId, options) => (documentId ? summaryService.request(recordingId, 'document', { summary: options, documentId }) : summaryService.check(recordingId)),
     exportsDir,
     // Loaded once and kept; a failed load is forgotten so the next export tries again.
@@ -232,6 +243,43 @@ async function start(): Promise<void> {
   });
   chatService.recover();
 
+  const studioService = new StudioService({
+    studio: studioRepo,
+    tasks: taskRepo,
+    jobs,
+    queue,
+    library,
+    transcripts,
+    summaries,
+    usage,
+    settings: () => settings.get(),
+    makeProvider: makeChatProvider,
+    blockedBy: (provider) => summaryService.blockedBy(provider),
+    changed: jobsChanged,
+    ready: (recordingId, title) => {
+      studioChanged();
+      tasksChanged();
+      notifyReady(recordingId, title, 'AI Studio result');
+    },
+  });
+
+  // Task reminders: checked every half minute while EchoMind runs, and once at launch. Each shows once.
+  const remind = () => {
+    const due = taskRepo.takeDueReminders();
+    if (!due.length) return;
+    tasksChanged();
+    if (!Notification.isSupported()) return;
+    for (const task of due) {
+      const note = new Notification({ title: 'Reminder', body: task.dueDate ? `${task.title} (due ${task.dueDate})` : task.title });
+      note.on('click', () => {
+        mainWindow?.show();
+        emit('tasks:open', null);
+      });
+      note.show();
+    }
+  };
+  setInterval(remind, 30_000);
+
   const consentKey = (provider: string, purpose: AiPurpose) => (purpose === 'text' ? textConsentKey(provider) : provider);
 
   const deleteFiles = async (ids: string[]) => {
@@ -243,6 +291,8 @@ async function start(): Promise<void> {
     await Promise.all(exported.map((f) => rm(join(exportsDir, f), { force: true })));
     libraryChanged();
     chatsChanged();
+    studioChanged();
+    tasksChanged();
   };
   const purgeTrash = async () => {
     const days = settings.get().trashRetentionDays;
@@ -531,6 +581,68 @@ async function start(): Promise<void> {
     },
     searchEverything: (query) => knowledge.search(query),
 
+    startStudio: (input) => studioService.start(input),
+    listStudio: (recordingId) => studioRepo.list(recordingId),
+    getStudio: (id) => studioRepo.get(id),
+    studioJob: (id) => {
+      const job = studioService.jobFor(id);
+      if (!job) return null;
+      const { attempts, model, language, options, ...rest } = job;
+      return rest;
+    },
+    renameStudio: (id, title) => {
+      studioRepo.rename(id, title);
+      studioChanged();
+    },
+    deleteStudio: (id) => {
+      const job = studioService.jobFor(id);
+      if (job && ['queued', 'running', 'waiting'].includes(job.status)) queue.cancel(job.id);
+      studioRepo.delete(id);
+      studioChanged();
+    },
+    saveQuizAttempt: (outputId, answers) => {
+      const output = studioRepo.get(outputId);
+      if (output?.content?.type !== 'quiz') throw new Error('This quiz no longer exists.');
+      const { score, total } = scoreQuiz(output.content.questions, answers);
+      const id = studioRepo.addAttempt(outputId, answers, score, total);
+      studioChanged();
+      return studioRepo.attempts(outputId).find((a) => a.id === id)!;
+    },
+    listQuizAttempts: (outputId) => studioRepo.attempts(outputId),
+    listStudioTemplates: () => studioRepo.templates(),
+    saveStudioTemplate: (name, kind, options) => {
+      const id = studioRepo.saveTemplate(name, kind, options);
+      studioChanged();
+      return id;
+    },
+    deleteStudioTemplate: (id) => {
+      studioRepo.deleteTemplate(id);
+      studioChanged();
+    },
+    listTasks: (filter) => taskRepo.list(filter),
+    taskCounts: () => taskRepo.counts(),
+    createTask: (input) => {
+      const id = taskRepo.create(input);
+      tasksChanged();
+      return id;
+    },
+    updateTask: (id, edit) => {
+      taskRepo.update(id, edit);
+      tasksChanged();
+    },
+    deleteTask: (id) => {
+      taskRepo.delete(id);
+      tasksChanged();
+    },
+    saveImage: async (defaultName, format, data) => {
+      if (format !== 'png' && format !== 'svg') throw new Error('Unsupported image format.');
+      const options = { defaultPath: `${defaultName.replace(/[<>:"/\\|?*]+/g, ' ').trim() || 'Mind map'}.${format}`, filters: [{ name: format.toUpperCase(), extensions: [format] }] };
+      const result = mainWindow ? await dialog.showSaveDialog(mainWindow, options) : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) return false;
+      await writeFile(result.filePath, Buffer.from(data));
+      return true;
+    },
+
     listDocuments: (recordingId) => documentRepo.list(recordingId),
     getDocument: (id) => documentRepo.get(id),
     createDocument: (input) => documentService.create(input),
@@ -641,6 +753,7 @@ async function start(): Promise<void> {
   });
   imports.resume();
   queue.resume();
+  remind();
   // Transcripts made before chat existed get their passages indexed once, a few at a time so the app
   // stays responsive. Chat also indexes anything it needs that this has not reached yet.
   const indexPassages = () => {

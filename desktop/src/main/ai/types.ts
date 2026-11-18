@@ -51,7 +51,7 @@ export interface TranscriptionProvider {
   testConnection(signal: AbortSignal): Promise<void>;
 }
 
-export type ChatTask = 'summary' | 'chapters' | 'suggest' | 'chat' | 'chat-plan';
+export type ChatTask = 'summary' | 'chapters' | 'suggest' | 'chat' | 'chat-plan' | 'studio' | 'studio-json';
 
 export interface ChatRequest {
   messages: ChatMessage[];

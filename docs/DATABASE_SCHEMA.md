@@ -67,4 +67,14 @@ Deleting a recording deletes its documents, their versions and export records by
 | `chat_thread_recordings` | The recordings a chat is about and every recording whose text it has read, so deleting a recording deletes those chats |
 | `chat_messages` | Questions and answers: Markdown with checked citations, whether the recordings answered it, general knowledge kept apart, sources, and what was read |
 
-Later phases add study material and tasks through new migrations.
+## Migration 6: AI Studio and tasks
+
+| Change | Purpose |
+| --- | --- |
+| `studio_outputs` | Every Studio result: its kind, options, and content as JSON (Markdown, flashcards, quiz, mind map or translation) |
+| `studio_output_recordings` | The recordings a result came from, in order. Deleting any of them deletes the result. |
+| `quiz_attempts` | Answers and score for each attempt at a quiz |
+| `tasks` | Action items: found (waiting for review), open, done or dismissed; due date, owner, priority, reminder, and the words and moment they came from |
+| `studio_templates` | Saved options for a Studio tool |
+
+Deleting a recording deletes its Studio results and the tasks found in it that were never approved. Approved tasks belong to the user and stay, with the link to the recording and its quoted words removed.

@@ -34,5 +34,10 @@ Only what is implemented and verified is listed as **Working**.
 | Retrieval: whole transcripts when they fit, otherwise BM25 search over passages, guided by a short AI search plan (follow-ups, time ranges, other languages) | Working. Keyword-based: there is no semantic (embedding) search yet. |
 | Global search: names, tags, notes, transcripts, chapters, speakers, summaries, documents; snippets with times; filters; Ctrl+K | Working |
 | Chat on live Groq or Gemini | Written, not yet run. Needs a key (`npm run test:live`). |
-| AI Studio, study tools, tasks | Phase 7 |
+| AI Studio: flashcards, quizzes, mind maps, study notes (8 kinds), translation, comparison, rewrite (6 styles), custom, with saved templates; every result saved with its recordings | Working (tested with the demo model and scripted replies) |
+| Study: flashcard study mode, quizzes with difficulty, MCQ/true-false marked automatically, written answers self-marked, saved attempts, AI explanations labelled; PDF and Word export | Working |
+| Mind maps: drawn, each point plays its source, export as PNG or SVG | Working |
+| Action items: found in recordings, reviewed and approved by you, due dates, owners, priority, reminders as Windows notifications, search, history | Working. Reminders appear only while EchoMind is running. |
+| Batch processing of several recordings (separate or combined results) | Working |
+| Studio tools on live Groq or Gemini | Written, not yet run. Needs a key (`npm run test:live`). |
 | App lock, backup, installer | Phase 8 |

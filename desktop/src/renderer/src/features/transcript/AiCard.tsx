@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CircleAlert, Clock, FileText, Heading, ListTree, MessagesSquare, RotateCcw, Sparkles, Tag, Type, X } from 'lucide-react';
+import { CheckSquare, CircleAlert, Clock, FileText, Heading, LayoutGrid, ListTree, MessagesSquare, RotateCcw, Sparkles, Tag, Type, X } from 'lucide-react';
 import { formatDuration } from '@shared/format';
 import type { ProcessingJob, Recording } from '@shared/models';
 import { PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES } from '@shared/providers';
@@ -9,6 +9,7 @@ import { player } from '../../lib/player';
 import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
 import '../summary/summary.css';
+import { DEFAULT_STUDIO_OPTIONS } from '@shared/studio';
 import { useTranscribe } from './ai-gate';
 
 export function formatRetryTime(at: number | null): string {
@@ -61,7 +62,7 @@ export function AiCard({ recording }: { recording: Recording }) {
   const usage = useQuery(() => api.getUsage(), [], ['jobs']);
   const chapters = useQuery(() => api.listChapters(recording.id), [recording.id], ['summaries']);
   const suggestions = useQuery(() => api.getSuggestions(recording.id), [recording.id], ['summaries']);
-  const { start, startChapters, startSuggestions, dialogs } = useTranscribe();
+  const { start, startText, startChapters, startSuggestions, dialogs } = useTranscribe();
   const [language, setLanguage] = useState<string | null>(null);
   const current = job.data;
   const active = current && ['queued', 'running', 'waiting'].includes(current.status);
@@ -139,6 +140,12 @@ export function AiCard({ recording }: { recording: Recording }) {
             </Button>
             <Button size="sm" icon={Tag} onClick={() => startSuggestions(recording.id)}>
               Suggest title and tags
+            </Button>
+            <Button size="sm" icon={CheckSquare} onClick={() => startText(() => api.startStudio({ kind: 'tasks', recordingIds: [recording.id], options: DEFAULT_STUDIO_OPTIONS }), (out) => go({ name: 'studio-output', id: out.outputId }))}>
+              Find action items
+            </Button>
+            <Button size="sm" icon={LayoutGrid} onClick={() => go({ name: 'studio', recordingId: recording.id })}>
+              More in AI Studio
             </Button>
           </div>
         )}

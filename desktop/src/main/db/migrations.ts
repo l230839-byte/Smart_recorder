@@ -347,4 +347,66 @@ export const MIGRATIONS: readonly string[] = [
   ) STRICT;
   CREATE INDEX idx_chat_messages_thread ON chat_messages(thread_id, created_at);
   `,
+
+  /* 6: AI Studio results, quiz attempts, tasks and Studio templates */ `
+  CREATE TABLE studio_outputs (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    options TEXT NOT NULL,
+    content TEXT,
+    dropped_citations INTEGER NOT NULL DEFAULT 0,
+    truncated INTEGER NOT NULL DEFAULT 0,
+    provider TEXT,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+
+  -- The recordings a result was made from. Deleting any of them deletes the result.
+  CREATE TABLE studio_output_recordings (
+    output_id TEXT NOT NULL REFERENCES studio_outputs(id) ON DELETE CASCADE,
+    recording_id TEXT NOT NULL REFERENCES recordings(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (output_id, recording_id)
+  ) STRICT;
+  CREATE INDEX idx_studio_output_recordings_recording ON studio_output_recordings(recording_id);
+
+  CREATE TABLE quiz_attempts (
+    id TEXT PRIMARY KEY,
+    output_id TEXT NOT NULL REFERENCES studio_outputs(id) ON DELETE CASCADE,
+    answers TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+
+  -- Approved tasks belong to the user and outlive their recording; the link and quote are cleared.
+  CREATE TABLE tasks (
+    id TEXT PRIMARY KEY,
+    recording_id TEXT REFERENCES recordings(id) ON DELETE SET NULL,
+    start_ms INTEGER,
+    source_text TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+    description TEXT NOT NULL DEFAULT '',
+    due_date TEXT,
+    due_text TEXT NOT NULL DEFAULT '',
+    owner TEXT NOT NULL DEFAULT '',
+    priority TEXT CHECK (priority IN ('high', 'medium', 'low')),
+    status TEXT NOT NULL CHECK (status IN ('suggested', 'open', 'done', 'dismissed')),
+    remind_at INTEGER,
+    reminded INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    completed_at INTEGER
+  ) STRICT;
+  CREATE INDEX idx_tasks_status ON tasks(status, due_date);
+  CREATE INDEX idx_tasks_recording ON tasks(recording_id);
+  CREATE INDEX idx_tasks_remind ON tasks(remind_at) WHERE reminded = 0;
+
+  CREATE TABLE studio_templates (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+    kind TEXT NOT NULL,
+    options TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  ) STRICT;
+  `,
 ];

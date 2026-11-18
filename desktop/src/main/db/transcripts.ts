@@ -235,6 +235,14 @@ export class JobRepository {
     return row ? toJob(row) : null;
   }
 
+  /** The newest job of a kind whose options name this id, such as a Studio result's job. */
+  latestByOption(kind: JobKind, key: string, value: string): StoredJob | null {
+    const row = this.db
+      .prepare(`${JOB_SELECT} WHERE j.kind = ? AND json_extract(j.options, '$.' || ?) = ? ORDER BY j.created_at DESC, j.rowid DESC LIMIT 1`)
+      .get(kind, key, value) as JobRow | undefined;
+    return row ? toJob(row) : null;
+  }
+
   latestForDocument(documentId: string): StoredJob | null {
     const row = this.db
       .prepare(`${JOB_SELECT} WHERE j.kind = 'document' AND json_extract(j.options, '$.documentId') = ? ORDER BY j.created_at DESC, j.rowid DESC LIMIT 1`)

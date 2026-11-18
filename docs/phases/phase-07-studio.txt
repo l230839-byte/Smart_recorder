@@ -1,0 +1,157 @@
+ECHOMIND DESKTOP: PHASE 07, AI STUDIO, STUDY TOOLS AND TASKS
+================================================================================
+Status:      COMPLETE for everything testable here. Tested with the demo model and
+             scripted model replies; not yet run on live Groq or Gemini. The live test now
+             covers a quiz and action items too, and needs only the owner's key.
+Prompt refs: §10 AI Studio, §13 study assistant, §14 tasks and reminders, §15.5 custom
+             templates, §17 workflows A and D, §21 privacy, §22 reliability
+Date:        2026-11-18
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Make AI Studio complete: every tool in prompt §10 works for any recording, whatever its
+source, and every result is saved with the recordings it came from. Give learners real study
+tools and give everyone a reviewed, local task list with reminders.
+
+
+2. WHAT THIS PHASE INCLUDES (THE FEATURES, AS A USER SEES THEM)
+--------------------------------------------------------------------------------
+AI Studio (every tile now works)
+- Smart Summarizer and Lecture Notes (Phase 4), Meeting Minutes, PDF, Word and
+  Presentations (Phase 5), and, new here:
+- Flashcards: 3 to 60 cards, four difficulty settings, any language.
+- Quiz Generator: multiple choice, true or false, short and long questions, chosen per quiz.
+- Mind Map: a central topic, branches and points, each pointing at its moment.
+- Study Notes: study guide, revision sheet, topic-wise lecture notes, definitions, formulas,
+  important concepts, simple explanation, detailed explanation.
+- Translation Studio: a transcript line by line with its times, or a saved summary.
+- Comparison: 2 to 6 recordings; shared themes, differences, decisions over time, open
+  questions, each point naming its recording.
+- Rewrite Studio: report, article, email, explanation, blog post or formal record.
+- Custom Studio: your own instructions.
+- Any tool's options can be saved as a template and reused.
+- Opened from a recording ("More in AI Studio"), each tool starts with that recording.
+- Every result is kept: listed in AI Studio and on each recording, renamable, deletable, and
+  "Make another like this".
+- PDF or Word: any result becomes an editable document (Phase 5) and exports. Quizzes export
+  with an answer key; flashcards as a table; mind maps as an outline.
+
+Studying
+- Flashcards: study one card at a time; Space flips, K "I knew it", L "still learning",
+  arrows move. At the end, study again only the cards still to learn. Shuffle; see all.
+- Quizzes: answer, then "Check answers". Multiple choice and true or false are marked
+  automatically, with the right option highlighted; written answers show the model answer
+  and you mark your own. Explanations appear; any that go beyond the recording are labelled
+  "AI explanation, beyond the recording". Every attempt is saved with its score.
+- Every card, question and map point has a time that plays the moment it came from.
+
+Tasks
+- "Find action items" on a recording, or the Action Items tool, finds tasks, due dates
+  (worked out from the recording date, so "Friday" becomes a date), owners and priority, only
+  when the recording says so.
+- They wait in "To review" with the words they came from and a time to play. Approve,
+  edit and approve, dismiss, or approve all. Dismissed ones are not suggested again; finding
+  again adds no duplicates.
+- "To do" lists approved and your own tasks, soonest due first, with overdue ones marked.
+  Tick to complete, with Undo. "Done" keeps the history. Search across everything.
+- Reminders at a time you choose appear as Windows notifications; selecting one opens
+  Tasks. Home shows how many are to do, overdue and to review.
+- Nothing is sent to a calendar or to anyone (§14).
+
+Several recordings at once (workflow D)
+- In the Library, select recordings, then Process: a summary, study guide, flashcards,
+  quiz or action items for each, or one combined result. Each runs in the queue with its
+  own progress and retry.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  One engine for every tool. Lines are numbered S1, S2… across all chosen recordings and
+    split into pieces that fit the provider. Structured tools ask each piece for JSON with
+    the count shared out by size; written tools take notes per piece, then combine.
+D2  Every item is validated before it is kept: a real source line, a multiple-choice answer
+    that is one of four distinct options (letters and indexes are mapped back), true or
+    false only, real dates only, mind maps limited to three levels and 80 points. Bad
+    replies are asked for once more.
+D3  Each finished piece is stored, so a failure or a rate limit never repeats finished work.
+D4  Grounding in study material: answers must come from the recording; explanations may
+    add outside knowledge but are flagged, and the flag is shown and exported (§13).
+D5  Tasks are proposals until approved. Approved tasks are the user's: if their recording
+    is deleted, they stay, with the link and quoted words removed. Unapproved ones go.
+D6  Reminders are checked every 30 seconds while EchoMind runs, and once at launch, so
+    reminders missed while it was closed appear when it opens. Each shows once.
+D7  Export reuses Phase 5 documents rather than a second exporter, so study material gets
+    the same fonts, Urdu shaping, layout options and formats.
+
+
+4. FIXES AND IMPROVEMENTS MADE WHILE BUILDING AND REVIEWING
+--------------------------------------------------------------------------------
+F1  [UX] Flashcards use Space to flip, but the app also uses Space to play and pause. The
+    flashcard key now runs first and the global shortcut stands aside.
+F2  [UX] Comparison needs two recordings but started with none chosen. It now starts with
+    the two newest transcribed recordings, as other tools start with one.
+F3  [UX] Completing a task removed it from the list with no way back. Undo added.
+F4  [UX] "Edit" on a found task now saves and approves in one step ("Edit and approve").
+F5  [Earlier phases] AI Studio no longer shows any "Phase" badges: every tool works. The
+    recording page lists its Studio results and tasks; Home shows tasks; "More in AI Studio"
+    carries the recording into each tool.
+F6  [Demo] Speaker labels no longer leak into demo task titles.
+
+
+5. DESIGN REVIEW (FROM SCREENSHOTS IN desktop/test-shots)
+--------------------------------------------------------------------------------
+R1  Flashcards: one large card, a clear Question/Answer label, the source time under the
+    answer, and the two main choices as the biggest buttons.
+R2  Quiz: right answers green, wrong ones red, model answers and self-marking inline, and a
+    sticky score bar so the result is always in view.
+R3  Mind map: branch colours carry through to their points; long labels are shortened on
+    the map with the full text in the tooltip and in exports.
+R4  Tasks: review shows the quoted words and the moment, so a task can be judged without
+    opening the recording.
+R5  Every new screen checked at 860x600 in dark mode with no sideways scrolling.
+
+
+6. TESTING (all passing on 2026-11-18)
+--------------------------------------------------------------------------------
+Unit (Vitest): 233 tests, 18 of them new.
+- Pieces: numbering, repeated headers, size; sharing counts; even merging.
+- Validation of flashcards, quizzes (letter answers, duplicate options, wrong types), mind
+  maps (depth and size), tasks (duplicates, dates, priority) and translations.
+- Markdown for documents for every kind; quiz scoring.
+- On a real database with the queue: flashcards, quiz and mind map saved with their
+  recording; action items for review with no duplicates on a second run; translation of a
+  transcript with times and of a summary; long material in parts where a failed part is
+  retried without repeating finished ones; comparison citations naming each recording;
+  nothing starts when blocked or without transcripts; deletion rules for results and tasks.
+- Tasks: create, edit, complete and reopen, search, counts with overdue, reminders once.
+
+End to end (Playwright, the real app): 43 tests; 42 pass and 1 is skipped (AMR without
+FFmpeg, skipped because FFmpeg is installed). New:
+- Flashcards studied with the keyboard and buttons, then the still-to-learn round; a quiz
+  taken, checked, self-marked and saved; a mind map drawn and a point played; study notes
+  turned into a document for PDF or Word; results listed in AI Studio.
+- Action items found from a recording, edited and approved, overdue warning, a new task
+  completed with the Undo toast, Home counts; translation with times; a comparison;
+  batch flashcards for two recordings; deletion keeping the approved task without its words.
+- The new screens at 860x600 in dark mode.
+
+Other: TypeScript 0 errors, ESLint 0 errors, licence check passes, no new dependencies.
+
+
+7. UNRESOLVED / KNOWN LIMITS
+--------------------------------------------------------------------------------
+L1  NOT YET RUN ON LIVE GROQ OR GEMINI. `npm run test:live` now also makes a quiz and finds
+    action items in the generated meeting, and checks them against its known facts.
+L2  Reminders appear only while EchoMind is running (or when it next opens). A background
+    reminder service would need EchoMind to start with Windows; that is a Phase 8 choice.
+L3  Mind maps of long recordings read an even selection, so a brief topic may be missing.
+L4  Written quiz answers are marked by the learner, not by AI, so the score depends on
+    honest self-marking. AI marking is possible later but would send answers to a provider.
+L5  Everything else from earlier reports still applies.
+
+
+8. NEXT: PHASE 8, HARDENING AND RELEASE
+--------------------------------------------------------------------------------
+App lock, encrypted backup and restore, portable share bundles, security, performance and
+accessibility passes, recovery tests, the Windows installer, and the §29 acceptance run.

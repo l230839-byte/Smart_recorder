@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import type { ChatDetail } from '../../src/shared/chat';
 import type { CreateDocumentOutcome, DocumentExport, DocumentRecord, ImportJob, ProcessingJob, Recording, Summary, Transcript, UsageSummary } from '../../src/shared/models';
+import { DEFAULT_STUDIO_OPTIONS, type StudioOutput, type Task } from '../../src/shared/studio';
 import { DEFAULT_SUMMARY_OPTIONS } from '../../src/shared/summaries';
 import { closeApp, completeOnboarding, launch, removeDir, tempDataDir } from '../e2e/helpers';
 import { FACTS, makeSpeech, QUESTIONS } from './meeting';
@@ -106,6 +107,31 @@ test('live: real transcription, summary, chapters, document and chat, judged aga
       } else {
         report.push(`## ${label}: document refused: ${created.reason}`, '');
       }
+
+      // AI Studio: a quiz and action items, judged against the same facts.
+      for (const kind of ['quiz', 'tasks'] as const) {
+        started = Date.now();
+        const out = await call<{ ok: boolean; outputId?: string; reason?: string }>(page, 'startStudio', { kind, recordingIds: [rec.id], options: { ...DEFAULT_STUDIO_OPTIONS, count: 6, questionTypes: ['mcq', 'tf', 'short'] } });
+        if (!out.ok) {
+          report.push(`## ${label}: ${kind} refused: ${out.reason}`, '');
+          continue;
+        }
+        const job = await waitJob(page, () => call(page, 'studioJob', out.outputId));
+        const result = await call<StudioOutput>(page, 'getStudio', out.outputId);
+        report.push(`## ${label}: ${kind} (${((Date.now() - started) / 1000).toFixed(1)} s): ${job.status}${job.error ? ` (${job.error})` : ''}`, '');
+        if (result.content?.type === 'quiz') {
+          report.push(
+            `Invented sources removed: ${result.droppedCitations}.`,
+            '',
+            ...result.content.questions.map((q, i) => `${i + 1}. [${q.type}] ${q.question}${q.options.length ? ` | ${q.options.join(' / ')}` : ''}\n   Answer: ${q.answer}${q.source ? ` (at ${(q.source.startMs / 1000).toFixed(0)}s)` : ' (no source)'}${q.explanationSupplemental ? ' [AI explanation]' : ''}`),
+            '',
+          );
+        }
+      }
+      const found = await call<Task[]>(page, 'listTasks', { status: 'suggested' });
+      report.push(`Action items found (${found.length}):`, '', ...found.map((t) => `- ${t.title} | due ${t.dueDate ?? t.dueText ?? '-'} | owner ${t.owner || '-'} | "${t.sourceText}"`), '', 'Facts present in the action items:', factCheck(found.map((t) => `${t.title} ${t.owner} ${t.dueText}`).join('. ')), '');
+      // Dismissed, so the second provider's run finds them fresh.
+      for (const t of found) await call(page, 'updateTask', t.id, { status: 'dismissed' });
 
       // Chat
       const thread = await call<string>(page, 'startChat', { kind: 'recordings', recordingIds: [rec.id] });

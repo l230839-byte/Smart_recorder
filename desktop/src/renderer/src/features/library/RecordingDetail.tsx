@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Archive, ArchiveRestore, Bookmark, Download, FileAudio, FileText, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Bookmark, CheckSquare, Download, FileAudio, FileText, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
 import { formatBytes, formatDateTime, formatDuration } from '@shared/format';
 import { clampPosition } from '@shared/media';
 import { TRANSCRIPT_LANGUAGES } from '@shared/providers';
 import { templateById } from '@shared/documents';
+import { STUDIO_KINDS } from '@shared/studio';
 import { MODE_INFO, RECORDING_MODES, SOURCE_LABEL, type Recording, type RecordingMode } from '@shared/models';
 import { Button, Card, ConfirmDialog, Dialog, EmptyState, IconButton, Loading, Menu, SectionTitle, TextPromptDialog } from '../../design/components';
 import { Waveform } from '../../design/Waveform';
@@ -13,6 +14,7 @@ import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
 import { CollectionPicker } from '../collections/CollectionPicker';
 import { TEMPLATE_ICONS } from '../documents/NewDocument';
+import { KIND_ICON } from '../studio/Studio';
 import { AiCard } from '../transcript/AiCard';
 import { ModeBadge } from './RecordingRow';
 
@@ -128,6 +130,8 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
   const peaks = useQuery(() => api.getPeaks(id), [id]);
   const transcript = useQuery(() => api.getTranscript(id), [id], ['transcripts']);
   const documents = useQuery(() => api.listDocuments(id), [id], ['documents']);
+  const studioResults = useQuery(() => api.listStudio(id), [id], ['studio']);
+  const recordingTasks = useQuery(() => api.listTasks({ recordingId: id }), [id], ['tasks']);
   const playback = usePlayer();
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [noteAt, setNoteAt] = useState(0);
@@ -245,6 +249,46 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
           </Card>
 
           {!inTrash && <AiCard recording={recording} />}
+
+          {!inTrash && (
+            <section>
+              <SectionTitle
+                title="AI Studio results"
+                action={
+                  <Button size="sm" variant="ghost" icon={Plus} onClick={() => go({ name: 'studio', recordingId: id })}>
+                    New
+                  </Button>
+                }
+              />
+              <Card>
+                {!studioResults.data?.length && !recordingTasks.data?.length ? (
+                  <p className="muted small">Flashcards, quizzes, mind maps, study notes, translations and action items made from this recording appear here.</p>
+                ) : (
+                  <div className="doc-mini-list">
+                    {!!recordingTasks.data?.length && (
+                      <button type="button" className="doc-mini" onClick={() => go({ name: 'tasks' })}>
+                        <CheckSquare size={15} aria-hidden />
+                        <span className="grow doc-row-title truncate">{`${recordingTasks.data.length} ${recordingTasks.data.length === 1 ? 'task' : 'tasks'}`}</span>
+                        <span className="muted small">{recordingTasks.data.filter((t) => t.status === 'suggested').length ? `${recordingTasks.data.filter((t) => t.status === 'suggested').length} to review` : 'Tasks'}</span>
+                      </button>
+                    )}
+                    {studioResults.data?.map((o) => {
+                      const Icon = KIND_ICON[o.kind];
+                      return (
+                        <button key={o.id} type="button" className="doc-mini" onClick={() => go({ name: 'studio-output', id: o.id })}>
+                          <Icon size={15} aria-hidden />
+                          <span className="grow doc-row-title truncate" dir="auto">
+                            {o.title}
+                          </span>
+                          <span className="muted small">{o.content ? STUDIO_KINDS[o.kind].label : 'In progress'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </section>
+          )}
 
           {!inTrash && (
             <section>

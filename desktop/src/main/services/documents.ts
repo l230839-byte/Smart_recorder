@@ -28,6 +28,8 @@ export interface DocumentDeps {
   library: LibraryRepository;
   transcripts: TranscriptRepository;
   summaries: SummaryRepository;
+  /** AI Studio results, as Markdown, for study material in PDF and Word (prompt §13). */
+  studioMarkdown?: (studioId: string) => { title: string; markdown: string } | null;
   /** Starts AI writing for a document. Returns why it cannot start, if it cannot. */
   requestAi: (recordingId: string, documentId: string | null, options: SummaryOptions) => AiOutcome;
   exportsDir: string;
@@ -100,6 +102,10 @@ export class DocumentService {
       const summary = input.summaryId ? summaries.get(input.summaryId) : null;
       if (!summary) throw new Error('This summary no longer exists.');
       markdown = summary.markdown;
+    } else if (input.source === 'studio') {
+      const studio = input.studioId ? this.deps.studioMarkdown?.(input.studioId) : null;
+      if (!studio) throw new Error('This result no longer exists, or is not finished yet.');
+      markdown = studio.markdown;
     }
 
     const id = documents.create({ recordingId: recording?.id ?? null, title, template: template.id, settings, markdown });

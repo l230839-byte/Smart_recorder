@@ -165,9 +165,10 @@ test('summaries search, Studio entry and selecting transcript text', async () =>
     await expect.poll(async () => (await call<Summary[]>(page, 'listSummaries', rec.id)).length, { timeout: 15_000 }).toBe(1);
     expect(await call<Recording[]>(page, 'listRecordings', { view: 'all', sort: 'newest', text: 'placeholder demo' })).toHaveLength(1);
 
-    // AI Studio: working tools are buttons, and later ones say when they arrive.
+    // AI Studio: every tool is a working button; none is labelled as coming in a later phase.
     await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'AI Studio', exact: true }).click();
-    await expect(page.getByText('Phase 7').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Flashcards/ })).toBeVisible();
+    await expect(page.getByText(/^Phase \d/)).toHaveCount(0);
     await page.screenshot({ path: 'test-shots/studio.png' });
     await page.getByRole('button', { name: /^Lecture Notes/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: /recorder/ }).click();

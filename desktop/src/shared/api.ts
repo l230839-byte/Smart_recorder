@@ -30,6 +30,7 @@ import type { LlmProviderId, TranscriptionProviderId } from './providers';
 import type { ChatDetail, ChatScope, ChatThread } from './chat';
 import type { DocumentSettings, ExportFormat } from './documents';
 import type { SearchQuery, SearchResult } from './search';
+import type { QuizAnswer, QuizAttempt, StartStudioInput, StudioKind, StudioOptions, StudioOutput, StudioTemplate, Task, TaskEdit, TaskStatus } from './studio';
 import type { Chapter, Suggestions, SummaryOptions } from './summaries';
 
 export interface RecordingEdit {
@@ -154,6 +155,27 @@ export interface EchoApi {
   deleteChat(id: string): void;
   searchEverything(query: SearchQuery): SearchResult[];
 
+  // AI Studio, study tools and tasks
+  /** Starts a Studio tool. Returns the result's id, or why it cannot start. */
+  startStudio(input: StartStudioInput): { ok: true; outputId: string } | Exclude<AiOutcome, { ok: true }>;
+  listStudio(recordingId?: string): StudioOutput[];
+  getStudio(id: string): StudioOutput | null;
+  studioJob(id: string): ProcessingJob | null;
+  renameStudio(id: string, title: string): void;
+  deleteStudio(id: string): void;
+  saveQuizAttempt(outputId: string, answers: QuizAnswer[]): QuizAttempt;
+  listQuizAttempts(outputId: string): QuizAttempt[];
+  listStudioTemplates(): StudioTemplate[];
+  saveStudioTemplate(name: string, kind: StudioKind, options: StudioOptions): string;
+  deleteStudioTemplate(id: string): void;
+  listTasks(filter: { status?: TaskStatus; recordingId?: string; text?: string }): Task[];
+  taskCounts(): { suggested: number; open: number; overdue: number };
+  createTask(input: { title: string; description?: string; dueDate?: string | null; recordingId?: string | null }): string;
+  updateTask(id: string, edit: TaskEdit): void;
+  deleteTask(id: string): void;
+  /** Saves an image (a mind map) where the user picks. Returns false if they cancel. */
+  saveImage(defaultName: string, format: 'png' | 'svg', data: Uint8Array): Promise<boolean>;
+
   // Documents
   listDocuments(recordingId?: string): DocumentRecord[];
   getDocument(id: string): DocumentRecord | null;
@@ -176,13 +198,15 @@ export interface EchoApi {
 /** Events pushed from the main process to the UI. */
 export interface EchoEvents {
   /** Stored data changed; screens re-read what they show. The value names the area. */
-  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries' | 'documents' | 'chats';
+  'data:changed': 'settings' | 'library' | 'imports' | 'jobs' | 'transcripts' | 'summaries' | 'documents' | 'chats' | 'studio' | 'tasks';
   /** Files arrived from outside the window ("Open with", a second launch). The batch is already queued. */
   'imports:opened': string;
   /** Interrupted recordings were rebuilt at launch. The value is how many. */
   'recordings:recovered': number;
   /** The user chose "Stop and save" when closing during a recording. */
   'recorder:stop-and-quit': null;
+  /** The user clicked a task reminder. */
+  'tasks:open': null;
   /** The user clicked a notification about this recording. */
   'recording:open': string;
 }

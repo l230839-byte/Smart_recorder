@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Phase 7: AI Studio, study tools and tasks
+
+- Every AI Studio tool works: flashcards, quizzes, mind maps, study notes, translation, comparison, rewrite and custom, plus saved templates. Every result is kept with its recordings and can be exported to PDF or Word.
+- Study: flashcards with a keyboard study mode; quizzes with difficulty, automatic marking, model answers, saved attempts; anything beyond the recording labelled as an AI explanation.
+- Mind maps that play the moment behind each point, saved as PNG or SVG.
+- Tasks: action items found in recordings wait for your approval; due dates, owners, priority, reminders, overdue warnings, search and history. Nothing is sent to a calendar or to anyone.
+- Process several recordings at once from the Library, one result each or one combined.
+- Long recordings are handled in parts, and finished parts are never repeated after a failure.
+
 ### Phase 6: AI chat and search
 
 - Ask questions about one recording, several, a collection or the whole library, with follow-ups and saved chats.

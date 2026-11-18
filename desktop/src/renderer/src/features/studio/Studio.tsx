@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { BookOpenCheck, CheckSquare, Combine, FileSpreadsheet, FileText, FolderOpen, GraduationCap, Languages, ListChecks, MessagesSquare, Network, NotebookPen, PenLine, Presentation, ScrollText, Wand2 } from 'lucide-react';
+import { BookOpenCheck, CheckSquare, Combine, FileSpreadsheet, FileText, FolderOpen, GraduationCap, Languages, ListChecks, MessagesSquare, Network, NotebookPen, PenLine, Presentation, ScrollText, Wand2, BookMarked } from 'lucide-react';
 import type { ExportFormat } from '@shared/documents';
-import { formatDuration } from '@shared/format';
+import { formatDuration, formatRelative } from '@shared/format';
+import { STUDIO_KINDS, type StudioKind } from '@shared/studio';
 import type { SummaryOptions } from '@shared/summaries';
-import { Button, Card, Dialog, EmptyState, PageHeader, type IconType } from '../../design/components';
+import { Button, Dialog, EmptyState, PageHeader, SectionTitle, type IconType } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { useRouter } from '../../lib/router';
 import './studio.css';
@@ -12,32 +13,46 @@ interface Tool {
   name: string;
   hint: string;
   icon: IconType;
-  /** The build phase that delivers it. Tools are only clickable once they work (prompt §16). */
-  phase: number;
   /** A summary tool: opens Summaries with these settings for the recording chosen. */
   preset?: Partial<SummaryOptions>;
   /** A document tool: opens New document with this template and export format. */
   document?: { template?: string; exportAs?: ExportFormat };
+  /** A Studio tool. */
+  studio?: StudioKind;
 }
 
+// The tools of prompt §10, plus the study notes of §13. Every one works for any recording, whatever its source.
 const TOOLS: Tool[] = [
-  { name: 'Smart Summarizer', hint: 'Bullets, paragraphs, structured notes and more', icon: ScrollText, phase: 4, preset: {} },
-  { name: 'Lecture Notes', hint: 'Topics, definitions, explanations, examples', icon: NotebookPen, phase: 4, preset: { format: 'academic', length: 'detailed', tone: 'academic' } },
-  { name: 'PDF Generator', hint: 'Professionally formatted PDFs', icon: FileText, phase: 5, document: { exportAs: 'pdf' } },
-  { name: 'Word Generator', hint: 'Editable DOCX files', icon: FileSpreadsheet, phase: 5, document: { exportAs: 'docx' } },
-  { name: 'Presentations', hint: 'Slides from recording content', icon: Presentation, phase: 5, document: { exportAs: 'pptx' } },
-  { name: 'Flashcards', hint: 'Question and answer cards', icon: BookOpenCheck, phase: 7 },
-  { name: 'Quiz Generator', hint: 'MCQ, true/false, short and long questions', icon: GraduationCap, phase: 7 },
-  { name: 'Mind Map', hint: 'A visual map of concepts', icon: Network, phase: 7 },
-  { name: 'Action Items', hint: 'Tasks, deadlines, responsibilities', icon: CheckSquare, phase: 7 },
-  { name: 'Meeting Minutes', hint: 'Formal meeting documentation', icon: ListChecks, phase: 5, document: { template: 'meeting-minutes' } },
-  { name: 'Translation Studio', hint: 'Transcripts and generated content', icon: Languages, phase: 7 },
-  { name: 'Comparison', hint: 'Differences, themes, changing decisions', icon: Combine, phase: 7 },
-  { name: 'Rewrite Studio', hint: 'Reports, articles, emails, explanations', icon: PenLine, phase: 7 },
-  { name: 'Custom Studio', hint: 'Your own instructions', icon: Wand2, phase: 7 },
+  { name: 'Smart Summarizer', hint: 'Bullets, paragraphs, structured notes and more', icon: ScrollText, preset: {} },
+  { name: 'Lecture Notes', hint: 'Topics, definitions, explanations, examples', icon: NotebookPen, preset: { format: 'academic', length: 'detailed', tone: 'academic' } },
+  { name: 'Study Notes', hint: 'Study guides, revision sheets, definitions, formulas', icon: BookMarked, studio: 'study' },
+  { name: 'Flashcards', hint: 'Question and answer cards to study', icon: BookOpenCheck, studio: 'flashcards' },
+  { name: 'Quiz Generator', hint: 'MCQ, true/false, short and long questions', icon: GraduationCap, studio: 'quiz' },
+  { name: 'Mind Map', hint: 'A visual map of concepts', icon: Network, studio: 'mindmap' },
+  { name: 'Action Items', hint: 'Tasks, deadlines, responsibilities', icon: CheckSquare, studio: 'tasks' },
+  { name: 'Meeting Minutes', hint: 'Formal meeting documentation', icon: ListChecks, document: { template: 'meeting-minutes' } },
+  { name: 'PDF Generator', hint: 'Professionally formatted PDFs', icon: FileText, document: { exportAs: 'pdf' } },
+  { name: 'Word Generator', hint: 'Editable DOCX files', icon: FileSpreadsheet, document: { exportAs: 'docx' } },
+  { name: 'Presentations', hint: 'Slides from recording content', icon: Presentation, document: { exportAs: 'pptx' } },
+  { name: 'Translation Studio', hint: 'Transcripts and summaries in another language', icon: Languages, studio: 'translate' },
+  { name: 'Comparison', hint: 'Differences, themes, changing decisions', icon: Combine, studio: 'compare' },
+  { name: 'Rewrite Studio', hint: 'Reports, articles, emails, explanations', icon: PenLine, studio: 'rewrite' },
+  { name: 'Custom Studio', hint: 'Your own instructions', icon: Wand2, studio: 'custom' },
 ];
 
-function RecordingPicker({ tool, onClose }: { tool: Tool; onClose: () => void }) {
+const KIND_ICON: Record<StudioKind, IconType> = {
+  flashcards: BookOpenCheck,
+  quiz: GraduationCap,
+  mindmap: Network,
+  study: BookMarked,
+  translate: Languages,
+  compare: Combine,
+  rewrite: PenLine,
+  custom: Wand2,
+  tasks: CheckSquare,
+};
+
+function SummaryPicker({ tool, onClose }: { tool: Tool; onClose: () => void }) {
   const { go } = useRouter();
   const recordings = useQuery(() => api.listRecordings({ view: 'all', sort: 'newest' }), []);
   const ready = recordings.data?.filter((r) => r.hasTranscript);
@@ -70,18 +85,31 @@ function RecordingPicker({ tool, onClose }: { tool: Tool; onClose: () => void })
   );
 }
 
-export function Studio() {
+export function Studio({ recordingId }: { recordingId?: string }) {
   const { go } = useRouter();
   const [picking, setPicking] = useState<Tool | null>(null);
+  const results = useQuery(() => api.listStudio(), [], ['studio', 'library']);
+  const counts = useQuery(() => api.taskCounts(), [], ['tasks']);
+
+  const open = (t: Tool) => {
+    if (t.studio) go({ name: 'studio-tool', kind: t.studio, recordingIds: recordingId ? [recordingId] : undefined });
+    else if (t.document) go({ name: 'document-new', ...t.document, recordingId });
+    else if (recordingId) go({ name: 'summaries', id: recordingId, preset: t.preset });
+    else setPicking(t);
+  };
+
   return (
     <div className="page">
       <PageHeader
         title="AI Studio"
-        subtitle="Transform recordings into anything. Tools marked with a phase arrive when that build phase finishes."
+        subtitle="Transform recordings into anything. Every result is saved with the recordings it came from."
         actions={
           <>
             <Button variant="primary" icon={MessagesSquare} onClick={() => go({ name: 'chat', scope: { kind: 'library' } })}>
               Ask AI
+            </Button>
+            <Button icon={ListChecks} onClick={() => go({ name: 'tasks' })}>
+              Tasks{counts.data?.suggested ? ` (${counts.data.suggested} to review)` : ''}
             </Button>
             <Button icon={FolderOpen} onClick={() => go({ name: 'documents' })}>
               Documents
@@ -90,28 +118,43 @@ export function Studio() {
         }
       />
       <div className="studio-grid">
-        {TOOLS.map((t) =>
-          t.preset || t.document ? (
-            <button key={t.name} type="button" className="card studio-tool" onClick={() => (t.document ? go({ name: 'document-new', ...t.document }) : setPicking(t))}>
-              <t.icon size={20} aria-hidden />
-              <span className="grow">
-                <h3>{t.name}</h3>
-                <span className="muted small">{t.hint}</span>
-              </span>
-            </button>
-          ) : (
-            <Card key={t.name} className="studio-tool">
-              <t.icon size={20} aria-hidden />
-              <div className="grow">
-                <h3>{t.name}</h3>
-                <p className="muted small">{t.hint}</p>
-              </div>
-              <span className="badge">Phase {t.phase}</span>
-            </Card>
-          ),
-        )}
+        {TOOLS.map((t) => (
+          <button key={t.name} type="button" className="card studio-tool" onClick={() => open(t)}>
+            <t.icon size={20} aria-hidden />
+            <span className="grow">
+              <h3>{t.name}</h3>
+              <span className="muted small">{t.hint}</span>
+            </span>
+          </button>
+        ))}
       </div>
-      {picking && <RecordingPicker tool={picking} onClose={() => setPicking(null)} />}
+
+      <section>
+        <SectionTitle title="Your results" />
+        {!results.data?.length ? (
+          <p className="muted">Flashcards, quizzes, mind maps, notes and everything else you make here are kept in this list and on each recording.</p>
+        ) : (
+          <div className="studio-results">
+            {results.data.slice(0, 30).map((o) => {
+              const Icon = KIND_ICON[o.kind];
+              return (
+                <button key={o.id} type="button" className="result-card" onClick={() => go({ name: 'studio-output', id: o.id })}>
+                  <span className="row muted small">
+                    <Icon size={14} aria-hidden /> {STUDIO_KINDS[o.kind].label} · {formatRelative(o.createdAt)}
+                    {!o.content && ' · in progress'}
+                  </span>
+                  <span className="result-title truncate" dir="auto">
+                    {o.title}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+      {picking && <SummaryPicker tool={picking} onClose={() => setPicking(null)} />}
     </div>
   );
 }
+
+export { KIND_ICON };

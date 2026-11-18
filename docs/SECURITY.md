@@ -30,6 +30,8 @@ Every recording is treated as sensitive private data.
 | Chat privacy | A chat sends only the question, recent turns and the chosen passages, after the same offline, key and consent checks as other AI work. Deleting a recording deletes every chat that read any of it. | `chat.test.ts`, `chat.spec.ts` |
 | Search snippets | Matches are marked with control characters and shown as text, never as HTML. | `chat.test.ts`, `chat.spec.ts` |
 | Live tests | Keys come from `desktop/.env.live`, which git ignores. Only generated speech is sent. | `.gitignore` |
+| Tasks stay local | Found tasks need approval. Reminders are local notifications. Nothing is added to a calendar or sent to anyone (§14). | `studio.test.ts`, `studio.spec.ts` |
+| Studio grounding | Every flashcard, question, map point and task must point at a real transcript line; invalid ones are removed and counted. Explanations beyond the recording are labelled. | `studio.test.ts` |
 | No telemetry | The app makes no network requests of its own. | Code review; Phase 8 adds a network test |
 
 ## Planned

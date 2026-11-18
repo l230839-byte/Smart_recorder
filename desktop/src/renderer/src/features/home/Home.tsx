@@ -1,4 +1,4 @@
-import { FileUp, ListChecks, MessagesSquare, Mic } from 'lucide-react';
+import { CheckSquare, FileUp, ListChecks, MessagesSquare, Mic } from 'lucide-react';
 import { formatBytes, formatDurationLong } from '@shared/format';
 import { Button, Card, EmptyState, PageHeader, SectionTitle } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
@@ -22,6 +22,7 @@ export function Home() {
   const jobs = useQuery(() => api.listJobs(), [], ['jobs']);
   const activeJobs = jobs.data?.filter((j) => ['queued', 'running', 'waiting'].includes(j.status)).length ?? 0;
 
+  const taskCounts = useQuery(() => api.taskCounts(), [], ['tasks']);
   return (
     <div className="page">
       <PageHeader title={greeting(settings.data?.displayName ?? '')} subtitle="Turn every recording into knowledge, documents and action." />
@@ -55,6 +56,21 @@ export function Home() {
           </span>
         </button>
       </div>
+
+      {!!taskCounts.data && taskCounts.data.open + taskCounts.data.suggested > 0 && (
+        <button type="button" className="setting-link job-link" onClick={() => go({ name: 'tasks' })}>
+          <CheckSquare size={18} aria-hidden />
+          <span className="grow">
+            {[
+              taskCounts.data.open && `${taskCounts.data.open} ${taskCounts.data.open === 1 ? 'task' : 'tasks'} to do`,
+              taskCounts.data.overdue && `${taskCounts.data.overdue} overdue`,
+              taskCounts.data.suggested && `${taskCounts.data.suggested} found in recordings to review`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </button>
+      )}
 
       {/* While jobs are running, the sidebar shows them. This keeps finished ones reachable. */}
       {!!jobs.data?.length && activeJobs === 0 && (

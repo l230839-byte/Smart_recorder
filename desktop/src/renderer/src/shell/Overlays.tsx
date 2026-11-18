@@ -131,11 +131,13 @@ export function GlobalEvents() {
 
   useEffect(() => onEvent('imports:opened', () => go({ name: 'import' })), [go]);
   useEffect(() => onEvent('recording:open', (id) => go({ name: 'recording', id })), [go]);
+  useEffect(() => onEvent('tasks:open', () => go({ name: 'tasks' })), [go]);
 
   // Space controls playback, as in other media apps, unless the user is typing or pressing a control.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== ' ' || recorder.isActive || !player.state.recording) return;
+      // A screen that uses Space itself (flashcards flip with it) marks the key as handled first.
+      if (e.key !== ' ' || e.defaultPrevented || recorder.isActive || !player.state.recording) return;
       const target = e.target as HTMLElement;
       if (target.closest('input, textarea, select, button, [role=slider], dialog')) return;
       e.preventDefault();

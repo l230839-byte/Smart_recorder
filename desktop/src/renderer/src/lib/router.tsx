@@ -1,5 +1,6 @@
 import type { ChatScope } from '@shared/chat';
 import type { DocumentSource, ExportFormat } from '@shared/documents';
+import type { StudioKind } from '@shared/studio';
 import type { SummaryOptions } from '@shared/summaries';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
@@ -8,7 +9,8 @@ export type Route =
   | { name: 'home' }
   | { name: 'library'; collectionId?: string }
   | { name: 'record' }
-  | { name: 'studio' }
+  /** With a recording, each tool starts with that recording chosen. */
+  | { name: 'studio'; recordingId?: string }
   | { name: 'settings' }
   | { name: 'recording'; id: string; startMs?: number }
   | { name: 'player'; id: string }
@@ -25,7 +27,10 @@ export type Route =
   | { name: 'documents' }
   /** A chat: an existing one, or a new one about this scope (created when the first question is sent). */
   | { name: 'chat'; threadId?: string; scope?: ChatScope }
-  | { name: 'search'; text?: string };
+  | { name: 'search'; text?: string }
+  | { name: 'studio-tool'; kind: StudioKind; recordingIds?: string[] }
+  | { name: 'studio-output'; id: string }
+  | { name: 'tasks' };
 
 export type TopLevel = 'home' | 'library' | 'record' | 'studio' | 'settings';
 
@@ -50,6 +55,9 @@ const TOP_LEVEL_OF: Record<Route['name'], TopLevel> = {
   documents: 'studio',
   chat: 'studio',
   search: 'library',
+  'studio-tool': 'studio',
+  'studio-output': 'studio',
+  tasks: 'home',
 };
 
 interface RouterValue {

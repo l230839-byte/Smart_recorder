@@ -129,7 +129,7 @@ export interface ImportJob {
 
 export type JobStatus = 'queued' | 'running' | 'waiting' | 'done' | 'failed' | 'canceled';
 
-export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest' | 'document';
+export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest' | 'document' | 'studio';
 
 export const JOB_KIND_LABEL: Record<JobKind, string> = {
   transcribe: 'Transcript',
@@ -137,6 +137,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   chapters: 'Chapters',
   suggest: 'Title and tags',
   document: 'Document',
+  studio: 'AI Studio',
 };
 
 export interface Summary {
@@ -195,6 +196,8 @@ export interface CreateDocumentInput {
   template: string;
   source: DocumentSource;
   summaryId?: string;
+  /** An AI Studio result to lay out as a document (flashcards, a quiz, notes…). */
+  studioId?: string;
   title?: string;
   language?: string;
   instructions?: string;

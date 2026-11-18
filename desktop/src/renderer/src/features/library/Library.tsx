@@ -1,11 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Archive, ArchiveRestore, ArrowDownUp, CheckSquare, Folder, FolderInput, FolderTree, Import, LibraryBig, MessagesSquare, RotateCcw, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowDownUp, CheckSquare, Folder, FolderInput, FolderTree, Import, Layers, LibraryBig, MessagesSquare, RotateCcw, Sparkles, Star, StarOff, Trash2, X } from 'lucide-react';
 import { plural } from '@shared/format';
 import { LIBRARY_SORT_LABEL, LIBRARY_SORTS, LIBRARY_VIEW_LABEL, LIBRARY_VIEWS, type LibrarySort, type LibraryView } from '@shared/models';
 import { Button, Chip, ConfirmDialog, EmptyState, IconButton, Loading, Menu, PageHeader, SearchField } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { player } from '../../lib/player';
 import { useRouter } from '../../lib/router';
+import { BatchProcess } from './BatchProcess';
 import { useToast } from '../../lib/toast';
 import { CollectionPicker } from '../collections/CollectionPicker';
 import { useTranscribe } from '../transcript/ai-gate';
@@ -39,7 +40,7 @@ export function Library({ collectionId }: { collectionId?: string }) {
   const latest = useRef({ view, sort, text, tagId });
   latest.current = { view, sort, text, tagId };
   const [selection, setSelection] = useState<Set<string> | null>(null);
-  const [dialog, setDialog] = useState<'delete' | 'empty' | 'move' | null>(null);
+  const [dialog, setDialog] = useState<'delete' | 'empty' | 'move' | 'process' | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const inTrash = view === 'trash';
   const { start: transcribe, dialogs: transcribeDialogs } = useTranscribe();
@@ -240,6 +241,9 @@ export function Library({ collectionId }: { collectionId?: string }) {
               <Button size="sm" icon={MessagesSquare} onClick={() => go({ name: 'chat', scope: { kind: 'recordings', recordingIds: selected } })}>
                 Ask AI
               </Button>
+              <Button size="sm" icon={Layers} onClick={() => setDialog('process')}>
+                Process
+              </Button>
               <Button size="sm" icon={allFavorite ? StarOff : Star} onClick={() => act(api.setFavorite(selected, !allFavorite))}>
                 {allFavorite ? 'Remove favorite' : 'Favorite'}
               </Button>
@@ -279,6 +283,7 @@ export function Library({ collectionId }: { collectionId?: string }) {
           onClose={() => setDialog(null)}
         />
       )}
+      {dialog === 'process' && list && <BatchProcess recordings={list.filter((r) => selected.includes(r.id))} onClose={() => setDialog(null)} />}
       {dialog === 'move' && (
         <CollectionPicker
           title={`Move ${plural(selected.length, 'recording')}`}

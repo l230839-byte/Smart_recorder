@@ -12,3 +12,331 @@
 .studio-tool h3 {
   color: var(--text);
 }
+
+/* Tool setup */
+.tool-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--s5);
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .tool-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tool-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.tool-heading {
+  font-size: 15px;
+}
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 460px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 8px var(--s3);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.tool-row:last-child {
+  border-bottom: 0;
+}
+.tool-row:hover {
+  background: var(--surface-hover);
+}
+.tool-row:has(input:checked) {
+  background: var(--primary-soft);
+}
+.tool-row input,
+.check-group input {
+  accent-color: var(--primary);
+}
+.check-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.check-group .row {
+  padding: 2px 0;
+}
+
+/* Results */
+.studio-sources {
+  display: inline;
+}
+.studio-job {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.studio-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--s3);
+}
+.result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.result-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.result-card .result-title {
+  font-weight: 600;
+}
+
+/* Flashcards */
+.flashcards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 760px;
+}
+.flip-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  min-height: 260px;
+  padding: var(--s8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+}
+.flip-card.flipped {
+  background: var(--primary-soft);
+}
+.flip-side-label {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.flip-text {
+  font-size: 20px;
+  font-weight: 550;
+  line-height: 1.45;
+}
+.study-controls {
+  flex-wrap: wrap;
+}
+.study-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s8);
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.card-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  list-style: none;
+}
+.card-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+}
+.card-list li:last-child {
+  border-bottom: 0;
+}
+.card-q {
+  font-weight: 600;
+}
+
+/* Quiz */
+.quiz {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  max-width: 800px;
+}
+.quiz-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: q;
+}
+.quiz-q {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  counter-increment: q;
+}
+.quiz-q.right {
+  border-color: var(--success);
+}
+.quiz-q.wrong {
+  border-color: var(--danger);
+}
+.quiz-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.quiz-head::before {
+  content: counter(q) '.';
+  font-weight: 650;
+}
+.quiz-head .ok {
+  color: var(--success);
+}
+.quiz-head .bad {
+  color: var(--danger);
+}
+.quiz-text {
+  margin: 0;
+  font-weight: 550;
+}
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.quiz-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.quiz-option input {
+  margin-top: 3px;
+  accent-color: var(--primary);
+}
+.quiz-option.is-answer {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+.quiz-option.is-wrong {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.quiz-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: var(--s2);
+  border-top: 1px dashed var(--border);
+}
+.quiz-feedback p {
+  margin: 0;
+}
+.quiz-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+/* Mind map */
+.mindmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.mindmap-scroll {
+  overflow: auto;
+  max-height: 72vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.mindmap-scroll text {
+  font-family: var(--font);
+}
+.mm-node.linked {
+  cursor: pointer;
+}
+.mm-node.linked:hover rect,
+.mm-node.linked:focus-visible rect {
+  filter: brightness(1.12);
+  stroke-width: 2.5;
+}
+.mm-node:focus-visible {
+  outline: none;
+}
+
+/* Translation */
+.translation {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.translation th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: start;
+}
+.translation td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.translation td:first-child {
+  width: 60px;
+}
