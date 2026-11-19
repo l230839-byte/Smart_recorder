@@ -190,6 +190,8 @@ export class SummaryService implements JobHandler {
     const pieces = splitSegments(segments, maxChars);
     const maxTokens = summary.length === 'custom' && summary.customWords ? Math.min(8000, Math.round(summary.customWords * 2.5)) : SUMMARY_LENGTHS[summary.length].maxTokens;
     let text: string;
+    // The model that actually wrote it: a retired model may have been replaced on the way.
+    let usedModel = job.model;
     let truncated = false;
 
     if (pieces.length === 1) {
@@ -197,6 +199,7 @@ export class SummaryService implements JobHandler {
       this.deps.changed();
       const result = await this.chat(job, provider, summaryMessages(summary, mode, transcriptForPrompt(segments, names)), maxTokens, signal, 'summary');
       text = result.text;
+      usedModel = result.model ?? usedModel;
       truncated = result.truncated;
     } else {
       // Long recordings: notes on each piece, then one result from the notes. Finished notes are kept.
@@ -220,6 +223,7 @@ export class SummaryService implements JobHandler {
       this.deps.changed();
       const result = await this.chat(job, provider, combineMessages(summary, mode, notes), maxTokens, signal, 'summary');
       text = result.text;
+      usedModel = result.model ?? usedModel;
       truncated = result.truncated;
     }
 
@@ -228,7 +232,7 @@ export class SummaryService implements JobHandler {
       this.deps.documentReady(options.documentId, markdown, dropped, truncated);
       return;
     }
-    this.deps.summaries.add({ recordingId: job.recordingId, label: summaryLabel(summary), options: summary, markdown, provider: job.provider, model: job.model, transcriptVersionId: versionId, droppedCitations: dropped, truncated });
+    this.deps.summaries.add({ recordingId: job.recordingId, label: summaryLabel(summary), options: summary, markdown, provider: job.provider, model: usedModel, transcriptVersionId: versionId, droppedCitations: dropped, truncated });
   }
 }
 

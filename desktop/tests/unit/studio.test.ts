@@ -110,14 +110,16 @@ describe('validation', () => {
     const tasks = validateTasks(
       {
         tasks: [
-          { title: 'Send the report', due_date: '2026-03-13', due_text: 'by Friday', owner: 'Ahmed', priority: 'high', source: 3 },
+          { title: 'Send the report', due_date: '2026-03-20', due_text: 'by Friday', owner: 'Ahmed', priority: 'high', source: 3 },
           { title: 'send the report', due_date: '2026-03-13' },
           { title: 'Plan', due_date: 'next week', priority: 'urgent' },
           { title: '' },
         ],
       },
       targets,
+      '2026-03-09',
     );
+    // The model's own date (2026-03-20) is ignored: "by Friday" from Monday 9 March is 13 March.
     expect(tasks).toEqual([
       { title: 'Send the report', description: '', dueDate: '2026-03-13', dueText: 'by Friday', owner: 'Ahmed', priority: 'high', source: { recordingId: A, startMs: 9000, text: 'Gradient descent' } },
       { title: 'Plan', description: '', dueDate: null, dueText: '', owner: '', priority: null, source: null },

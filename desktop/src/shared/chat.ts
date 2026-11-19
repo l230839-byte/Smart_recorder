@@ -1,6 +1,6 @@
 import { formatDuration } from './format';
 import type { ChatMessage } from './summaries';
-import { parseJsonReply } from './summaries';
+import { normalizeCitationBrackets, parseJsonReply } from './summaries';
 import type { Segment } from './transcript';
 
 /**
@@ -242,7 +242,8 @@ function shortTitle(title: string): string {
  * Turns [S12] into a link to that recording and moment, and removes ids that were not in the excerpts.
  * When several recordings are involved, each link also names its recording.
  */
-export function resolveChatCitations(markdown: string, targets: Map<number, CitationTarget>): { markdown: string; used: CitationTarget[]; dropped: number } {
+export function resolveChatCitations(text: string, targets: Map<number, CitationTarget>): { markdown: string; used: CitationTarget[]; dropped: number } {
+  const markdown = normalizeCitationBrackets(text);
   const used = new Map<string, CitationTarget>();
   let dropped = 0;
   const recordingsCited = new Set<string>();

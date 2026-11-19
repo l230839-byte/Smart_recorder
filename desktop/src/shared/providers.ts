@@ -97,7 +97,8 @@ export const LLM_PROVIDER_INFO: Record<LlmProviderId, LlmProviderInfo> = {
     local: false,
     needsKey: true,
     baseUrl: 'https://api.groq.com/openai/v1',
-    models: ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'],
+    // Checked against Groq's live model list on 2026-11-20; Llama 3.x has been retired there.
+    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
     maxInputChars: 12_000,
     keyUrl: 'https://console.groq.com/keys',
     limitsUrl: 'https://console.groq.com/settings/limits',

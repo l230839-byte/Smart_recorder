@@ -72,6 +72,10 @@ export async function toProviderError(response: Response): Promise<ProviderError
     return new ProviderError(quota ? 'quota' : 'rate', quota ? 'The free limit for this service has been reached.' : 'The service asked EchoMind to slow down.', wait);
   }
   if (status === 413) return new ProviderError('too-large', 'This piece is larger than the service accepts.');
+  // A retired or unknown model is its own case, so EchoMind can switch to one the service still offers.
+  if ((status === 404 || status === 400) && /model/i.test(detail) && /not[ _]found|does not exist|decommission|deprecated|no longer|not supported|unknown/i.test(detail)) {
+    return new ProviderError('model', 'The service no longer offers this model.');
+  }
   if (status === 404) return new ProviderError('rejected', 'The service does not recognize this model or address. Check Settings.');
   if (status >= 500) return new ProviderError('server', 'The transcription service is having problems.', parseWait(response.headers.get('retry-after')));
   return new ProviderError('rejected', detail ? `The service refused this request: ${detail.slice(0, 200)}` : `The service refused this request (HTTP ${status}).`);

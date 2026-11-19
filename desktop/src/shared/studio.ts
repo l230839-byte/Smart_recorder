@@ -256,7 +256,11 @@ ${context}`,
   ];
 }
 
-export function taskMessages(context: string, recordedOn: string): ChatMessage[] {
+/**
+ * Models are unreliable at calendar arithmetic (live, one turned "by Friday" said on a Thursday into the
+ * following Wednesday), so they report only the words, and EchoMind works out the date.
+ */
+export function taskMessages(context: string): ChatMessage[] {
   return [
     {
       role: 'system',
@@ -264,8 +268,8 @@ export function taskMessages(context: string, recordedOn: string): ChatMessage[]
     },
     {
       role: 'user',
-      content: `Find every action item in this transcript: tasks, assignments, follow-ups and deadlines. The recording was made on ${recordedOn}; use that to turn words like "Friday" or "next week" into a date (YYYY-MM-DD), and use null when no date is clear. Write titles as short commands ("Send the report to the manager").
-Shape: {"tasks": [{"title": "…", "description": "one sentence of context", "due_date": "2026-03-14", "due_text": "by Friday", "owner": "Ahmed", "priority": "high", "source": 12}]}
+      content: `Find every action item in this transcript: tasks, assignments, follow-ups and deadlines. Write titles as short commands ("Send the report to the manager"). For "due_text", copy the exact words that give the deadline, such as "by Friday", "next Monday" or "March 14th", or use an empty string if none were said. Do not turn them into dates.
+Shape: {"tasks": [{"title": "…", "description": "one sentence of context", "due_text": "by Friday", "owner": "Ahmed", "priority": "high", "source": 12}]}
 If there are none, return {"tasks": []}.
 
 TRANSCRIPT:
@@ -411,15 +415,80 @@ export function validateMindMap(value: unknown, targets: Map<number, CitationTar
   return root;
 }
 
-export function validateTasks(value: unknown, targets: Map<number, CitationTarget>): TaskSuggestion[] {
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const WEEKDAY_SHORT: Record<string, number> = { sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6 };
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+function isoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function monthIndex(word: string): number {
+  return MONTHS.findIndex((m) => m.startsWith(word.toLowerCase().slice(0, 3)) && word.length >= 3);
+}
+
+/**
+ * The date a deadline phrase points to, counted from the day of the recording (YYYY-MM-DD), or null when
+ * the words do not name a day ("next week", "soon"). A weekday means the next one after the recording day.
+ * A date without a year that has already passed means next year.
+ */
+export function resolveDueDate(text: string, recordedOn: string): string | null {
+  const base = new Date(`${recordedOn}T00:00:00Z`);
+  if (Number.isNaN(base.getTime())) return null;
+  const t = text.toLowerCase().replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t) return null;
+  const add = (days: number) => {
+    const d = new Date(base);
+    d.setUTCDate(d.getUTCDate() + days);
+    return isoDay(d);
+  };
+
+  const iso = /\b(\d{4})-(\d{2})-(\d{2})\b/.exec(t);
+  if (iso && !Number.isNaN(Date.parse(`${iso[0]}T00:00:00Z`))) return iso[0];
+
+  // "March 14th", "march 14 2027", "14 March", "14th of March 2026"
+  const monthFirst = /\b([a-z]{3,9}) (\d{1,2})(?:st|nd|rd|th)?(?: (\d{4}))?\b/.exec(t);
+  const dayFirst = /\b(\d{1,2})(?:st|nd|rd|th)?(?: of)? ([a-z]{3,9})(?: (\d{4}))?\b/.exec(t);
+  for (const [month, day, year] of [monthFirst ? [monthFirst[1]!, monthFirst[2]!, monthFirst[3]] : null, dayFirst ? [dayFirst[2]!, dayFirst[1]!, dayFirst[3]] : null].filter((x): x is [string, string, string | undefined] => x !== null)) {
+    const m = monthIndex(month);
+    const d = Number(day);
+    if (m < 0 || d < 1 || d > 31) continue;
+    let y = year ? Number(year) : base.getUTCFullYear();
+    let date = new Date(Date.UTC(y, m, d));
+    if (date.getUTCMonth() !== m) continue;
+    if (!year && date < base) date = new Date(Date.UTC(++y, m, d));
+    return isoDay(date);
+  }
+
+  if (/\b(today|tonight|end of (the )?day)\b/.test(t)) return add(0);
+  if (/\bday after tomorrow\b/.test(t)) return add(2);
+  if (/\btomorrow\b/.test(t)) return add(1);
+  const inN = /\bin (\d{1,3}|a|one|two|three) (day|days|week|weeks)\b/.exec(t);
+  if (inN) {
+    const n = { a: 1, one: 1, two: 2, three: 3 }[inN[1]! as 'a'] ?? Number(inN[1]);
+    return add(inN[2]!.startsWith('week') ? n * 7 : n);
+  }
+  if (/\bend of (the |this )?month\b/.test(t)) return isoDay(new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)));
+  const weekdayWord = t.split(' ').find((w) => WEEKDAYS.includes(w) || w in WEEKDAY_SHORT || WEEKDAYS.includes(w.replace(/s$/, '')));
+  const target = /\bend of (the |this )?week\b/.test(t) ? 5 : weekdayWord ? (WEEKDAYS.includes(weekdayWord.replace(/s$/, '')) ? WEEKDAYS.indexOf(weekdayWord.replace(/s$/, '')) : WEEKDAY_SHORT[weekdayWord]!) : null;
+  if (target !== null) {
+    let ahead = (target - base.getUTCDay() + 7) % 7;
+    // The same weekday as the recording means the one a week later ("Thursday", said on a Thursday).
+    if (ahead === 0 && !/\bend of/.test(t)) ahead = 7;
+    return add(ahead);
+  }
+  return null;
+}
+
+export function validateTasks(value: unknown, targets: Map<number, CitationTarget>, recordedOn: string): TaskSuggestion[] {
   const seen = new Set<string>();
   return list(value, 'tasks').flatMap((raw): TaskSuggestion[] => {
     const t = raw as Record<string, unknown>;
     const title = str(t.title, 200);
     if (!title || seen.has(title.toLowerCase())) return [];
     seen.add(title.toLowerCase());
-    const due = str(t.due_date, 10);
-    const validDue = /^\d{4}-\d{2}-\d{2}$/.test(due) && !Number.isNaN(Date.parse(`${due}T00:00:00Z`)) ? due : null;
+    // The date comes from the words, never from the model's arithmetic.
+    const validDue = resolveDueDate(str(t.due_text, 100), recordedOn);
     const priority = t.priority === 'high' || t.priority === 'medium' || t.priority === 'low' ? t.priority : null;
     const n = typeof t.source === 'number' ? t.source : Number(String(t.source ?? '').replace(/^S/i, ''));
     const target = Number.isInteger(n) ? targets.get(n) : undefined;

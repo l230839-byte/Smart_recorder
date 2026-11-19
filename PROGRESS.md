@@ -19,12 +19,12 @@ Record or import audio, transcribe it, read and edit the transcript, and generat
 
 ## Needs the owner
 
-1. **A free Groq key** (and optionally a Gemini key) in `desktop/.env.live`, then `npm run test:live`: runs everything against the real services with generated speech and writes a report to judge. Put the key in the file rather than in a chat message.
+1. **Groq: done.** Live-checked on 2026-11-20 ([report](docs/phases/live-check-groq.txt)). Optionally add a Gemini key to `desktop/.env.live` to check Gemini too.
 2. **An Urdu recording** of your own, to judge Urdu transcription and answers. Windows here has no Urdu voice to generate one.
 
 ## What is untested
 
-- Live Groq and Gemini. Tests use the demo model, scripted replies and a local server that follows the documented formats.
+- Gemini, and long recordings on live Groq. Groq was checked live with a 70-second meeting.
 - Exported Word and PowerPoint files in Microsoft Office itself. They are checked by reading their XML.
 - A real microphone, real drag and drop, native file dialogs and native notifications.
 - Any Windows machine other than the development one.

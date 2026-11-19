@@ -33,7 +33,7 @@ export class ChatHttpProvider implements ChatProvider {
     const response = await this.send(`${this.baseUrl}/chat/completions`, { method: 'POST', headers: this.headers(), body: JSON.stringify(body), signal: request.signal });
     if (!response.ok) throw await toProviderError(response);
 
-    let data: { choices?: { message?: { content?: unknown }; finish_reason?: unknown }[]; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } };
+    let data: { model?: unknown; choices?: { message?: { content?: unknown }; finish_reason?: unknown }[]; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } };
     try {
       data = (await response.json()) as typeof data;
     } catch {
@@ -49,7 +49,15 @@ export class ChatHttpProvider implements ChatProvider {
       inputTokens: count(data.usage?.prompt_tokens),
       outputTokens: count(data.usage?.completion_tokens),
       rate: rateFromHeaders(response.headers),
+      model: request.model,
     };
+  }
+
+  async listModels(signal: AbortSignal): Promise<string[]> {
+    const response = await this.send(`${this.baseUrl}/models`, { headers: { ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}) }, signal });
+    if (!response.ok) throw await toProviderError(response);
+    const data = (await response.json().catch(() => null)) as { data?: { id?: unknown; active?: unknown }[] } | null;
+    return (data?.data ?? []).filter((m) => typeof m.id === 'string' && m.active !== false).map((m) => m.id as string);
   }
 
   async testConnection(signal: AbortSignal): Promise<void> {

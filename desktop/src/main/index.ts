@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { app, dialog, ipcMain, nativeTheme, Notification, powerMonitor, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
 import { AppLock } from './services/app-lock';
+import { ModelFallbackProvider } from './ai/model-fallback';
 import { inspectArchive } from './services/archive';
 import { applyPendingRestore, BackupService } from './services/backup';
 import { BundleService } from './services/bundles';
@@ -196,7 +197,13 @@ async function start(): Promise<void> {
     if (id === 'fake') return new FakeChatProvider();
     const baseUrl = id === 'custom-chat' ? settings.get().llmBaseUrl : LLM_PROVIDER_INFO[id].baseUrl;
     if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
-    return new ChatHttpProvider(baseUrl, secrets.get(keyName(id)));
+    // If the service has retired the chosen model, the best one it still offers is used and remembered.
+    return new ModelFallbackProvider(new ChatHttpProvider(baseUrl, secrets.get(keyName(id))), LLM_PROVIDER_INFO[id].models, (_from, to) => {
+      if (settings.get().llmProvider === id) {
+        settings.update({ llmModel: to });
+        emit('data:changed', 'settings');
+      }
+    });
   };
 
   const summaryService = new SummaryService({

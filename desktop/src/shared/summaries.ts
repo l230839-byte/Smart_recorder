@@ -230,12 +230,22 @@ export interface CitationResult {
   dropped: number;
 }
 
+/**
+ * Some models write citations in other brackets, such as 【S12】 or ［S12］ (seen live with gpt-oss), or as
+ * (S12). They are turned into the [S12] form first, so they are checked and linked like any other.
+ */
+export function normalizeCitationBrackets(markdown: string): string {
+  // These brackets are usually written straight after a word, so a space is added to keep the time apart.
+  // Also [ S1 ] with spaces inside, seen live.
+  return markdown.replace(/(\S?)[【［([]\s*(S\d+(?:\s*[,;–-]\s*S?\d+)*)\s*[】］)\]]/g, (_m, before: string, ids: string) => `${before}${before && !/[\s([]/.test(before) ? ' ' : ''}[${ids.replace(/\s+/g, ' ')}]`);
+}
+
 /** Turns `[S12]` into a link to that moment. Ids not in the transcript are removed, never shown. */
 export function resolveCitations(markdown: string, segments: Segment[]): CitationResult {
   const byIdx = new Map(segments.map((s) => [s.idx, s]));
   let used = 0;
   let dropped = 0;
-  const resolved = markdown.replace(CITATION, (_match, ids: string) => {
+  const resolved = normalizeCitationBrackets(markdown).replace(CITATION, (_match, ids: string) => {
     const links: string[] = [];
     for (const raw of ids.split(/[,;–-]/)) {
       const seg = byIdx.get(Number(raw.trim().replace(/^S/, '')));

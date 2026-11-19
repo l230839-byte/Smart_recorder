@@ -22,7 +22,7 @@ Only what is implemented and verified is listed as **Working**.
 | Summaries: formats, lengths, tones, languages, scope, focus, templates, versions | Working (tested with a local server following the documented format) |
 | Citations checked against the transcript | Working |
 | Chapters, suggested titles and tags | Working |
-| Summaries on live Groq or Gemini | Written, not yet run. Needs a key. |
+| Summaries, documents, chat, Studio on live Groq | Working (live-checked 2026-11-20). Gemini not yet run. |
 | Documents: 9 templates; from AI, the transcript, a summary or a blank page | Working (AI drafts tested with the demo provider and a local server format) |
 | Document editor: autosave, formatting toolbar, live page preview, versions with safe restore | Working |
 | Layout: cover, contents, page size, margins, fonts, Urdu script style, spacing, headings, bullets, numbering, accent, header, footer, page numbers, times, source note, transcript appendix, direction, language | Working |

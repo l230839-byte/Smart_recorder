@@ -1,0 +1,59 @@
+ECHOMIND DESKTOP: LIVE CHECK ON GROQ
+================================================================================
+Date:        2026-11-20
+What:        `npm run test:live` with the owner's free Groq key. A 70-second two-voice
+             meeting generated with Windows speech, checked against 12 known facts.
+Status:      PASSING after four fixes found by this run. Gemini not run (no key).
+
+
+1. FIRST RUN: WHAT HAPPENED
+--------------------------------------------------------------------------------
+- Transcription (whisper-large-v3-turbo): excellent. All 12 facts, numbers and dates
+  written properly ("$12,000", "March 14th"), timestamps correct, in 9 seconds.
+- Every text task failed: summary, chapters, title and tags, document, quiz, action
+  items and chat. Groq had retired the Llama models EchoMind used by default
+  (llama-3.3-70b-versatile, llama-3.1-8b-instant). It now offers openai/gpt-oss-120b,
+  openai/gpt-oss-20b and qwen/qwen3.8-27b for text.
+
+
+2. FIXES
+--------------------------------------------------------------------------------
+X1  Defaults updated to the models Groq offers today: openai/gpt-oss-120b first.
+X2  Self-recovery: a retired model is now its own error. EchoMind asks the service which
+    models it has, switches to the best one, saves it in Settings and carries on. Proven
+    live: the test starts on the retired Llama model and finishes on gpt-oss-120b with
+    no failed task. Results record the model that actually answered.
+X3  Citations in other styles. gpt-oss wrote 【S1】 in one run and [ S1 ] in another, so
+    the time links were lost. Both, and (S1) and ［S1］, are now linked and checked.
+X4  Due dates. The model turned "by Friday", said on Thursday 19 November, into Wednesday
+    25 November, and "next Monday" into a Saturday. Models now report only the words;
+    EchoMind works out the date: weekdays, today and tomorrow, end of the week or month,
+    "in 2 weeks", and written dates. Vague words ("next week") keep the words and get no
+    invented date.
+T1  A transcription test that failed now and then under load waited a fixed 30 ms; it now
+    waits until the jobs stop changing. 0 failures in 6 full runs.
+
+
+3. FINAL RUN (all on Groq, openai/gpt-oss-120b for text)
+--------------------------------------------------------------------------------
+- Transcription: 12 of 12 facts.
+- Structured summary: 12 of 12 facts, 22 citations, 0 invented.
+- Chapters: Opening, Release and budget updates, Customer feedback, Action items,
+  Risk assessment, Closing, at the right times.
+- Title and tags: "Orion Project Weekly Product Meeting", relevant tags.
+- Meeting minutes document: 22 citations, 0 invented; PDF and Word exported.
+- Quiz: 6 correct questions (multiple choice, true or false, short), each with its source.
+- Action items: 5, with correct owners and dates: payment screen Friday 20 November
+  (Ahmed), testing Monday 23 November (Lina), design notes Wednesday 25 November (Ahmed);
+  test plan and client email with no date, as in the recording.
+- Chat: correct, cited answers about offline sync and the payment screen; "not in the
+  recording" for the marketing budget and the capital of France.
+- 11 requests, about 13,000 tokens, well inside Groq's free limits.
+
+
+4. STILL TO CHECK
+--------------------------------------------------------------------------------
+- Gemini: needs a GEMINI_API_KEY in desktop/.env.live.
+- Urdu and mixed Urdu-English speech: needs a real recording from the owner.
+- Long recordings on live Groq (multi-part transcription and summaries under real rate
+  limits): tested with simulated limits only.

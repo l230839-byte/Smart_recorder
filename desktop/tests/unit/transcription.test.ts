@@ -318,9 +318,23 @@ describe('transcription queue', () => {
   const addRecording = (durationMs = 1000) =>
     library.insertRecording({ title: 'A lecture', mode: 'lecture', source: 'picker', format: 'OGG', codec: 'Opus', durationMs, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: `${Math.random()}.ogg`, mime: 'audio/ogg', peaks: new Uint8Array(800) });
 
-  /** Runs until the queue is idle. */
+  /**
+   * Runs until the queue is idle: no job running or queued. A fixed pause was not enough when the machine
+   * was busy running other test files, which made these tests fail now and then.
+   */
   const settle = async () => {
-    await new Promise((r) => setTimeout(r, 30));
+    // Waits until the jobs stop changing for several ticks in a row. "Idle" alone would not do: some tests
+    // leave a job deliberately stuck in "running" to test cancelling.
+    const snapshot = () =>
+      JSON.stringify([db.prepare('SELECT id, status, stage, progress, updated_at FROM processing_jobs ORDER BY id').all(), db.prepare('SELECT COUNT(*) AS n FROM transcript_versions').get(), calls.length]);
+    let last = '';
+    let stable = 0;
+    for (let i = 0; i < 300 && stable < 4; i++) {
+      await new Promise((r) => setTimeout(r, 8));
+      const now = snapshot();
+      stable = now === last ? stable + 1 : 0;
+      last = now;
+    }
   };
 
   beforeEach(() => {

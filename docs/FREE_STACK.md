@@ -33,7 +33,7 @@ You supply your own key. Figures below were checked on 2026-10-31 and change oft
 | Service | Used for | Free terms as documented | Check |
 | --- | --- | --- | --- |
 | Groq Whisper | Transcription | Free tier with a key. 25 MB per file. `retry-after` on HTTP 429. No training on customer data. Inputs not kept by default, with logs of up to 30 days for reliability or abuse checks. | [Limits](https://console.groq.com/settings/limits), [Your data](https://console.groq.com/docs/your-data) |
-| Groq chat | Summaries and writing | Same key and data terms as above. Models checked: `llama-3.3-70b-versatile`, `openai/gpt-oss-20b`, `llama-3.1-8b-instant`. | [Models](https://console.groq.com/docs/models) |
+| Groq chat | Summaries and writing | Same key and data terms as above. Models checked live on 2026-11-20: `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` (Llama 3.x has been retired). If Groq retires a model, EchoMind switches to one it still offers by itself. | [Models](https://console.groq.com/docs/models) |
 | Google Gemini | Summaries and writing | Free tier with a key. **Google may use free-tier content to improve its products.** Forum reports of free daily limits range from 20 to 250 requests. Models checked: `gemini-3.5-flash-lite`, `gemini-3.8-flash`, `gemini-3.1-flash-lite`. | [Pricing and data use](https://ai.google.dev/gemini-api/docs/pricing), [Models](https://ai.google.dev/gemini-api/docs/models) |
 | Other OpenAI-compatible service | Transcription or writing | Set by whoever runs it, including a local Ollama | Their terms |
 | Demo | Trying the app | Nothing leaves the computer. Placeholder text. | None |

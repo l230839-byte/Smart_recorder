@@ -15,7 +15,9 @@ export type ProviderErrorKind =
   /** The request itself is unacceptable. Retrying the same thing cannot help. */
   | 'rejected'
   /** The piece is too big for this service or plan. A smaller one may work. */
-  | 'too-large';
+  | 'too-large'
+  /** The service no longer offers this model (free services retire models often). Another model may work. */
+  | 'model';
 
 export class ProviderError extends Error {
   constructor(
@@ -71,9 +73,13 @@ export interface ChatResult {
   inputTokens: number;
   outputTokens: number;
   rate: ProviderRateInfo | null;
+  /** The model that actually answered, when it differs from the one asked for (after a fallback). */
+  model?: string;
 }
 
 export interface ChatProvider {
   complete(request: ChatRequest): Promise<ChatResult>;
+  /** The models the service offers now, when it can say. */
+  listModels?(signal: AbortSignal): Promise<string[]>;
   testConnection(signal: AbortSignal): Promise<void>;
 }

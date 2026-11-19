@@ -52,7 +52,8 @@ test('live: real transcription, summary, chapters, document and chat, judged aga
   const { app, page } = await launch(dataDir);
   try {
     await completeOnboarding(page);
-    await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'groq', llmProvider: 'groq' });
+    // Starts on a model Groq has retired, to prove EchoMind switches to one it still offers by itself.
+    await call(page, 'updateSettings', { offlineOnly: false, transcriptionProvider: 'groq', llmProvider: 'groq', llmModel: 'llama-3.3-70b-versatile' });
     await call(page, 'saveProviderKey', 'groq', keys.GROQ_API_KEY);
     await call(page, 'acceptConsent', 'groq', 'audio');
     await call(page, 'acceptConsent', 'groq', 'text');
@@ -155,6 +156,7 @@ test('live: real transcription, summary, chapters, document and chat, judged aga
       report.push('## Gemini: skipped (no GEMINI_API_KEY in .env.live)', '');
     }
 
+    report.push(`## Model in use at the end: ${(await call<{ llmModel: string | null }>(page, 'getSettings')).llmModel} (started on the retired llama-3.3-70b-versatile)`, '');
     const usage = await call<UsageSummary[]>(page, 'getUsage');
     report.push('## Usage', '', '```', JSON.stringify(usage, null, 2), '```');
   } finally {

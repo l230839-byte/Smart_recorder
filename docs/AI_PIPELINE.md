@@ -64,6 +64,12 @@ Every Studio tool is a `studio` job on the shared queue. Lines are numbered S1, 
 - **Written tools** (study notes, rewrite, comparison, custom, summary translation) use one request when the material fits; otherwise notes per piece, then one combined result. Citations are checked as in chat.
 - Each finished piece is stored, so a retry continues where it stopped. "Too large" halves the piece size and starts again.
 
+## When a provider retires a model
+
+Free services retire models often. A "model not found" or "decommissioned" reply is its own error: EchoMind asks the service for its models (`/models`), picks the first of its preferred list still offered (otherwise any text model), saves it in Settings and repeats the request. Results record the model that actually answered.
+
+Citations are accepted as `[S12]`, `[ S12 ]`, `【S12】`, `［S12］` or `(S12)`, all checked the same way. Task due dates are worked out by EchoMind from the words the model reports ("by Friday"), never by the model.
+
 ## Adding a provider
 
 Implement `TranscriptionProvider` or `ChatProvider` in `desktop/src/main/ai/types.ts`, add its facts to `desktop/src/shared/providers.ts`, and connect it in `makeProvider` or `makeChatProvider` in `desktop/src/main/index.ts`. A service with an OpenAI-compatible API needs only its address and models.

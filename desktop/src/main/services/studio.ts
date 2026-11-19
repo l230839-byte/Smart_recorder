@@ -242,7 +242,7 @@ export class StudioService implements JobHandler {
       case 'tasks': {
         const { pieces, targets } = contextPieces(recordings, maxChars);
         const recordedOn = new Date(recordings[0]!.createdAt).toISOString().slice(0, 10);
-        const results = await this.perPiece(job, pieces, 'Finding action items', async (piece) => JSON.stringify(await this.completeJson(job, provider, taskMessages(piece, recordedOn), signal, (v) => validateTasks(v, targets))));
+        const results = await this.perPiece(job, pieces, 'Finding action items', async (piece) => JSON.stringify(await this.completeJson(job, provider, taskMessages(piece), signal, (v) => validateTasks(v, targets, recordedOn))));
         const found = results.flatMap((r) => JSON.parse(r) as TaskSuggestion[]);
         const added = this.deps.tasks.addSuggestions(output.recordingIds, found);
         return { content: { type: 'tasks', count: added }, dropped: 0, truncated: false };

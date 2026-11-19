@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Live check on Groq
+
+- First run with a real key: transcription excellent; every text task failed because Groq retired the default Llama models.
+- Defaults moved to `openai/gpt-oss-120b`, and EchoMind now switches by itself when a provider retires a model.
+- Citations written as 【S1】 or [ S1 ] are linked; task due dates are computed from the spoken words, not by the model.
+- Final run: all 12 facts in the summary with 22 checked citations, correct dates, grounded chat. Report in docs/phases/live-check-groq.txt.
+
 ### Phase 8: Hardening and release
 
 - App lock with a PIN. While locked, the main process refuses all data and media, notifications hide titles, and wrong PINs cost growing waits that survive restarts.
