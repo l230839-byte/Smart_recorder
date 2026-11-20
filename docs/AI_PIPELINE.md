@@ -68,6 +68,8 @@ Every Studio tool is a `studio` job on the shared queue. Lines are numbered S1, 
 
 Free services retire models often. A "model not found" or "decommissioned" reply is its own error: EchoMind asks the service for its models (`/models`), picks the first of its preferred list still offered (otherwise any text model), saves it in Settings and repeats the request. Results record the model that actually answered.
 
+Gemini answers an unknown model with a bare 404 and no message, so a 404 on a chat request is treated the same way; if the model list cannot be read either, the original error is shown, because the address is then the likely problem. Gemini lists models as `models/gemini-…`; the prefix is removed. Changing the provider in Settings clears a model name that belongs to the old provider, so its default is used.
+
 Citations are accepted as `[S12]`, `[ S12 ]`, `【S12】`, `［S12］` or `(S12)`, all checked the same way. Task due dates are worked out by EchoMind from the words the model reports ("by Friday"), never by the model.
 
 ## Adding a provider

@@ -31,7 +31,12 @@ export class ChatHttpProvider implements ChatProvider {
       ...(request.json ? { response_format: { type: 'json_object' } } : {}),
     };
     const response = await this.send(`${this.baseUrl}/chat/completions`, { method: 'POST', headers: this.headers(), body: JSON.stringify(body), signal: request.signal });
-    if (!response.ok) throw await toProviderError(response);
+    if (!response.ok) {
+      const error = await toProviderError(response);
+      // Some services (Gemini) answer an unknown model with a bare 404 and no message. For a chat request
+      // that almost always means the model, so EchoMind can switch to one the service has.
+      throw response.status === 404 && error.kind === 'rejected' ? new ProviderError('model', 'The service does not recognize this model or address. Check Settings.') : error;
+    }
 
     let data: { model?: unknown; choices?: { message?: { content?: unknown }; finish_reason?: unknown }[]; usage?: { prompt_tokens?: unknown; completion_tokens?: unknown } };
     try {
@@ -57,7 +62,8 @@ export class ChatHttpProvider implements ChatProvider {
     const response = await this.send(`${this.baseUrl}/models`, { headers: { ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}) }, signal });
     if (!response.ok) throw await toProviderError(response);
     const data = (await response.json().catch(() => null)) as { data?: { id?: unknown; active?: unknown }[] } | null;
-    return (data?.data ?? []).filter((m) => typeof m.id === 'string' && m.active !== false).map((m) => m.id as string);
+    // Gemini names models "models/gemini-…"; requests take the bare name, as EchoMind's lists do.
+    return (data?.data ?? []).filter((m) => typeof m.id === 'string' && m.active !== false).map((m) => (m.id as string).replace(/^models\//, ''));
   }
 
   async testConnection(signal: AbortSignal): Promise<void> {

@@ -99,3 +99,35 @@ describe('more citation styles seen live', () => {
     expect(resolveCitations('Moved [ S1 ] and owners [ S1, S2 ].', segments)).toMatchObject({ markdown: 'Moved [0:01](cite:1000) and owners [0:01](cite:1000) [0:02](cite:2000).', used: 3, dropped: 0 });
   });
 });
+
+describe('what Gemini taught us', () => {
+  it('a bare 404 from a chat request means the model, so EchoMind can switch', async () => {
+    const { ChatHttpProvider } = await import('../../src/main/ai/chat-http');
+    const fetchFn = (async (url: string) => (String(url).endsWith('/models') ? response(200, { data: [{ id: 'models/gemini-3.5-flash-lite' }, { id: 'models/gemini-embedding-001' }] }) : new Response('', { status: 404 }))) as typeof fetch;
+    const http = new ChatHttpProvider('https://example.test/v1', 'k', fetchFn);
+    const request = { messages: [{ role: 'user' as const, content: 'hi' }], model: 'openai/gpt-oss-120b', maxOutputTokens: 5, json: false, signal: new AbortController().signal, task: 'summary' as const };
+    await expect(http.complete(request)).rejects.toMatchObject({ kind: 'model' });
+    // Gemini's "models/" prefix is removed, so the names match EchoMind's.
+    expect(await http.listModels(new AbortController().signal)).toEqual(['gemini-3.5-flash-lite', 'gemini-embedding-001']);
+  });
+
+  it('when even the model list cannot be read, the original error is shown', async () => {
+    const original = new ProviderError('model', 'The service does not recognize this model or address. Check Settings.');
+    const broken: ChatProvider = { complete: async () => Promise.reject(original), listModels: async () => Promise.reject(new Error('404')), testConnection: async () => undefined };
+    await expect(new ModelFallbackProvider(broken, ['x'], () => undefined).complete({ messages: [], model: 'm', maxOutputTokens: 1, json: false, signal: new AbortController().signal, task: 'summary' })).rejects.toBe(original);
+  });
+
+  it('changing provider drops a model that belongs to the old one', async () => {
+    const { openDatabase } = await import('../../src/main/db/database');
+    const { SettingsStore } = await import('../../src/main/services/settings');
+    const db = openDatabase(':memory:');
+    const store = new SettingsStore(db);
+    store.update({ llmProvider: 'groq', llmModel: 'openai/gpt-oss-120b' });
+    expect(store.update({ llmProvider: 'gemini' }).llmModel).toBeNull();
+    // A model chosen together with the provider is kept, and one that fits the new provider is kept too.
+    expect(store.update({ llmProvider: 'groq', llmModel: 'openai/gpt-oss-20b' }).llmModel).toBe('openai/gpt-oss-20b');
+    store.update({ llmProvider: 'gemini', llmModel: 'gemini-3.8-flash' });
+    expect(store.update({ offlineOnly: false }).llmModel).toBe('gemini-3.8-flash');
+    db.close();
+  });
+});

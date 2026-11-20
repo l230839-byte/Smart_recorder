@@ -32,7 +32,10 @@ export class ModelFallbackProvider implements ChatProvider {
       return await this.inner.complete({ ...request, model });
     } catch (e) {
       if (!(e instanceof ProviderError) || e.kind !== 'model' || !this.inner.listModels) throw e;
-      const next = pickModel(await this.inner.listModels(request.signal), this.preferred, model);
+      // If even the list cannot be read, the address is probably wrong: the original error says so.
+      const available = await this.inner.listModels(request.signal).catch(() => null);
+      if (!available) throw e;
+      const next = pickModel(available, this.preferred, model);
       if (!next) throw new ProviderError('rejected', 'The service no longer offers this model, and no other text model is available. Choose one in Settings > AI providers.');
       this.replaced.set(request.model, next);
       this.onSwitch(model, next);

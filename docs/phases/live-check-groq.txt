@@ -1,9 +1,11 @@
-ECHOMIND DESKTOP: LIVE CHECK ON GROQ
+ECHOMIND DESKTOP: LIVE CHECK ON GROQ AND GEMINI
 ================================================================================
 Date:        2026-11-20
-What:        `npm run test:live` with the owner's free Groq key. A 70-second two-voice
-             meeting generated with Windows speech, checked against 12 known facts.
-Status:      PASSING after four fixes found by this run. Gemini not run (no key).
+What:        `npm run test:live` with the owner's free Groq and Gemini keys. A 70-second
+             two-voice meeting generated with Windows speech, checked against 12 known
+             facts. Groq transcribes; each provider then does every text task.
+Status:      PASSING on both, after four fixes found on Groq and three on Gemini
+             (section 5).
 
 
 1. FIRST RUN: WHAT HAPPENED
@@ -53,7 +55,50 @@ T1  A transcription test that failed now and then under load waited a fixed 30 m
 
 4. STILL TO CHECK
 --------------------------------------------------------------------------------
-- Gemini: needs a GEMINI_API_KEY in desktop/.env.live.
 - Urdu and mixed Urdu-English speech: needs a real recording from the owner.
 - Long recordings on live Groq (multi-part transcription and summaries under real rate
   limits): tested with simulated limits only.
+
+
+5. GEMINI (same meeting, same day)
+--------------------------------------------------------------------------------
+First run: every text task failed with "rejected". Two causes:
+- The live test switches provider from Groq to Gemini, and the Groq model name stayed
+  in the shared text-model setting, so Gemini was asked for a model it does not have.
+  A person changing provider in Settings would hit the same thing.
+- Gemini answers an unknown model with a bare 404 and no message, so the self-recovery
+  from section 2 (X2) never started: it only knew Groq's "model not found" wording.
+
+Fixes:
+G1  Changing the provider clears a model name that is not one of the new provider's,
+    so its default is used. A model chosen in the same change is kept.
+G2  A 404 on a chat request now counts as a missing model and starts the self-recovery.
+    If the model list cannot be read either, the original error is shown, since the
+    address is then the likely problem.
+G3  Gemini lists its models as "models/gemini-..."; the prefix is removed so a switched
+    model can be used directly.
+G4  Gemini titled one action item "Test it". Task titles must now name the thing
+    ("Test the payment screen").
+Unit tests cover G1 to G3 with Gemini's real reply shapes.
+
+Final run on gemini-3.5-flash-lite (about 3 seconds per task, 10 requests, 8,600 tokens):
+- Structured summary: 29 citations kept, 0 invented. The checker found 11 of 12; the
+  twelfth is there in another word order ("Friday: Ahmed to finish the payment screen").
+  Read by hand: all 12 present. The minutes likewise say the budget increase was
+  decided against, in words the checker did not match.
+- Title and tags: "Orion Project Weekly Product Meeting"; product, meeting, mobile,
+  release, orion.
+- Chapters: one chapter for the whole 70 seconds ("Mobile Release and Budget"). Correct
+  but coarse; Groq gave six. Acceptable for a recording this short; longer recordings
+  are not yet checked on Gemini.
+- Meeting minutes document: 40 citations kept, 0 invented.
+- Quiz: 6 correct questions, each with its source, including a false statement about the
+  budget ($15,000) marked False.
+- Action items: 5, the same owners and dates as Groq (Friday 20, Monday 23, Wednesday 25
+  November), test plan and client email undated.
+- Chat: correct cited answers; "not in the recordings" for the marketing budget; for the
+  capital of France, "not in the recordings" with Paris given separately as general
+  knowledge.
+
+Gemini is used for text only. Its audio transcription is not used (see FREE_STACK.md).
+Google may use free-tier content to improve its products; the consent screen says so.

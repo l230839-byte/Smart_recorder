@@ -268,7 +268,7 @@ export function taskMessages(context: string): ChatMessage[] {
     },
     {
       role: 'user',
-      content: `Find every action item in this transcript: tasks, assignments, follow-ups and deadlines. Write titles as short commands ("Send the report to the manager"). For "due_text", copy the exact words that give the deadline, such as "by Friday", "next Monday" or "March 14th", or use an empty string if none were said. Do not turn them into dates.
+      content: `Find every action item in this transcript: tasks, assignments, follow-ups and deadlines. Write titles as short commands ("Send the report to the manager") that make sense on their own: name the thing, never "it" or "this" ("Test the payment screen", not "Test it"). For "due_text", copy the exact words that give the deadline, such as "by Friday", "next Monday" or "March 14th", or use an empty string if none were said. Do not turn them into dates.
 Shape: {"tasks": [{"title": "…", "description": "one sentence of context", "due_text": "by Friday", "owner": "Ahmed", "priority": "high", "source": 12}]}
 If there are none, return {"tasks": []}.
 

@@ -9,6 +9,12 @@
 - Citations written as 【S1】 or [ S1 ] are linked; task due dates are computed from the spoken words, not by the model.
 - Final run: all 12 facts in the summary with 22 checked citations, correct dates, grounded chat. Report in docs/phases/live-check-groq.txt.
 
+### Live check on Gemini
+
+- First run failed every text task: Gemini answers an unknown model with a bare 404, and the Groq model name had been carried over when the provider changed.
+- A 404 on a chat request now triggers the model switch; changing provider clears the old provider's model; Gemini's `models/` prefix is removed.
+- Final run on gemini-3.5-flash-lite: summary with 29 checked citations and none invented, minutes with 40, a correct quiz, correct dates, grounded chat. Task titles must now stand on their own ("Test the payment screen", not "Test it").
+
 ### Phase 8: Hardening and release
 
 - App lock with a PIN. While locked, the main process refuses all data and media, notifications hide titles, and wrong PINs cost growing waits that survive restarts.

@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS, type Settings } from '@shared/models';
+import { LLM_PROVIDER_INFO, PROVIDER_INFO } from '@shared/providers';
 import type { Db } from '../db/database';
 
 /** Values must match the type of the default, or be null where null is the default. */
@@ -22,9 +23,16 @@ export class SettingsStore {
     const upsert = this.db.prepare(
       'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
     );
+    const before = this.get();
     for (const [key, value] of Object.entries(patch)) {
       if (key in DEFAULT_SETTINGS && value !== undefined && validType(key as keyof Settings, value)) upsert.run(key, JSON.stringify(value));
     }
+    // A model belongs to its provider. Changing provider without choosing a model goes back to the new
+    // provider's default, so one service's model name is never sent to another (seen live: Groq's
+    // model sent to Gemini).
+    const after = this.get();
+    if (after.llmProvider !== before.llmProvider && !('llmModel' in patch) && after.llmModel && !LLM_PROVIDER_INFO[after.llmProvider].models.includes(after.llmModel)) upsert.run('llmModel', 'null');
+    if (after.transcriptionProvider !== before.transcriptionProvider && !('transcriptionModel' in patch) && after.transcriptionModel && !PROVIDER_INFO[after.transcriptionProvider].models.includes(after.transcriptionModel)) upsert.run('transcriptionModel', 'null');
     return this.get();
   }
 }
