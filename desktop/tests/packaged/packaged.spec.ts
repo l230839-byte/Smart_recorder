@@ -13,7 +13,7 @@ function call<T>(page: Page, method: string, ...args: unknown[]): Promise<T> {
 
 test.beforeAll(() => ensureFixtures());
 
-test('the packaged app starts, imports, transcribes, exports a PDF with its fonts, and has FFmpeg', async () => {
+test('the packaged app starts, imports, transcribes, exports a PDF with its fonts, and has FFmpeg and offline Whisper', async () => {
   test.skip(!existsSync(EXE), 'Run `npm run dist` first.');
   const dataDir = tempDataDir();
   const env = { ...process.env, ECHOMIND_USER_DATA: dataDir } as Record<string, string>;
@@ -29,6 +29,8 @@ test('the packaged app starts, imports, transcribes, exports a PDF with its font
     const info = await call<AppInfo>(page!, 'getAppInfo');
     expect(info.version).toBe(JSON.parse(readFileSync('package.json', 'utf8')).version);
     expect(info.ffmpeg).toBe(true);
+    // Offline Whisper ships with the installer; only its models are downloaded later.
+    expect((await call<{ installed: boolean }>(page!, 'listLocalModels')).installed).toBe(true);
     await call(page!, 'updateSettings', { transcriptionProvider: 'fake', llmProvider: 'fake' });
     await call(page!, 'importPaths', [fixture('recorder.m4a'), fixture('old-phone.amr')], 'lecture');
     await expect.poll(async () => (await call<ImportJob[]>(page!, 'listImports')).filter((j) => j.status === 'done').length, { timeout: 60_000 }).toBe(2);
