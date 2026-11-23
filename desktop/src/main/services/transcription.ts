@@ -19,8 +19,10 @@ export interface TranscriptionDeps {
   secrets: SecretStore;
   settings: () => Settings;
   makeProvider: (id: TranscriptionProviderId) => TranscriptionProvider;
-  /** Encodes one piece of the recording as small speech audio at this path. */
-  prepareChunk: (recordingId: string, startMs: number, endMs: number, outputPath: string) => Promise<void>;
+  /** Encodes one piece of the recording at this path: small speech Opus, or 16 kHz WAV for whisper.cpp. */
+  prepareChunk: (recordingId: string, startMs: number, endMs: number, outputPath: string, format: 'opus' | 'wav16k') => Promise<void>;
+  /** Whether an offline model is on disk. Offline transcription cannot start without one. */
+  localModelReady?: (model: string) => boolean;
   tempDir: string;
   changed: () => void;
   transcriptReady: (recordingId: string, title: string) => void;
@@ -46,6 +48,10 @@ export class TranscriptionService implements JobHandler {
   /** The privacy gate. Nothing can reach a provider without passing it, at request time and again at run time. */
   blockedBy(provider: TranscriptionProviderId): Exclude<TranscribeOutcome, { ok: true }> | null {
     const info = PROVIDER_INFO[provider];
+    if (provider === 'local') {
+      const model = this.deps.settings().transcriptionModel ?? info.models[0]!;
+      return this.deps.localModelReady?.(model) === false ? { ok: false, reason: 'needs-setup', provider, purpose: 'audio' } : null;
+    }
     if (info.local) return null;
     if (this.deps.settings().offlineOnly) return { ok: false, reason: 'offline-only', provider, purpose: 'audio' };
     if (provider === 'custom' && !this.deps.settings().customBaseUrl) return { ok: false, reason: 'needs-setup', provider, purpose: 'audio' };
@@ -117,11 +123,13 @@ export class TranscriptionService implements JobHandler {
         this.deps.changed();
 
         const durationMs = chunk.endMs - chunk.startMs;
-        chunkFile = join(this.deps.tempDir, `${job.id}-${chunk.idx}.ogg`);
-        await this.deps.prepareChunk(recording.id, chunk.startMs, chunk.endMs, chunkFile);
+        const format = PROVIDER_INFO[job.provider as TranscriptionProviderId]?.pieceFormat ?? 'opus';
+        const ext = format === 'wav16k' ? 'wav' : 'ogg';
+        chunkFile = join(this.deps.tempDir, `${job.id}-${chunk.idx}.${ext}`);
+        await this.deps.prepareChunk(recording.id, chunk.startMs, chunk.endMs, chunkFile, format);
         if (signal.aborted) throw new DOMException('Canceled', 'AbortError');
 
-        const result = await provider.transcribe({ filePath: chunkFile, fileName: `audio-${chunk.idx}.ogg`, mime: 'audio/ogg', durationMs, model: job.model, language, signal });
+        const result = await provider.transcribe({ filePath: chunkFile, fileName: `audio-${chunk.idx}.${ext}`, mime: format === 'wav16k' ? 'audio/wav' : 'audio/ogg', durationMs, model: job.model, language, signal });
         usage.record(job.provider, 1, durationMs);
         if (result.rate) usage.saveRate(job.provider, result.rate);
         jobs.saveChunk(job.id, chunk.idx, result.segments, result.language);

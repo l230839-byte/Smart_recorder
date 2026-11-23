@@ -502,6 +502,40 @@ describe('transcription queue', () => {
     expect(jobs.get(jobId)!.status).toBe('done');
   });
 
+  it('offline Whisper needs no key, consent or internet, but waits for its model; its pieces are 16 kHz WAV', async () => {
+    settings = { ...settings, transcriptionProvider: 'local', transcriptionModel: 'small', offlineOnly: true };
+    let ready = false;
+    const formats: string[] = [];
+    const local = new TranscriptionService({
+      jobs,
+      transcripts,
+      library,
+      usage,
+      consents,
+      secrets,
+      settings: () => settings,
+      makeProvider: () => provider,
+      prepareChunk: async (_id, _start, _end, path, format) => {
+        formats.push(`${format}:${path.slice(-4)}`);
+      },
+      localModelReady: () => ready,
+      tempDir: tmpdir(),
+      changed: () => undefined,
+      transcriptReady: () => undefined,
+      now: () => clock,
+      schedule: (ms) => wakeups.push(ms),
+    });
+    const recordingId = addRecording(5000);
+    expect(local.request(recordingId)).toMatchObject({ ok: false, reason: 'needs-setup', provider: 'local' });
+    ready = true;
+    const outcome = local.request(recordingId) as { ok: true; jobId: string };
+    expect(outcome.ok).toBe(true);
+    await settle();
+    expect(jobs.get(outcome.jobId)!.status).toBe('done');
+    expect(formats).toEqual(['wav16k:.wav']);
+    expect(calls[0]).toMatchObject({ mime: 'audio/wav', model: 'small' });
+  });
+
   it('Gemini gets 25-minute pieces, so its speaker labels restart less often; others keep 10 minutes', async () => {
     settings = { ...settings, transcriptionProvider: 'gemini' };
     secrets.set(keyName('gemini'), 'AIza-test');

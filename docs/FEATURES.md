@@ -15,6 +15,7 @@ Only what is implemented and verified is listed as **Working**.
 | Player: speed, skip silence, voice boost, bookmarks, trim | Working |
 | Storage management | Working |
 | Transcription: job queue, chunking, retry, resume, consent, encrypted keys | Working (tested with a local server following Groq's format) |
+| Offline transcription on this computer (whisper.cpp): five models from 31 MB to 547 MB, downloaded once in Settings, checked by SHA-256, resumable; works with Offline only on | Working (live-checked 2026-11-23: Tiny 11.5x and Small 2.2x real time, 11 of 12 facts each). Needs `npm run fetch:whisper` in a development copy. |
 | Transcription on live Groq | Working (live-checked 2026-11-20 and on a 3-hour recording 2026-11-22: all facts found, under 1 s timing drift, resumes after a kill) |
 | Recordings of 1 to 3 hours: transcription, summaries, chapters, titles, minutes, quizzes, tasks and chat | Working (3-hour meeting live-checked 2026-11-22 and 23; free Groq limits mean waits, handled automatically; see FREE_STACK.md) |
 | Transcript viewer: six views, editing with preserved original, versions, find, synced playback, export to TXT, SRT, VTT | Working |

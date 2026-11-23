@@ -3,7 +3,32 @@
  * account are deliberately absent: EchoMind shows what the provider reports and what the user configures.
  */
 
-export const TRANSCRIPTION_PROVIDERS = ['groq', 'gemini', 'custom', 'fake'] as const;
+export const TRANSCRIPTION_PROVIDERS = ['groq', 'gemini', 'local', 'custom', 'fake'] as const;
+
+/**
+ * Whisper models that run on this computer through whisper.cpp (MIT). All multilingual, so Urdu, Hindi
+ * and Arabic work; all quantized, which keeps them small with little loss. Hashes are the files'
+ * published SHA-256 at huggingface.co/ggerganov/whisper.cpp, checked after every download.
+ */
+export const LOCAL_MODELS = {
+  tiny: { label: 'Tiny', file: 'ggml-tiny-q5_1.bin', sizeMb: 31, sha256: '818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7', hint: 'Fastest. Rough with accents and noise.' },
+  base: { label: 'Base', file: 'ggml-base-q5_1.bin', sizeMb: 57, sha256: '422f1ae452ade6f30a004d7e5c6a43195e4433bc370bf23fac9cc591f01a8898', hint: 'Fast. Fine for clear speech.' },
+  small: { label: 'Small', file: 'ggml-small-q5_1.bin', sizeMb: 181, sha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb', hint: 'Recommended. Good accuracy at a reasonable speed.' },
+  medium: { label: 'Medium', file: 'ggml-medium-q5_0.bin', sizeMb: 514, sha256: '19fea4b380c3a618ec4723c3eef2eb785ffba0d0538cf43f8f235e7b3b34220f', hint: 'More accurate, several times slower.' },
+  'large-v3-turbo': { label: 'Large v3 Turbo', file: 'ggml-large-v3-turbo-q5_0.bin', sizeMb: 547, sha256: '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2', hint: 'Most accurate, especially for other languages. Needs a fast computer.' },
+} as const;
+export type LocalModelId = keyof typeof LOCAL_MODELS;
+export const LOCAL_MODEL_IDS = Object.keys(LOCAL_MODELS) as LocalModelId[];
+export const LOCAL_MODEL_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
+
+export interface LocalModelStatus {
+  id: LocalModelId;
+  installed: boolean;
+  /** Set while downloading: bytes so far and in all. */
+  downloading: { received: number; total: number } | null;
+  /** A part file from an interrupted download, which "Download" continues. */
+  partialBytes: number;
+}
 export type TranscriptionProviderId = (typeof TRANSCRIPTION_PROVIDERS)[number];
 
 export interface ProviderInfo {
@@ -22,6 +47,8 @@ export interface ProviderInfo {
    * with every request, so fewer, longer pieces keep "Speaker A" the same person for longer.
    */
   maxChunkMs?: number;
+  /** How each piece is encoded: small Opus for upload, or the 16 kHz WAV whisper.cpp reads. */
+  pieceFormat?: 'opus' | 'wav16k';
   keyUrl: string | null;
   limitsUrl: string | null;
   /** Shown before the first upload. States what is known and where to check, and promises nothing. */
@@ -63,6 +90,21 @@ export const PROVIDER_INFO: Record<TranscriptionProviderId, ProviderInfo> = {
     disclosure:
       "Audio from your recording is sent to Google, in pieces, to create the transcript. On Gemini's free tier, Google's terms say it may use what you submit, and the results, to improve its products and machine learning technology. Do not use this for confidential recordings. Groq Whisper or the offline demo are alternatives.",
     speakerLabels: true,
+  },
+  local: {
+    id: 'local',
+    label: 'On this computer (offline Whisper)',
+    hint: 'Nothing leaves your computer, and no key is needed. Download a model once; speed depends on your computer.',
+    local: true,
+    needsKey: false,
+    baseUrl: null,
+    models: ['small', 'base', 'tiny', 'medium', 'large-v3-turbo'],
+    maxChunkBytes: 1024 * 1024 * 1024,
+    pieceFormat: 'wav16k',
+    keyUrl: null,
+    limitsUrl: null,
+    disclosure: '',
+    speakerLabels: false,
   },
   custom: {
     id: 'custom',

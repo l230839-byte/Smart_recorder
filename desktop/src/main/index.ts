@@ -11,7 +11,8 @@ import { BundleService } from './services/bundles';
 import type { EchoApi, EchoEvents } from '@shared/api';
 import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
 import { markdownToClipboard } from '@shared/markdown';
-import { LLM_PROVIDER_INFO, PROVIDER_INFO, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, LOCAL_MODELS, PROVIDER_INFO, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type LocalModelId, type TranscriptionProviderId } from '@shared/providers';
+import { availableParallelism } from 'node:os';
 import { toPlainText, toSrt, toVtt } from '@shared/transcript';
 import { EXPORT_FORMATS, transcriptToCsv } from '@shared/documents';
 import { ChatHttpProvider } from './ai/chat-http';
@@ -28,6 +29,8 @@ import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, Us
 import { hardenContents, hardenSession } from './security';
 import { initLogFile, logError, logEvent } from './log';
 import { GeminiTranscribeProvider } from './ai/gemini-transcribe';
+import { LocalWhisperProvider } from './ai/local-whisper';
+import { LocalModelStore } from './services/local-models';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
 import { IngestPipeline } from './services/ingest';
@@ -178,8 +181,15 @@ async function start(): Promise<void> {
     }
   };
 
+  // Offline Whisper: models in the data folder, whisper.cpp beside FFmpeg in the app's resources.
+  const localModels = new LocalModelStore(join(dataDir, 'models'), () => emit('data:changed', 'settings'));
+  const whisperCli = join(app.isPackaged ? join(process.resourcesPath, 'bin') : join(app.getAppPath(), 'resources', 'bin'), 'whisper', 'whisper-cli.exe');
+  // Leaves a core free so the window and recording stay responsive while a model runs.
+  const whisperThreads = Math.max(1, Math.min(8, availableParallelism() - 1));
+
   const makeProvider = (id: TranscriptionProviderId) => {
     if (id === 'fake') return new FakeProvider();
+    if (id === 'local') return new LocalWhisperProvider(whisperCli, (model) => (model in LOCAL_MODELS ? localModels.path(model as LocalModelId) : null), whisperThreads);
     const key = secrets.get(keyName(id));
     const baseUrl = id === 'custom' ? settings.get().customBaseUrl : PROVIDER_INFO[id].baseUrl;
     if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
@@ -198,11 +208,13 @@ async function start(): Promise<void> {
     secrets,
     settings: () => settings.get(),
     makeProvider,
-    prepareChunk: async (recordingId, startMs, endMs, outputPath) => {
+    prepareChunk: async (recordingId, startMs, endMs, outputPath, format) => {
       const file = library.mediaFile(recordingId);
       if (!file) throw new Error('The audio for this recording is missing.');
-      await media.convert(join(mediaDir, file.fileName), outputPath, { container: 'ogg', transcode: true, startMs, endMs, speechBitrate: SPEECH_BITRATE });
+      if (format === 'wav16k') await media.convert(join(mediaDir, file.fileName), outputPath, { container: 'wav', transcode: true, startMs, endMs, pcm16k: true });
+      else await media.convert(join(mediaDir, file.fileName), outputPath, { container: 'ogg', transcode: true, startMs, endMs, speechBitrate: SPEECH_BITRATE });
     },
+    localModelReady: (model) => model in LOCAL_MODELS && localModels.installed(model as LocalModelId),
     tempDir,
     changed: jobsChanged,
     transcriptReady: (recordingId, title) => {
@@ -619,6 +631,10 @@ async function start(): Promise<void> {
         clearTimeout(timer);
       }
     },
+    listLocalModels: () => ({ models: localModels.list(), installed: existsSync(whisperCli) }),
+    downloadLocalModel: (id) => localModels.download(id),
+    cancelLocalModelDownload: (id) => localModels.cancel(id),
+    deleteLocalModel: (id) => localModels.remove(id),
     listProviderModels: async (provider, purpose) => {
       const info = purpose === 'text' ? LLM_PROVIDER_INFO[provider as LlmProviderId] : PROVIDER_INFO[provider as TranscriptionProviderId];
       const recommended = info?.models ?? [];

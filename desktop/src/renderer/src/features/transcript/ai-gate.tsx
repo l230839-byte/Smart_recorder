@@ -91,7 +91,11 @@ export function useTranscribe() {
     dialogs = (
       <ConfirmDialog
         title={`Set up ${infoFor(blocked).label}`}
-        message="This needs a provider. Add your own free key in Settings, or try the demo provider first."
+        message={
+          blocked.provider === 'local'
+            ? 'Offline transcription needs its model on this computer first. Download it once in Settings; after that, nothing is sent anywhere.'
+            : 'This needs a provider. Add your own free key in Settings, or try the demo provider first.'
+        }
         confirmLabel="Open AI provider settings"
         onConfirm={() => go({ name: 'providers' })}
         onClose={close}

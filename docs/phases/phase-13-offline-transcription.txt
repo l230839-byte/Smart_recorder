@@ -1,0 +1,81 @@
+ECHOMIND DESKTOP: PHASE 13, OFFLINE TRANSCRIPTION
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §0 free stack and local-first; §5 transcription; §21 privacy
+Date:        2026-11-23
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Transcription that needs no internet, no key and no one's servers, chosen by the owner
+as part of the AI model upgrades. The whole AI pipeline after transcription already
+works the same whatever made the transcript.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+Settings > AI providers > Transcription > On this computer (offline Whisper)
+- Choose a model and press Download, once:
+    Tiny 31 MB, Base 57 MB, Small 181 MB (recommended), Medium 514 MB,
+    Large v3 Turbo 547 MB.
+  All understand many languages, including Urdu, Hindi and Arabic.
+- A progress bar shows the download; Pause keeps what has arrived, and the button then
+  says "Continue (… MB done)". Downloaded models can be deleted to free space.
+- After that, transcription runs entirely on the computer, with Offline only on. No key,
+  no agreement screen, nothing sent.
+- If Offline only is on when you press Download, EchoMind asks first, because the
+  download itself contacts Hugging Face (nothing from your recordings is sent).
+- Choosing this provider before downloading a model explains what to do instead of
+  asking for a key.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  whisper.cpp (MIT) as a separate program, not a native Node module: nothing to
+    compile, crashes cannot take EchoMind down, and cancelling simply ends the process.
+D2  Pinned to release b5454 (public for seven weeks when chosen) and checked against
+    the SHA-256 GitHub publishes for the file; its MIT licence is fetched, checked and
+    shipped beside it. Only whisper-cli and its libraries are kept.
+D3  Models are downloaded by the person, not bundled: the installer stays its size,
+    and people choose speed or accuracy. Every model is the quantized multilingual
+    file, checked against its published SHA-256 and only renamed for use once it
+    matches; interrupted downloads continue (HTTP Range).
+D4  Pieces for whisper.cpp are written by the existing media worker as 16 kHz mono WAV,
+    so offline transcription does not depend on the optional FFmpeg add-on.
+D5  whisper.cpp's default language is English, so EchoMind always passes "auto" unless
+    a language is chosen; otherwise Urdu would be transcribed as English.
+D6  All but one CPU core (at most 8), so recording and the window stay responsive.
+D7  "Local" already meant "skip key, consent and Offline only" in the privacy gate; the
+    gate now also waits until the chosen model is on disk.
+
+
+4. TESTS
+--------------------------------------------------------------------------------
+Unit (286 passing): reading whisper-cli JSON (times, language, non-speech tags,
+clamping, silence); the model catalogue (multilingual, hashes, Small first); download,
+hash check and final rename; resume from a part file with a Range request; a tampered
+file deleted; a failed connection keeping its part; offline provider needing no key,
+consent or internet but waiting for its model, with 16 kHz WAV pieces.
+
+Live, in the real app with Offline only on (tests/live/local-whisper.spec.ts),
+2026-11-23, 70 s two-voice meeting:
+                 Download   Speed               Facts
+  Tiny (31 MB)   6.8 s      11.5x real time     11 of 12
+  Small (181 MB) 31.4 s     2.2x real time      11 of 12
+Both missed only a spelling ("Lena" for "Lina"); line times agree with Gemini and
+Groq to within about 0.3 s. On this computer Small would take about 80 minutes for a
+3-hour recording.
+
+The whisper.cpp download script was run from a clean folder: hash checked, licence
+checked, and the options EchoMind uses confirmed in the tool's own help.
+
+
+5. REVIEW
+--------------------------------------------------------------------------------
+Designer: offline is now a first-class choice beside the cloud services, with sizes
+and trade-offs in plain words, and the one moment it touches the network is explicit.
+Developer: no new npm dependency; the provider and the model store are small and fully
+unit-tested; the binary is a build asset like FFmpeg.
+Limits: speed depends on the computer, and there is no GPU acceleration (the CPU build
+is used so every Windows PC works). No speaker labels offline yet: a candidate is
+sherpa-onnx (Apache-2.0) speaker diarization.

@@ -138,3 +138,34 @@
   gap: var(--s2) var(--s4);
   margin-top: var(--s2);
 }
+
+/* Offline models: a choice on the left, its download or delete action on the right. */
+.local-model {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.local-model-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+  min-width: 150px;
+  justify-content: flex-end;
+}
+.local-model-actions .progress {
+  width: 110px;
+}
+.local-model-state {
+  flex: none;
+  color: var(--success);
+}
+@media (max-width: 980px) {
+  .local-model {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .local-model-actions {
+    justify-content: flex-start;
+  }
+}

@@ -53,6 +53,7 @@
     "check": "npm run typecheck && npm run lint && npm test && npm run check:licenses",
     "dist": "electron-vite build && electron-builder --win",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
+    "fetch:whisper": "node scripts/fetch-whisper.mjs",
     "icon": "node scripts/run.mjs electron scripts/make-icon.mjs",
     "test:packaged": "node scripts/run.mjs playwright test -c playwright.packaged.config.ts"
   },

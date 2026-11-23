@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Phase 13: Offline transcription
+
+- "On this computer (offline Whisper)": transcription with no internet and no key, through whisper.cpp (MIT). Works with Offline only on.
+- Five multilingual models from 31 MB to 547 MB, downloaded once in Settings from the official source, checked by SHA-256, and resumable; download asks first when Offline only is on.
+- Live: Tiny 11.5x and Small 2.2x real time on the development computer, 11 of 12 facts each, timings in line with the cloud providers.
+- `npm run fetch:whisper` pins whisper.cpp b5454 and checks its published hash and MIT licence.
+
 ### Phase 12: AI models
 
 - Gemini 3.5 Transcribe as a transcription provider: speaker labels and word timings from the audio. Live: all 12 facts, turns within 0.1 s of Groq Whisper, two voices told apart 100%. 25-minute pieces keep speaker labels steady for longer.

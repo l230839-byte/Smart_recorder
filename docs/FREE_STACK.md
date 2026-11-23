@@ -17,6 +17,8 @@ EchoMind uses free and open-source software only. `npm run check:licenses` fails
 | JSZip (used by PptxGenJS) | Zip packaging | Dual MIT or GPL-3.0; used under MIT |
 | pako (used by JSZip) | Compression | MIT and Zlib |
 | FFmpeg, optional add-on | Reads formats the built-in decoders cannot, such as AMR and WMA | LGPL (BtbN shared build) |
+| whisper.cpp (with ggml) | Offline transcription on this computer | MIT. Its Windows build also carries SDL2.dll (zlib licence). |
+| Whisper models (ggml files) | The offline models, downloaded by the person when they choose | MIT (OpenAI Whisper weights), converted by the whisper.cpp project |
 
 Build and test tools (not shipped): electron-builder and NSIS (MIT and zlib licences) make the installer; axe-core (MPL-2.0) runs the accessibility audit.
 
@@ -25,6 +27,12 @@ PDFs are printed by the Chromium inside Electron, so no PDF library is needed. T
 ### FFmpeg notes
 
 `npm run fetch:ffmpeg` downloads the LGPL shared build, verifies the checksum published with the release, and refuses any build configured with GPL or non-free code. It stays out of the repository and is copied into the installer. It runs as a separate process with replaceable shared libraries, which is how the LGPL's relinking requirement is met. Its licence file is copied alongside it. Source is available from [FFmpeg](https://ffmpeg.org/download.html) and [the build scripts](https://github.com/BtbN/FFmpeg-Builds).
+
+### whisper.cpp notes
+
+`npm run fetch:whisper` downloads the official Windows build of whisper.cpp release b5454 (published 2026-10-06, pinned rather than "latest"), checks it against the SHA-256 GitHub publishes for the file, keeps only `whisper-cli.exe` and the libraries it loads, saves the project's MIT licence beside them, and confirms the command-line options EchoMind uses. It stays out of the repository and is copied into the installer with FFmpeg. Models are not bundled: the person downloads one in Settings (31 MB to 547 MB) from huggingface.co/ggerganov/whisper.cpp, and EchoMind checks each file's published SHA-256 before using it.
+
+Measured on 2026-11-23 on the development computer (70 seconds of two-voice meeting, Offline only on): Tiny 11.5x real time, Small 2.2x real time, both 11 of 12 facts. A 3-hour recording on Small takes about 80 minutes there; faster computers are faster.
 
 ## AI providers
 

@@ -19,6 +19,8 @@ Every recording is treated as sensitive private data.
 | Consent gate | Offline only, key and agreement are checked at request and again just before sending. Consent is separate for audio and text. | `transcription.test.ts`, `transcription.spec.ts` (a real server counts requests) |
 | Encrypted transport | Provider addresses must be `https://`. `http://` is accepted only for this computer. | `transcription.test.ts` |
 | FFmpeg sandboxing | Separate process with no shell, files only, playlist-type containers refused. Runs only on copies EchoMind made. | `ffmpeg.spec.ts` (HLS, concat and SDP tricks are all refused) |
+| Offline Whisper | whisper.cpp runs as a separate process with no shell, on a copy of the audio EchoMind wrote and a model file it checked; it has no network use. Its own binary is pinned and hash-checked at build time. | `local-whisper.test.ts`, `tests/live/local-whisper.spec.ts` (runs with Offline only on) |
+| Model downloads | Only when the person asks, only from huggingface.co/ggerganov/whisper.cpp over https, checked against the published SHA-256 before the file gets its usable name; a mismatch is deleted. With Offline only on, EchoMind asks first. Nothing from recordings is sent. | `local-whisper.test.ts` |
 | IPC sender checks | App API calls must come from the main window, and file handles from the media worker. | Code review |
 | AI output rendering | Parsed into data and built as elements. No HTML injection, and only citation links survive. | `summaries.test.ts` |
 | Prompt injection defense | The transcript is declared to be data, and citations are verified after the reply. It lowers the risk but cannot remove it. | `summaries.test.ts` |

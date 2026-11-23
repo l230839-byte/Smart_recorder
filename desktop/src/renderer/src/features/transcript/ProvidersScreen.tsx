@@ -6,6 +6,7 @@ import { LLM_PROVIDER_INFO, LLM_PROVIDERS, PROVIDER_INFO, providerLabel, TRANSCR
 import { Button, Card, Loading, PageHeader } from '../../design/components';
 import { api, errorMessage, useQuery } from '../../lib/api';
 import { useToast } from '../../lib/toast';
+import { LocalModelsCard } from './LocalModels';
 import './transcript.css';
 
 type AnyProvider = TranscriptionProviderId | LlmProviderId;
@@ -222,8 +223,9 @@ export function ProvidersScreen() {
           ))}
         </div>
         <ProviderCard provider={provider} purpose="audio" offlineOnly={s.offlineOnly} baseUrl={s.customBaseUrl} onBaseUrl={(customBaseUrl) => update({ customBaseUrl })} />
+        {provider === 'local' && <LocalModelsCard value={s.transcriptionModel} offlineOnly={s.offlineOnly} onChange={(transcriptionModel) => update({ transcriptionModel })} />}
         <Card>
-          <ModelField id="model" provider={provider} purpose="audio" models={info.models} value={s.transcriptionModel} custom={provider === 'custom'} onChange={(transcriptionModel) => update({ transcriptionModel })} />
+          {provider !== 'local' && <ModelField id="model" provider={provider} purpose="audio" models={info.models} value={s.transcriptionModel} custom={provider === 'custom'} onChange={(transcriptionModel) => update({ transcriptionModel })} />}
           <div className="setting-line">
             <label className="grow" htmlFor="default-language">
               Default language

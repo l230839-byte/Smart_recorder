@@ -27,7 +27,7 @@ import type {
   Transcript,
   UsageSummary,
 } from './models';
-import type { LlmProviderId, TranscriptionProviderId } from './providers';
+import type { LlmProviderId, LocalModelId, LocalModelStatus, TranscriptionProviderId } from './providers';
 import type { ChatDetail, ChatScope, ChatThread } from './chat';
 import type { DocumentSettings, ExportFormat } from './documents';
 import type { SearchQuery, SearchResult } from './search';
@@ -113,6 +113,12 @@ export interface EchoApi {
    * The models to offer in Settings: EchoMind's tested choices first, then whatever else the service
    * offers today for this purpose. `live` is false when the list could not be read (offline, no key).
    */
+  /** Offline Whisper models: which are on this computer, and any download in progress. */
+  listLocalModels(): { models: LocalModelStatus[]; installed: boolean };
+  /** Downloads (or continues downloading) a model from its official source, checked by SHA-256. */
+  downloadLocalModel(id: LocalModelId): Promise<void>;
+  cancelLocalModelDownload(id: LocalModelId): void;
+  deleteLocalModel(id: LocalModelId): Promise<void>;
   listProviderModels(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): Promise<{ recommended: string[]; others: string[]; live: boolean }>;
   acceptConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;
   revokeConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;

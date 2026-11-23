@@ -18,6 +18,10 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 5. **Merge.** `mergeChunks` shifts timestamps onto the recording's timeline and saves an `original` version.
 6. **Index.** The current version goes into `transcript_search`, so the Library can find it.
 
+### Offline transcription
+
+The "On this computer" provider runs whisper.cpp's `whisper-cli` on each piece, which the media worker writes as 16 kHz mono 16-bit WAV (`pieceFormat: 'wav16k'`) instead of Opus. Arguments: the chosen model, `-l auto` unless a language is set (whisper.cpp's own default is English), all but one CPU core (at most 8), and JSON output, which `parseWhisperCppJson` reads (offsets in milliseconds; non-speech tags such as `[BLANK_AUDIO]` are dropped). Cancelling kills the process. Because it is `local`, the privacy gate asks for no key, consent or network, and Offline only does not block it; instead the gate waits until the chosen model is on disk. Models download through `LocalModelStore`: resumable with HTTP Range, written to a `.part` file, and renamed only after the SHA-256 matches.
+
 ### Gemini transcription
 
 Gemini 3.5 Transcribe is reached through the Gemini API's Interactions endpoint (`/v1beta/interactions`), with each piece sent inline as Ogg/Opus and `transcription_config.mode` asking for verbatim text, speaker diarization and word timestamps. `parseGeminiTranscript` builds lines from the words: a new line at a change of speaker, at a sentence end after a pause of 0.7 s or more, at any sentence end past 20 s, and in any case past 40 s. Times are clamped to the piece. Speakers become "Speaker A", "Speaker B"… Gemini's labels restart with every request, so Gemini gets 25-minute pieces (`maxChunkMs`) instead of the usual 10. Silence returns no text and is reported as "speech not found", as for Whisper.

@@ -124,7 +124,7 @@ export class MediaWorker {
   convert(
     from: string,
     to: string,
-    options: Pick<Extract<MediaJob, { op: 'convert' }>, 'container' | 'transcode' | 'startMs' | 'endMs' | 'speechBitrate'>,
+    options: Pick<Extract<MediaJob, { op: 'convert' }>, 'container' | 'transcode' | 'startMs' | 'endMs' | 'speechBitrate' | 'pcm16k'>,
     onProgress?: (value: number) => void,
   ): Promise<MediaJobResult['convert']> {
     return this.withFile(from, 'r', (input) => this.withFile(to, 'w+', (output) => this.run<'convert'>({ op: 'convert', input, output, ...options }, onProgress)));
