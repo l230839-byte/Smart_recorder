@@ -16,7 +16,7 @@ import {
   type StudioOptions,
   type StudyType,
 } from '@shared/studio';
-import { Button, IconButton, Loading, PageHeader, SearchField, Segmented, TextPromptDialog } from '../../design/components';
+import { Button, IconButton, LanguageField, Loading, PageHeader, SearchField, Segmented, TextPromptDialog } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { useRouter } from '../../lib/router';
 import { useToast } from '../../lib/toast';
@@ -207,27 +207,11 @@ export function StudioTool({ kind, recordingIds = [] }: { kind: StudioKind; reco
                   </select>
                 </div>
               )}
-              <div className="field">
-                <label htmlFor="st-target">Into</label>
-                <input id="st-target" className="input" list="st-targets" value={o.targetLanguage} onChange={(e) => set({ targetLanguage: e.target.value })} />
-                <datalist id="st-targets">
-                  {TARGET_LANGUAGES.map((l) => (
-                    <option key={l} value={l} />
-                  ))}
-                </datalist>
-              </div>
+              <LanguageField id="st-target" label="Into" value={o.targetLanguage} options={TARGET_LANGUAGES} onChange={(targetLanguage) => set({ targetLanguage })} />
             </>
           )}
           {kind !== 'translate' && kind !== 'tasks' && (
-            <div className="field">
-              <label htmlFor="st-language">Language</label>
-              <input id="st-language" className="input" list="st-languages" value={o.language} onChange={(e) => set({ language: e.target.value || OUTPUT_LANGUAGES[0]! })} />
-              <datalist id="st-languages">
-                {OUTPUT_LANGUAGES.map((l) => (
-                  <option key={l} value={l} />
-                ))}
-              </datalist>
-            </div>
+            <LanguageField id="st-language" label="Language" value={o.language} options={OUTPUT_LANGUAGES} onChange={(language) => set({ language })} />
           )}
           {kind !== 'translate' && kind !== 'tasks' && (
             <div className="field">

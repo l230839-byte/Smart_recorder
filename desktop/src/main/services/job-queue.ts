@@ -125,7 +125,8 @@ export class JobQueue {
       this.jobs.setFailed(job.id, error instanceof Error ? error.message : String(error), true);
       return;
     }
-    const attempts = job.attempts + 1;
+    // Read again: finished pieces during this run reset the count.
+    const attempts = (this.jobs.get(job.id)?.attempts ?? job.attempts) + 1;
     if (error.kind === 'auth' || error.kind === 'rejected' || error.kind === 'too-large') {
       this.jobs.setFailed(job.id, error.message, true);
       return;
@@ -133,11 +134,11 @@ export class JobQueue {
     if (error.kind === 'rate' || error.kind === 'quota') {
       // Limits reset by themselves, so these never use up the retry count.
       const wait = error.retryAfterMs ?? DEFAULT_RATE_WAIT_MS * (error.kind === 'quota' ? 30 : 1);
-      this.jobs.setWaiting(job.id, `${error.message} Progress is saved, and EchoMind will continue on its own.`, this.now() + backoffMs(attempts, wait), job.attempts);
+      this.jobs.setWaiting(job.id, `${error.message} Progress is saved, and EchoMind will continue on its own.`, this.now() + backoffMs(attempts, wait), attempts - 1);
       return;
     }
     if (attempts >= MAX_AUTO_ATTEMPTS) {
-      this.jobs.setFailed(job.id, `${error.message} EchoMind stopped after ${attempts} attempts. Progress is saved, so retrying continues from here.`, true);
+      this.jobs.setFailed(job.id, `${error.message} EchoMind stopped after ${attempts} failed attempts in a row. Progress is saved, so retrying continues from here.`, true);
       return;
     }
     this.jobs.setWaiting(job.id, `${error.message} Trying again soon. Progress is saved.`, this.now() + backoffMs(attempts, error.retryAfterMs), attempts);

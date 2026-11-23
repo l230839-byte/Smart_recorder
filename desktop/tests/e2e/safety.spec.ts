@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import type { ChatDetail } from '../../src/shared/chat';
@@ -214,6 +214,36 @@ test('privacy: a whole session with the demo providers makes no network request 
     expect(external).toEqual([]);
   } finally {
     await closeApp(app);
+    removeDir(dataDir);
+  }
+});
+
+test('a crashed window is reopened with a notice, and every start, crash and quit is written to the log', async () => {
+  const dataDir = tempDataDir();
+  const { app, page } = await launch(dataDir);
+  try {
+    await completeOnboarding(page);
+    await app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().endsWith('media.html'))!.webContents.forcefullyCrashRenderer();
+    });
+    // The same window comes back on its own, and says what happened. Playwright keeps a crashed page
+    // marked as crashed even after the app reloads it, so the page is read from the main process.
+    const shown = () =>
+      app.evaluate(async ({ BrowserWindow }) => {
+        const contents = BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().endsWith('media.html'))!.webContents;
+        if (contents.isCrashed() || contents.isLoading()) return '';
+        // A read that lands mid-reload fails; the poll simply asks again.
+        return ((await contents.executeJavaScript('document.body.innerText').catch(() => '')) as string) ?? '';
+      });
+    await expect.poll(shown, { timeout: 20_000 }).toContain('window stopped unexpectedly and was reopened');
+    expect(await shown()).toContain('Library');
+    expect(app.process().exitCode).toBeNull();
+  } finally {
+    await closeApp(app);
+    const log = readFileSync(join(dataDir, 'logs', 'echomind.log'), 'utf8');
+    expect(log).toMatch(/ start version /);
+    expect(log).toMatch(/ renderer-gone (crashed|killed)/);
+    expect(log).toMatch(/ quit\n/);
     removeDir(dataDir);
   }
 });

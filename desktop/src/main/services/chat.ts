@@ -35,6 +35,7 @@ const ANSWER_MAX_TOKENS = 2500;
 const PLAN_MAX_TOKENS = 300;
 /** A rate limit this short is simply waited out, once, rather than failing the answer. */
 const SHORT_WAIT_MS = 20_000;
+const MAX_CHAT_RETRIES = 3;
 /** Recordings that can share one answer as an even selection of each. More than this needs a search. */
 const MAX_OVERVIEW_RECORDINGS = 8;
 
@@ -212,7 +213,7 @@ export class ChatService {
     }
   }
 
-  /** One request, with a short rate-limit wait handled here so a busy minute does not fail the answer. */
+  /** One request. Short rate-limit waits and network blips are retried here, so the answer does not fail. */
   private async complete(provider: ChatProvider, providerId: LlmProviderId, request: Parameters<ChatProvider['complete']>[0]): Promise<string> {
     for (let attempt = 0; ; attempt++) {
       try {
@@ -221,8 +222,15 @@ export class ChatService {
         if (result.rate) this.deps.usage.saveRate(providerId, result.rate);
         return result.text;
       } catch (e) {
-        if (attempt === 0 && e instanceof ProviderError && e.kind === 'rate' && (e.retryAfterMs ?? 0) <= SHORT_WAIT_MS) {
+        // Up to three more tries. On Groq's free tier, a question about a long recording often meets the
+        // per-minute limit twice in a row, and a slow connection can drop more than once (both seen live).
+        const more = attempt < MAX_CHAT_RETRIES;
+        if (more && e instanceof ProviderError && e.kind === 'rate' && (e.retryAfterMs ?? 0) <= SHORT_WAIT_MS) {
           await this.wait(e.retryAfterMs ?? 5000, request.signal);
+          continue;
+        }
+        if (more && e instanceof ProviderError && (e.kind === 'network' || e.kind === 'server')) {
+          await this.wait(3000 * (attempt + 1), request.signal);
           continue;
         }
         if (e instanceof ProviderError && (e.kind === 'rate' || e.kind === 'quota')) {

@@ -11,7 +11,7 @@ import { BundleService } from './services/bundles';
 import type { EchoApi, EchoEvents } from '@shared/api';
 import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
 import { markdownToClipboard } from '@shared/markdown';
-import { LLM_PROVIDER_INFO, PROVIDER_INFO, SPEECH_BITRATE, validateBaseUrl, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, PROVIDER_INFO, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
 import { toPlainText, toSrt, toVtt } from '@shared/transcript';
 import { EXPORT_FORMATS, transcriptToCsv } from '@shared/documents';
 import { ChatHttpProvider } from './ai/chat-http';
@@ -26,6 +26,7 @@ import { loadFontCss } from './documents/fonts';
 import { renderPdf } from './documents/pdf';
 import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, UsageRepository, type Cipher } from './db/transcripts';
 import { hardenContents, hardenSession } from './security';
+import { initLogFile, logError, logEvent } from './log';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
 import { IngestPipeline } from './services/ingest';
@@ -49,7 +50,20 @@ import { KnowledgeRepository } from './db/knowledge';
 if (process.env.ECHOMIND_USER_DATA) app.setPath('userData', process.env.ECHOMIND_USER_DATA);
 
 registerMediaScheme();
-if (!app.requestSingleInstanceLock()) app.quit();
+
+// Anything that ends or interrupts the app is written down, so "it just closed" always leaves a reason.
+initLogFile(join(app.getPath('userData'), 'logs'));
+if (!app.requestSingleInstanceLock()) {
+  logEvent('quit', 'another EchoMind window is already open');
+  app.quit();
+} else {
+  logEvent('start', `version ${app.getVersion()}`);
+}
+app.on('render-process-gone', (_e, contents, d) => logEvent('renderer-gone', `${d.reason} code=${d.exitCode} ${contents.getURL().split('/').pop() ?? ''}`));
+app.on('child-process-gone', (_e, d) => logEvent('child-gone', `${d.type} ${d.reason} code=${d.exitCode}${d.name ? ` ${d.name}` : ''}`));
+process.on('uncaughtException', (e) => logError('uncaught', e));
+process.on('unhandledRejection', (e) => logError('unhandled rejection', e));
+process.on('exit', (code) => logEvent('exit', `code=${code}`));
 
 const AUDIO_EXTENSIONS = ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac', 'amr', 'webm', 'mka'];
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'mkv', 'm4v', 'ts'];
@@ -60,6 +74,8 @@ let appLock: AppLock | null = null;
 /** What still works while the app is locked: unlocking, what the lock screen shows, and keeping a recording safe. */
 const ALLOWED_WHILE_LOCKED = new Set<string>(['getAppLockState', 'unlockApp', 'getSettings', 'getAppInfo', 'appendRecording']);
 let closeConfirmed = false;
+/** Set when the window's page crashed and was reopened; the page asks for it once. */
+let recoveredNotice = false;
 
 function emit<E extends keyof EchoEvents>(event: E, payload: EchoEvents[E]): void {
   mainWindow?.webContents.send(event, payload);
@@ -166,7 +182,8 @@ async function start(): Promise<void> {
     const key = secrets.get(keyName(id));
     const baseUrl = id === 'custom' ? settings.get().customBaseUrl : PROVIDER_INFO[id].baseUrl;
     if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
-    return new WhisperHttpProvider(baseUrl, key);
+    // A Whisper server on your own computer may need far longer than a cloud service for a 10-minute part.
+    return new WhisperHttpProvider(baseUrl, key, fetch, id === 'custom' ? 30 * 60_000 : undefined);
   };
 
   const transcription = new TranscriptionService({
@@ -198,7 +215,9 @@ async function start(): Promise<void> {
     const baseUrl = id === 'custom-chat' ? settings.get().llmBaseUrl : LLM_PROVIDER_INFO[id].baseUrl;
     if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
     // If the service has retired the chosen model, the best one it still offers is used and remembered.
-    return new ModelFallbackProvider(new ChatHttpProvider(baseUrl, secrets.get(keyName(id))), LLM_PROVIDER_INFO[id].models, (_from, to) => {
+    // A model on your own computer can take many minutes for one answer; online services get five.
+    const timeoutMs = id === 'custom-chat' ? 20 * 60_000 : undefined;
+    return new ModelFallbackProvider(new ChatHttpProvider(baseUrl, secrets.get(keyName(id)), fetch, timeoutMs, (model) => reasoningOptions(id, model)), LLM_PROVIDER_INFO[id].models, (_from, to) => {
       if (settings.get().llmProvider === id) {
         settings.update({ llmModel: to });
         emit('data:changed', 'settings');
@@ -358,6 +377,11 @@ async function start(): Promise<void> {
   const stamp = () => new Date().toISOString().slice(0, 10);
 
   registerApi({
+    takeRecoveryNotice: () => {
+      const shown = recoveredNotice;
+      recoveredNotice = false;
+      return shown;
+    },
     getAppLockState: () => lock.state(),
     setAppPin: (pin, currentPin) => {
       lock.setPin(pin, currentPin);
@@ -835,12 +859,23 @@ async function start(): Promise<void> {
   if (restored) window.once('ready-to-show', () => void dialog.showMessageBox(window, { type: 'info', message: 'Your backup has been restored.', detail: 'Your previous library was kept aside. You can remove it in Settings > Backup once you have checked everything. API keys are not part of backups, so add them again in Settings > AI providers.' }));
   window.on('closed', () => {
     mainWindow = null;
+    logEvent('window-closed');
     // The hidden media worker is also a window, so "all windows closed" alone would never fire.
     app.quit();
+  });
+  window.on('unresponsive', () => logEvent('window-unresponsive'));
+  window.on('responsive', () => logEvent('window-responsive'));
+  // If the window's page crashes, EchoMind reopens it rather than leaving a blank window. All work lives
+  // in the main process and the database, so nothing is lost; the person is told what happened.
+  window.webContents.on('render-process-gone', (_e, d) => {
+    if (d.reason === 'clean-exit' || window.isDestroyed()) return;
+    recoveredNotice = true;
+    window.webContents.reload();
   });
 
   // Closing during a recording must never silently lose it.
   window.on('close', (event) => {
+    logEvent('window-close', recorder.isRecording && !closeConfirmed ? 'asked to confirm: recording in progress' : '');
     if (closeConfirmed || !recorder.isRecording) return;
     event.preventDefault();
     void dialog
@@ -873,6 +908,7 @@ async function start(): Promise<void> {
   app.on('before-quit', () => {
     if (closed) return;
     closed = true;
+    logEvent('quit');
     queue.stop();
     void recorder.stopForQuit();
     media.destroy();

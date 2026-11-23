@@ -52,6 +52,8 @@ export interface EchoApi {
   updateSettings(patch: Partial<Settings>): Settings;
   getAppInfo(): AppInfo;
   openDataFolder(): void;
+  /** True once after the window's page crashed and was reopened, so the page can say so. */
+  takeRecoveryNotice(): boolean;
 
   // Library
   listRecordings(query: LibraryQuery): Recording[];
@@ -227,8 +229,7 @@ export interface EchoEvents {
   /** Files arrived from outside the window ("Open with", a second launch). The batch is already queued. */
   'imports:opened': string;
   /** Interrupted recordings were rebuilt at launch. The value is how many. */
-  'recordings:recovered': number;
-  /** The user chose "Stop and save" when closing during a recording. */
+  'recordings:recovered': number;  /** The user chose "Stop and save" when closing during a recording. */
   'recorder:stop-and-quit': null;
   /** The app was locked or unlocked. */
   'lock:changed': AppLockState;

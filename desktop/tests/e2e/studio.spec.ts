@@ -150,7 +150,7 @@ test('tasks, translation, comparison, batch processing, and deletion', async () 
 
     // Translation keeps every line with its time.
     await openStudioTool(page, /^Translation Studio/);
-    await page.getByLabel('Into').fill('Urdu');
+    await page.getByLabel('Into', { exact: true }).selectOption('Urdu');
     await page.getByRole('button', { name: 'Generate' }).click();
     await expect(page.locator('table.translation tbody tr').first()).toContainText('[Demo translation]', { timeout: 15_000 });
     await expect(page.getByRole('columnheader', { name: 'Urdu' })).toBeVisible();

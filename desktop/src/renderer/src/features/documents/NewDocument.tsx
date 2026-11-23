@@ -3,7 +3,7 @@ import { BookOpen, BookOpenCheck, Briefcase, FileText, FlaskConical, GraduationC
 import { DOCUMENT_TEMPLATES, EXPORT_FORMATS, templateById, type DocumentSource, type ExportFormat } from '@shared/documents';
 import { formatDateTime, formatDuration } from '@shared/format';
 import { OUTPUT_LANGUAGES } from '@shared/summaries';
-import { Button, Loading, PageHeader, type IconType } from '../../design/components';
+import { Button, LanguageField, Loading, PageHeader, type IconType } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { useRouter } from '../../lib/router';
 import { useTranscribe } from '../transcript/ai-gate';
@@ -192,15 +192,7 @@ export function NewDocument(props: Props) {
 
             {source === 'ai' && (
               <>
-                <div className="field">
-                  <label htmlFor="nd-language">Language</label>
-                  <input id="nd-language" className="input" list="nd-languages" value={language} onChange={(e) => setLanguage(e.target.value || OUTPUT_LANGUAGES[0]!)} />
-                  <datalist id="nd-languages">
-                    {OUTPUT_LANGUAGES.map((l) => (
-                      <option key={l} value={l} />
-                    ))}
-                  </datalist>
-                </div>
+                <LanguageField id="nd-language" label="Language" value={language} options={OUTPUT_LANGUAGES} onChange={setLanguage} />
                 <div className="field">
                   <label htmlFor="nd-instructions">{templateId === 'custom' ? 'What should the document contain?' : 'Extra instructions (optional)'}</label>
                   <textarea

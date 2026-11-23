@@ -334,12 +334,33 @@ export class JobRepository {
     return rows.map((r) => r.result);
   }
 
+  /**
+   * Finished work resets the failure count: on a long recording, the automatic-retry limit is for
+   * failures in a row, not for every blip over dozens of requests (seen live on a slow connection).
+   */
+  private progressed(jobId: string): void {
+    this.db.prepare('UPDATE processing_jobs SET attempts = 0 WHERE id = ?').run(jobId);
+  }
+
+  /** A result in any slot, including slots after the planned pieces (used for merged notes). */
+  storedResult(jobId: string, idx: number): string | null {
+    const row = this.db.prepare('SELECT result FROM job_chunks WHERE job_id = ? AND idx = ?').get(jobId, idx) as { result: string | null } | undefined;
+    return row?.result ?? null;
+  }
+
+  storeResult(jobId: string, idx: number, text: string): void {
+    this.db.prepare('INSERT INTO job_chunks (job_id, idx, start_ms, end_ms, result) VALUES (?, ?, 0, 0, ?) ON CONFLICT (job_id, idx) DO UPDATE SET result = excluded.result').run(jobId, idx, text);
+    this.progressed(jobId);
+  }
+
   savePieceResult(jobId: string, idx: number, text: string): void {
     this.db.prepare('UPDATE job_chunks SET result = ? WHERE job_id = ? AND idx = ?').run(text, jobId, idx);
+    this.progressed(jobId);
   }
 
   saveChunk(jobId: string, idx: number, segments: ChunkSegment[], language: string | null): void {
     this.db.prepare('UPDATE job_chunks SET result = ?, language = ? WHERE job_id = ? AND idx = ?').run(JSON.stringify(segments), language, jobId, idx);
+    this.progressed(jobId);
   }
 }
 

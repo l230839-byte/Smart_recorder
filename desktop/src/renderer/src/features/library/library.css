@@ -27,6 +27,7 @@
   overflow: hidden;
 }
 .rec-row {
+  position: relative;
   content-visibility: auto;
   contain-intrinsic-size: auto 66px;
   display: flex;
@@ -45,14 +46,19 @@
 .rec-row.selected .mode-badge {
   background: var(--surface);
 }
+/* The checkbox sits on the 40 px mode badge (16 px from the row's edge), so rows keep the same left
+   edge as on Home and no space is wasted until selection is wanted. */
 .rec-check {
-  flex: none;
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: calc(var(--s4) + 10px);
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
-  margin-left: var(--s4);
   border: 1.5px solid var(--border-strong);
   border-radius: 5px;
   background: var(--surface);
@@ -64,6 +70,12 @@
 .rec-check:focus-visible,
 .rec-check.visible {
   opacity: 1;
+}
+/* The badge's icon gives way to the checkbox, so the two never overlap visibly. */
+.rec-row:hover .rec-check ~ .rec-main .mode-badge svg,
+.rec-check:focus-visible ~ .rec-main .mode-badge svg,
+.rec-check.visible ~ .rec-main .mode-badge svg {
+  opacity: 0;
 }
 .rec-check[aria-checked='true'] {
   background: var(--primary);

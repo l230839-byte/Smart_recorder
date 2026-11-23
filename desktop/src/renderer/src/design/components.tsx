@@ -11,6 +11,62 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   trailingIcon?: IconType;
 }
 
+const OTHER = '\u0000other';
+
+/**
+ * A language choice that looks like every other dropdown, lists the common languages in full, and still
+ * accepts any other language typed by hand. (A text box with suggestions hid the list behind its value.)
+ */
+export function LanguageField({ id, label, value, options, onChange, placeholder }: { id: string; label: string; value: string; options: readonly string[]; onChange: (value: string) => void; placeholder?: string }) {
+  const known = value === '' || options.includes(value);
+  const [typing, setTyping] = useState(!known);
+  const [text, setText] = useState(known ? '' : value);
+  const custom = typing || !known;
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <select
+        id={id}
+        className="select"
+        value={custom ? OTHER : value}
+        onChange={(e) => {
+          if (e.target.value === OTHER) {
+            setTyping(true);
+            return;
+          }
+          setTyping(false);
+          onChange(e.target.value);
+        }}
+      >
+        {value === '' && !custom && (
+          <option value="" disabled>
+            {placeholder ?? 'Choose a language'}
+          </option>
+        )}
+        {options.map((l) => (
+          <option key={l} value={l}>
+            {l}
+          </option>
+        ))}
+        <option value={OTHER}>Other language…</option>
+      </select>
+      {custom && (
+        <input
+          className="input language-other"
+          aria-label={`${label}: other language`}
+          placeholder="Type a language, such as Portuguese"
+          value={known ? text : value}
+          autoFocus={typing && known}
+          onChange={(e) => {
+            setText(e.target.value);
+            onChange(e.target.value.trim() ? e.target.value : (options[0] ?? ''));
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 export function Button({ variant = 'outline', size = 'md', icon: Icon, trailingIcon: Trailing, children, className = '', ...rest }: ButtonProps) {
   const sizeClass = size === 'md' ? '' : `btn-${size}`;
   return (

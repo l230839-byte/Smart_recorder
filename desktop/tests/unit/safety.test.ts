@@ -266,4 +266,20 @@ describe('logging', () => {
     expect(scrub(String.raw`ENOENT: no such file, open 'C:\Users\Ali\AppData\Roaming\EchoMind\media\x.ogg'`)).toBe("ENOENT: no such file, open '<path>'");
     expect(scrub('Bad key gsk_abcdefghijklmnop123 rejected')).toBe('Bad key <key> rejected');
   });
+
+  it('the log file on disk is scrubbed the same way, and a large one is rolled over', async () => {
+    const { initLogFile, logError, logEvent } = await import('../../src/main/log');
+    const dir = mkdtempSync(join(tmpdir(), 'echomind-log-'));
+    const file = initLogFile(join(dir, 'logs'));
+    logEvent('renderer-gone', String.raw`crashed at C:\Users\Ali\AppData\Roaming\EchoMind\index.html`);
+    logError('provider', new Error('Bad key AIzaSyA1234567890abcdefgh'));
+    const text = readFileSync(file, 'utf8');
+    expect(text).toMatch(/renderer-gone crashed at <path>\n/);
+    expect(text).toMatch(/ERROR provider: Error: Bad key <key>\n/);
+    expect(text).not.toMatch(/Users|AIza/);
+    writeFileSync(file, 'x'.repeat(600 * 1024));
+    logEvent('start');
+    expect(existsSync(`${file}.1`)).toBe(true);
+    expect(readFileSync(file, 'utf8')).toMatch(/^\S+ start\n$/);
+  });
 });

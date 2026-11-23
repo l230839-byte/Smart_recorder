@@ -40,6 +40,13 @@ You supply your own key. Figures below were checked on 2026-10-31 and change oft
 
 Groq's public table shows Developer plan limits, and its free-plan values could not be read from the docs, so EchoMind hardcodes none. It shows the limits the service reports in its responses.
 
+### What a 3-hour recording meets on the free tiers (measured 2026-11-22 and 23)
+
+- **Groq Whisper** reported 7,200 seconds of audio an hour and 28,800 a day. A 3-hour recording (10,800 s) therefore transcribes in about 1 hour 40 minutes, mostly waiting; EchoMind waits by itself and continues. About two and a half such recordings fit in a day.
+- **Groq chat** (`gpt-oss-120b`) reported 8,000 tokens a minute and 200,000 a day. A 3-hour summary reads 16 parts at about 5,000 tokens each, one part every 30 seconds or so, about 10 minutes in all and 40% of the day's tokens. Running every AI tool on one 3-hour recording can exceed a day; Gemini is the better choice for very long recordings.
+- **Reasoning models** spend hidden "thinking" tokens from the same answer budget. Without a limit, `gpt-oss-120b` once spent 1,498 of 1,500 tokens thinking and wrote nothing, 77 times running. EchoMind now asks Groq's gpt-oss and Gemini's thinking models for low reasoning, which keeps it to a few hundred tokens.
+- **Gemini** reads a whole 3-hour transcript in one request. Its free models sometimes answer "high demand" (HTTP 503) for a while; EchoMind retries.
+
 Gemini audio transcription is not used: its timestamps come from a prompt rather than the audio timeline, so they cannot be trusted the same way.
 
 ## How to swap a provider

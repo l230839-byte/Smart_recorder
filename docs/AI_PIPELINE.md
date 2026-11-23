@@ -24,9 +24,11 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 | --- | --- |
 | HTTP 429, per-minute | Waits for `retry-after` (or a minute), explains, continues by itself |
 | Daily or plan quota | Same, with a clear message and a longer default wait |
-| Network or server error | Exponential backoff with jitter, up to 6 attempts, then Retry |
+| Network or server error | Exponential backoff with jitter, up to 6 failures in a row, then Retry. Each finished piece resets the count, so a long recording on a flaky connection keeps going. |
 | Bad key or refused request | Stops at once with a clear message |
-| App crash or quit | Resumes after the last finished piece on next launch |
+| Stalled connection | Every request has a time limit (5 minutes; 20 for a chat model and 30 for a Whisper server on your own computer), then counts as a network error |
+| App crash or quit | Resumes after the last finished piece on next launch (checked live: a 3-hour job killed in part 14 finished parts 14 to 19 after reopening) |
+| Window crash | The window's page is reloaded and says so; jobs keep running in the main process. Starts, quits and crashes are written to `logs/echomind.log` in the data folder, with paths and keys removed. |
 | Speech not found | Fails with an explanation. No empty transcript is saved. |
 
 ## Summaries, chapters, suggestions (working)
@@ -34,11 +36,13 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 All of these read the stored transcript, so changing a format never transcribes again.
 
 1. **Prompt.** Each transcript line carries an id, such as `[S12 3:05]`. The system prompt requires citations, forbids invention, and declares the transcript to be data, not instructions.
-2. **Long recordings.** `splitSegments` divides by characters. Notes on each piece are stored as they finish, and a final request writes the result from the notes.
+2. **Long recordings.** `splitSegments` divides by characters. Notes on each piece are stored as they finish. If the notes are still too large for one request (a 3-hour recording on Groq makes about 16 sets), `reduceNotes` merges neighbours in rounds until they fit, saving each merge so a rate-limit pause never pays for it twice. A final request writes the result from the notes.
 3. **Check.** `resolveCitations` turns real ids into links and removes invented ones, recording how many.
 4. **Display.** `parseMarkdown` builds data and `MarkdownView` builds elements. No HTML is ever injected.
 
-Chapters and suggestions ask for JSON, validate it, and retry once if it cannot be read. HTTP 413 retries with smaller pieces. All jobs share `JobQueue`.
+Models that reason before answering (Groq's gpt-oss, Gemini 2.5 and later) are asked for low reasoning effort (`reasoningOptions` in `shared/providers.ts`), because their hidden reasoning comes out of the same length limit as the answer. If a reply is still all reasoning and no text, it is asked for once more with twice the room, then treated as a server error the queue retries. Notes on each piece may use 2,000 tokens; 1,500 cut dense pieces off mid-sentence.
+
+Chapters and suggestions ask for JSON, validate it, and retry once if it cannot be read; a reply Groq itself refuses as invalid JSON is asked for once more, then treated as a server error the queue retries. Titles for long recordings read lines spread across the whole recording, not just its start. HTTP 413 retries with smaller pieces. All jobs share `JobQueue`.
 
 ## Documents
 
@@ -51,7 +55,7 @@ Chat answers straight away rather than through the job queue, so a question neve
 1. **Scope.** The chosen recordings, a collection with its sub-collections, or the whole library, never including the trash.
 2. **What to read.** If every transcript in scope fits the provider's budget (capped at 48,000 characters), all of it is read, which grounds answers best and makes "not mentioned" meaningful. Otherwise a short JSON plan from the model turns the question and recent turns into keyword searches (including other languages), a time range, or a request for an overview. Each search runs BM25 over `transcript_chunks`; results are merged by reciprocal rank fusion, the best passage of each recording first. Time ranges and overviews take an even selection of lines.
 3. **Answer.** Lines are numbered S1, S2… across recordings. The model replies in JSON: the answer with citations, whether the recordings answered it ("yes", "partly", "no"), and any general knowledge, separately. One retry if the JSON is unreadable; plain text is accepted only if it is not broken JSON.
-4. **Checks.** Citations are resolved against the exact lines sent and become links to that recording and moment. Unknown ids are removed and counted. A short rate limit (20 seconds or less) is waited out once; longer ones fail with when to try again.
+4. **Checks.** Citations are resolved against the exact lines sent and become links to that recording and moment. Unknown ids are removed and counted. Short rate limits (20 seconds or less) and network or server blips are retried up to three times; longer limits fail with when to try again.
 
 Keyword retrieval cannot match a paraphrase with no shared words. The plan step reduces this by adding likely words and translations. There are no embeddings yet.
 
@@ -61,7 +65,7 @@ Every Studio tool is a `studio` job on the shared queue. Lines are numbered S1, 
 
 - **Structured tools** (flashcards, quiz, action items, line-by-line translation) ask each piece for JSON with the count shared out by size, validate every item (a real source line, a correct option among distinct options, a real date), ask once more if the reply cannot be read, then merge pieces evenly and remove repeats.
 - **Mind maps** need the whole picture, so long material is read as an even selection.
-- **Written tools** (study notes, rewrite, comparison, custom, summary translation) use one request when the material fits; otherwise notes per piece, then one combined result. Citations are checked as in chat.
+- **Written tools** (study notes, rewrite, comparison, custom, summary translation) use one request when the material fits; otherwise notes per piece, merged in rounds if needed (as for summaries), then one combined result. Citations are checked as in chat.
 - Each finished piece is stored, so a retry continues where it stopped. "Too large" halves the piece size and starts again.
 
 ## When a provider retires a model

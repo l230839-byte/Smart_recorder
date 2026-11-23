@@ -629,3 +629,6 @@ dialog.dialog::backdrop {
     transition-duration: 1ms !important;
   }
 }
+.language-other {
+  margin-top: var(--s2);
+}

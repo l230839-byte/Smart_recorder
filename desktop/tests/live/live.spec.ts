@@ -1,44 +1,15 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import type { ChatDetail } from '../../src/shared/chat';
-import type { CreateDocumentOutcome, DocumentExport, DocumentRecord, ImportJob, ProcessingJob, Recording, Summary, Transcript, UsageSummary } from '../../src/shared/models';
+import type { CreateDocumentOutcome, DocumentExport, DocumentRecord, ImportJob, Recording, Summary, Transcript, UsageSummary } from '../../src/shared/models';
 import { DEFAULT_STUDIO_OPTIONS, type StudioOutput, type Task } from '../../src/shared/studio';
 import { DEFAULT_SUMMARY_OPTIONS } from '../../src/shared/summaries';
 import { closeApp, completeOnboarding, launch, removeDir, tempDataDir } from '../e2e/helpers';
+import { call, citeCount, loadKeys, waitJob } from './live-helpers';
 import { FACTS, makeSpeech, QUESTIONS } from './meeting';
 
-function loadKeys(): Record<string, string> {
-  const file = resolve('.env.live');
-  if (!existsSync(file)) return {};
-  const keys: Record<string, string> = {};
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const m = /^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/.exec(line);
-    if (m && !line.trim().startsWith('#')) keys[m[1]!] = m[2]!.replace(/^["']|["']$/g, '');
-  }
-  return keys;
-}
-
-function call<T>(page: Page, method: string, ...args: unknown[]): Promise<T> {
-  return page.evaluate(([m, a]) => (window.echomind.call as unknown as (m: string, ...x: unknown[]) => Promise<T>)(m as string, ...(a as unknown[])), [method, args] as const);
-}
-
-async function waitJob(page: Page, load: () => Promise<ProcessingJob | null>): Promise<ProcessingJob> {
-  let job: ProcessingJob | null = null;
-  await expect
-    .poll(
-      async () => {
-        job = await load();
-        return job && ['done', 'failed', 'canceled'].includes(job.status) ? job.status : 'running';
-      },
-      { timeout: 6 * 60_000, intervals: [1000, 2000, 3000] },
-    )
-    .not.toBe('running');
-  return job!;
-}
-
 const factCheck = (text: string) => FACTS.map(([name, re]) => `${re.test(text) ? '[x]' : '[ ]'} ${name}`).join('\n');
-const citeCount = (md: string) => (md.match(/\(cite:/g) ?? []).length;
 
 test('live: real transcription, summary, chapters, document and chat, judged against known facts', async () => {
   const keys = loadKeys();

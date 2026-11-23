@@ -18,7 +18,7 @@ import {
   type SummaryOptions,
   type SummaryTone,
 } from '@shared/summaries';
-import { Button, Card, ConfirmDialog, EmptyState, IconButton, Loading, PageHeader, ProgressBar, TextPromptDialog } from '../../design/components';
+import { Button, Card, ConfirmDialog, EmptyState, IconButton, LanguageField, Loading, PageHeader, ProgressBar, TextPromptDialog } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { player } from '../../lib/player';
 import { useRouter } from '../../lib/router';
@@ -168,15 +168,7 @@ export function SummariesScreen({ id, preset, scope }: { id: string; preset?: Pa
                 <input id="s-custom-tone" className="input" value={options.customTone} onChange={(e) => set({ customTone: e.target.value })} />
               </div>
             )}
-            <div className="field">
-              <label htmlFor="s-language">Language</label>
-              <input id="s-language" className="input" list="s-languages" value={options.language} onChange={(e) => set({ language: e.target.value || OUTPUT_LANGUAGES[0]! })} />
-              <datalist id="s-languages">
-                {OUTPUT_LANGUAGES.map((l) => (
-                  <option key={l} value={l} />
-                ))}
-              </datalist>
-            </div>
+            <LanguageField id="s-language" label="Language" value={options.language} options={OUTPUT_LANGUAGES} onChange={(language) => set({ language })} />
 
             <div className="field">
               <label htmlFor="s-scope">Cover</label>

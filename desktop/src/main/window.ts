@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { BrowserWindow, nativeTheme } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
 
 const BAR_HEIGHT = 44;
 
@@ -21,6 +21,8 @@ export function createMainWindow(options: { minimized?: boolean } = {}): Browser
     minHeight: 600,
     show: false,
     title: 'EchoMind',
+    // The installed app takes its icon from the .exe; a development build would otherwise show Electron's.
+    ...(app.isPackaged ? {} : { icon: join(__dirname, '../../build/icon.png') }),
     backgroundColor: backgroundColor(),
     titleBarStyle: 'hidden',
     titleBarOverlay: overlay(),

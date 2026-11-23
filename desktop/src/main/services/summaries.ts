@@ -3,6 +3,7 @@ import { LLM_PROVIDER_INFO, type LlmProviderId } from '@shared/providers';
 import {
   chaptersMessages,
   combineMessages,
+  mergeNotesMessages,
   parseJsonReply,
   pieceNotesMessages,
   resolveCitations,
@@ -24,9 +25,12 @@ import type { LibraryRepository } from '../db/library';
 import type { SummaryRepository } from '../db/summaries';
 import type { ConsentRepository, JobRepository, SecretStore, StoredJob, TranscriptRepository, UsageRepository } from '../db/transcripts';
 import type { JobHandler, JobQueue } from './job-queue';
+import { reduceNotes } from './reduce-notes';
 import { keyName } from './transcription';
 
-const NOTES_MAX_TOKENS = 1500;
+// Notes on one piece. 1,500 tokens cut notes off mid-sentence on dense pieces (seen live); 2,000 still
+// fits Groq's free 8,000 tokens a minute with a full 12,000-character piece.
+const NOTES_MAX_TOKENS = 2000;
 const JSON_MAX_TOKENS = 2000;
 const MIN_PIECE_CHARS = 1500;
 
@@ -146,7 +150,6 @@ export class SummaryService implements JobHandler {
     const provider = this.deps.makeProvider(job.provider as LlmProviderId);
     const names = transcripts.speakerNames(recording.id);
     const maxChars = options.maxChars ?? LLM_PROVIDER_INFO[job.provider as LlmProviderId].maxInputChars;
-    const limited = splitSegments(segments, maxChars)[0] ?? [];
 
     try {
       if (job.kind === 'chapters') {
@@ -159,7 +162,8 @@ export class SummaryService implements JobHandler {
       } else if (job.kind === 'suggest') {
         jobs.setRunning(job.id, 'Suggesting a title and tags', 0.2);
         this.deps.changed();
-        const suggestions = await this.chatJson(job, provider, suggestMessages(transcriptForPrompt(limited, names), 'Same as the recording'), signal, 'suggest', validateSuggestions);
+        // A title must describe the whole recording, not its first minutes: long ones are read as an even spread.
+        const suggestions = await this.chatJson(job, provider, suggestMessages(transcriptForPrompt(sampleSegments(segments, maxChars), names), 'Same as the recording'), signal, 'suggest', validateSuggestions);
         this.deps.summaries.saveSuggestions(recording.id, suggestions);
       } else {
         await this.summarize(job, provider, recording.mode, version.id, segments, names, options, maxChars, signal);
@@ -219,9 +223,21 @@ export class SummaryService implements JobHandler {
         }
         notes.push(note);
       }
+      // Very long recordings: merge neighbouring notes until they fit one request. Merges are kept too.
+      const fitted = await reduceNotes(
+        notes,
+        maxChars,
+        { get: (slot) => jobs.storedResult(job.id, slot), save: (slot, text) => jobs.storeResult(job.id, slot, text) },
+        pieces.length,
+        async (group) => (await this.chat(job, provider, mergeNotesMessages(group), NOTES_MAX_TOKENS, signal, 'summary')).text,
+        (round, done, total) => {
+          jobs.setRunning(job.id, `Combining notes (round ${round}, ${done + 1} of ${total})`, pieces.length / (pieces.length + 1));
+          this.deps.changed();
+        },
+      );
       jobs.setRunning(job.id, 'Writing the summary', pieces.length / (pieces.length + 1));
       this.deps.changed();
-      const result = await this.chat(job, provider, combineMessages(summary, mode, notes), maxTokens, signal, 'summary');
+      const result = await this.chat(job, provider, combineMessages(summary, mode, fitted), maxTokens, signal, 'summary');
       text = result.text;
       usedModel = result.model ?? usedModel;
       truncated = result.truncated;

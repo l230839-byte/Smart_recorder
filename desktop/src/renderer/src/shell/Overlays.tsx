@@ -155,6 +155,16 @@ export function GlobalEvents() {
     [toast],
   );
 
+  // Asked for at start rather than pushed: a reloaded page is not listening yet when it finishes loading.
+  useEffect(() => {
+    void api
+      .takeRecoveryNotice()
+      .then((recovered) => {
+        if (recovered) toast.show('EchoMind’s window stopped unexpectedly and was reopened. Your recordings and jobs are safe.');
+      })
+      .catch(() => undefined);
+  }, [toast]);
+
   useEffect(
     () =>
       onEvent('recorder:stop-and-quit', () => {

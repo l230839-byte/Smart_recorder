@@ -502,6 +502,25 @@ describe('transcription queue', () => {
     expect(jobs.get(jobId)!.status).toBe('done');
   });
 
+  it('a long recording on a flaky connection keeps going while parts finish: the limit is for failures in a row', async () => {
+    // Every part of three hours fails once before it succeeds: many failures in all, never two in a row.
+    const durationMs = 3 * 3600_000;
+    const parts = planChunks(durationMs, new Uint8Array(800), 600_000).length;
+    script = Array.from({ length: parts }, () => [() => new ProviderError('network', 'No connection.'), () => ok('part')]).flat();
+    const s = service();
+    const { jobId } = s.request(addRecording(durationMs)) as { jobId: string };
+    for (let i = 0; i < parts + 2 && jobs.get(jobId)!.status !== 'done'; i++) {
+      await settle();
+      expect(jobs.get(jobId)!.status).not.toBe('failed');
+      expect(jobs.get(jobId)!.attempts).toBeLessThanOrEqual(1);
+      clock += 16 * 60_000;
+      s.pump();
+    }
+    await settle();
+    expect(jobs.get(jobId)!.status).toBe('done');
+    expect(calls).toHaveLength(parts * 2);
+  });
+
   it('a bad key stops immediately, with no retry storm', async () => {
     script = [() => new ProviderError('auth', 'The service rejected the API key.')];
     const { jobId } = service().request(addRecording()) as { jobId: string };

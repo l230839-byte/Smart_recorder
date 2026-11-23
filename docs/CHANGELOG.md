@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Phase 9: Stabilise (long recordings and bug fixes)
+
+- 3-hour recordings proven live end to end: transcription (all 30 sessions' facts, under 1 s drift), resume after a kill, and every text task.
+- Long transcripts: notes are merged in rounds and each merge is saved, so waits never repeat work; titles describe the whole recording.
+- Groq's reasoning model no longer returns empty replies (it spent its whole budget thinking); reasoning models are asked for low effort, and an all-reasoning reply is retried with more room.
+- Requests have time limits; jobs stop only after six failures in a row with no progress; chat retries short blips; Groq's "Failed to validate JSON" is retried.
+- A crashed window reopens by itself with a notice; starts, quits and crashes are logged (paths and keys removed) to the data folder.
+- Language choices are a normal dropdown with "Other language…"; Library rows line up with Home; the development window has the EchoMind icon.
+
 ### Live check on Groq
 
 - First run with a real key: transcription excellent; every text task failed because Groq retired the default Llama models.

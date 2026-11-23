@@ -361,6 +361,21 @@ describe('chat and search on a real database', () => {
     expect(chats.turns(thread)[3]!.status).toBe('done');
   });
 
+  it('a network blip gets one more try; a lasting outage fails with the reason', async () => {
+    let calls = 0;
+    provider = new ScriptedProvider(() => (++calls === 1 ? new ProviderError('network', 'Could not reach the AI service.') : '{"answer":"ok [S1]","found":"yes","general":""}'));
+    const thread = service.start({ kind: 'recordings', recordingIds: [lecture] });
+    service.ask(thread, 'Anything?');
+    await settle();
+    expect(waits).toEqual([3000]);
+    expect(chats.turns(thread)[1]!.status).toBe('done');
+
+    provider = new ScriptedProvider(() => new ProviderError('network', 'Could not reach the AI service.'));
+    service.ask(thread, 'Again?');
+    await settle();
+    expect(chats.turns(thread)[3]).toMatchObject({ status: 'failed', error: 'Could not reach the AI service.' });
+  });
+
   it('nothing is sent or stored when the provider is blocked or there is no transcript', () => {
     const thread = service.start({ kind: 'recordings', recordingIds: [lecture] });
     blocked = { ok: false, reason: 'needs-consent', provider: 'groq', purpose: 'text' };

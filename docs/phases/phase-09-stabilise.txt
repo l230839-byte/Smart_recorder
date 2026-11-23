@@ -1,0 +1,125 @@
+ECHOMIND DESKTOP: PHASE 09, STABILISE (LONG RECORDINGS AND BUG FIXES)
+================================================================================
+Status:      COMPLETE. Recordings of 1 to 3 hours work end to end on both free providers.
+Prompt refs: §5 long audio; §22 reliability; §25 testing; §21 privacy (logging)
+Date:        2026-11-23
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+The owner asked that 1, 2 or even 3-hour recordings "shouldn't be a problem", then asked for
+every bug to be fixed. This phase proves a 3-hour recording live, fixes everything that
+proof exposed, and fixes the problems a full visual audit of the app found.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+Long recordings
+- A 3-hour recording transcribes, summarizes, gets chapters, a title, minutes, a quiz,
+  tasks and chat answers. Nothing needs babysitting: free-tier waits, network drops and
+  app restarts are all handled, and finished work is never paid for twice.
+- Titles of long recordings describe the whole recording, not just its first topic.
+- Chat questions survive a short network drop or rate limit (up to three quiet retries).
+
+Reliability
+- A slow or stalled connection can no longer hang a job: every request has a time limit.
+- A job that keeps making progress is never stopped for "too many failures"; only six
+  failures in a row with no progress stop it.
+- Groq's reasoning model no longer returns empty replies (see 4, F1).
+- If EchoMind's window ever crashes, it reopens by itself and says so. Jobs keep running.
+- EchoMind keeps a small diagnostics log (data folder > logs > echomind.log) of starts,
+  quits, crashes and errors, with file paths and keys removed, so an unexpected close
+  always leaves a reason.
+
+Screens
+- The Language choice in Summaries, Documents and AI Studio is now a normal dropdown with
+  the full list, plus "Other language…" to type any language. The old text box hid the
+  list behind its own value.
+- Library rows no longer waste a column on the selection checkbox: it appears over the
+  recording's icon on hover or in selection mode, so rows line up with Home.
+- The development window shows the EchoMind icon instead of Electron's.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Notes on long transcripts are merged in rounds (reduceNotes) until they fit one
+    request, and every merge is saved, so a rate-limit pause never repeats work.
+D2  "Failures in a row", not "failures in total": a 3-hour job on a flaky connection
+    may see dozens of blips and still be healthy.
+D3  Reasoning models are asked for low effort rather than given bigger budgets: bigger
+    budgets cost free-tier tokens per minute, and EchoMind's tasks need little reasoning.
+    Only Groq's gpt-oss and Gemini's thinking models get the field; unknown services get
+    nothing extra, because strict services refuse unknown fields.
+D4  A crashed window is reloaded, not left blank and not used as a reason to quit.
+D5  The live-test cache moved out of test-results (Playwright empties it on every run;
+    it wiped a transcribed 3-hour library once).
+
+
+4. BUGS FOUND AND FIXED
+--------------------------------------------------------------------------------
+F1  Groq summary of a 3-hour recording never got past part 1. Captured live: gpt-oss-120b
+    spent 1,498 of 1,500 tokens on hidden reasoning and returned no text, 77 times in a
+    row. Fixed with reasoning_effort "low" (now about 17 to 430 tokens of reasoning), a
+    retry with twice the room if a reply is still all reasoning, and 2,000 tokens for
+    notes (1,500 cut dense parts off mid-sentence).
+F2  Long Groq jobs failed after 6 network errors even while progressing. Fixed (D2).
+F3  Groq's "Failed to validate JSON" ended chapter jobs. Now asked once more, then retried
+    by the queue.
+F4  Titles of long recordings named only the first topic. Prompt and sampling fixed.
+F5  Chat failed on a single rate limit or network blip. Now retried quietly.
+F6  A stalled connection could hang a job forever. Every request now has a time limit.
+F7  The app closed itself once, about 4 seconds after a Groq summary started on the
+    3-hour recording. It could not be made to happen again in three runs of 1 to 3
+    minutes each, with every quit and window path instrumented. The fixes above remove
+    the conditions it was seen in, a crashed window now reopens instead of closing, and
+    the new log records any start, quit, crash or uncaught error, so a repeat leaves
+    evidence. Reported honestly as not reproduced, not as proven fixed.
+F8  Language boxes hid their own list; Library rows wasted a column; the dev window had
+    the wrong icon. Fixed (section 2).
+
+
+5. TESTS
+--------------------------------------------------------------------------------
+- Unit: 270 passing (new: merging notes for 3 hours, request timeouts, JSON retry, chat
+  retries, reasoning-only replies, reasoning options per model, the log file's scrubbing
+  and rollover, a 3-hour flaky-connection transcription).
+- End to end: 50 passing, 1 skipped (the AMR-without-FFmpeg case, which steps aside when the add-on is installed). New: a crashed window reopens with a
+  notice and the log records start, crash and quit.
+- Live, 3-hour meeting of 30 sessions (tests/live/long.spec.ts):
+  Stage 1 (Groq Whisper): imported in 84 s, 19 parts, all 30 sessions' facts found,
+  timing drift under 1 s at every session start; a job killed in part 14 resumed and
+  finished parts 14 to 19 after reopening.
+  Stage 2: see section 6.
+
+
+6. LIVE RESULTS, STAGE 2 (3-HOUR TRANSCRIPT)
+--------------------------------------------------------------------------------
+Gemini (gemini-3.5-flash-lite), 2026-11-22: every task (summary, chapters against the real
+  session starts, title, minutes with PDF and Word, quiz, 12 tasks with owners, chat) ran
+  on the whole 3-hour transcript in one request each, quickly and correctly. (The detailed
+  report file was lost when test-results was emptied by a later run; see D5.)
+
+Groq (gpt-oss-120b), 2026-11-22 and 23:
+- First runs exposed F1 to F5. After the fixes, the 3-hour summary read all 16 parts and
+  made all 7 merges (each saved), reaching 94%, about 30 seconds per part under the free
+  8,000 tokens a minute.
+- It then reached Groq's free 200,000 tokens a day, which the day's diagnosis runs had
+  mostly used. EchoMind did exactly what it should: it explained the wait, kept every
+  finished part, and retried on Groq's schedule. The run was stopped there rather than
+  waiting hours; its saved progress is kept in the test cache, and the remaining Groq
+  stage 2 tasks will be rerun after the daily window resets (during Phase 12, which needs
+  live Groq anyway).
+- Conclusion for users, recorded in FREE_STACK.md: on Groq's free tier a 3-hour summary
+  takes about 10 minutes and 40% of a day's tokens, so running every tool on one 3-hour
+  recording can take more than a day. Gemini handles very long recordings in minutes.
+
+
+7. REVIEW
+--------------------------------------------------------------------------------
+Designer: the language dropdown now behaves like every other choice; the Library row's
+left edge matches Home's. Long jobs explain each wait in plain words.
+Developer: every new failure path has a unit test; the reasoning fields are confined to
+the two providers verified live; the log writes only rare events and can never crash the
+app (all writes are guarded).
+Open: Gemini's free models answered "high demand" (HTTP 503) for much of this session;
+EchoMind retries, and Phase 12 will add switching to another model when one is overloaded.

@@ -3,6 +3,7 @@ out/
 dist/
 coverage/
 test-results/
+.live-cache/
 playwright-report/
 test-fixtures/
 test-shots/

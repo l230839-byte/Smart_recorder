@@ -15,7 +15,10 @@ import { parseInline, parseMarkdown, markdownToClipboard } from '../../src/share
 import { DEFAULT_SETTINGS, RECORDING_MODES, type Settings } from '../../src/shared/models';
 import {
   DEFAULT_SUMMARY_OPTIONS,
+  groupNotes,
+  mergeNotesMessages,
   MODE_GUIDANCE,
+  notesLength,
   optionsForMode,
   parseJsonReply,
   resolveCitations,
@@ -116,6 +119,25 @@ describe('scope and splitting', () => {
     expect(sample.length).toBeLessThan(200);
     expect(sample[0]!.idx).toBe(0);
     expect(sampleSegments(segments.slice(0, 5), 12_000)).toHaveLength(5);
+  });
+
+  it('groups notes in order so each group fits, and always makes progress', () => {
+    const notes = Array.from({ length: 9 }, (_, i) => `${i}`.repeat(3000));
+    const groups = groupNotes(notes, 12_000);
+    expect(groups.flat()).toEqual(notes);
+    expect(groups.every((g) => notesLength(g) <= 12_000)).toBe(true);
+    expect(groups.length).toBeLessThan(notes.length);
+    // Notes too big to share a request are paired anyway, so the count still halves.
+    const big = Array.from({ length: 5 }, () => 'x'.repeat(8000));
+    expect(groupNotes(big, 12_000).map((g) => g.length)).toEqual([2, 2, 1]);
+    expect(groupNotes(['only'], 10)).toEqual([['only']]);
+  });
+
+  it('merging notes keeps facts and citations, and treats notes as data', () => {
+    const [system, user] = mergeNotesMessages(['- A [S1]', '- B [S9]']);
+    expect(system!.content).toContain('NOTES');
+    expect(user!.content).toMatch(/every name, number, date, decision and action item/);
+    expect(user!.content).toContain('[S9]');
   });
 });
 
@@ -416,6 +438,43 @@ describe('summary jobs', () => {
     expect(jobs.get(jobId)!.status).toBe('done');
     const firstPrompts = calls.slice(before).filter((c) => c.messages[1]!.content.includes('part 1 of'));
     expect(firstPrompts).toHaveLength(0);
+  });
+
+  it('three hours of notes are merged in rounds until they fit, and finished merges survive a rate limit', async () => {
+    const long = library.insertRecording({ title: 'Three hours', mode: 'meeting', source: 'picker', format: 'OGG', codec: 'Opus', durationMs: 10_800_000, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: 'l.ogg', mime: 'audio/ogg', peaks: new Uint8Array(8) });
+    transcripts.addOriginal(long, 'groq', 'm', 'en', Array.from({ length: 1500 }, (_, i) => seg(i, i * 7000, `Line ${i} of a long meeting about budgets and plans. `.repeat(2))));
+    let failedOnce = false;
+    let merges = 0;
+    const respond = (r: ChatRequest): ChatResult | Error => {
+      const prompt = r.messages[1]!.content;
+      if (prompt.includes('Merge them')) {
+        merges++;
+        if (merges === 2 && !failedOnce) {
+          failedOnce = true;
+          return new ProviderError('rate', 'Slow down.', 0);
+        }
+        return ok(`- merged ${merges} [S1] `.repeat(150));
+      }
+      if (prompt.includes('NOTES:')) return ok('Final summary [S1] [S1400]');
+      return ok(`- note [S${Math.floor(Math.random() * 1500)}] `.repeat(200));
+    };
+    script = Array.from({ length: 200 }, () => respond);
+    const { jobId } = service.request(long, 'summarize', { summary: DEFAULT_SUMMARY_OPTIONS }) as { jobId: string };
+    await new Promise((r) => setTimeout(r, 100));
+    expect(jobs.get(jobId)!.status).toBe('waiting');
+    await new Promise((r) => setTimeout(r, 600));
+    queue.pump();
+    await new Promise((r) => setTimeout(r, 150));
+    expect(jobs.get(jobId)!.status).toBe('done');
+
+    const final = calls.at(-1)!.messages[1]!.content;
+    expect(final).toContain('NOTES:');
+    // Everything sent at the end fits what one request may carry on Groq (12,000 characters plus the instructions).
+    expect(final.length).toBeLessThan(12_000 + 3_000);
+    // The first merge was not paid for twice: one retry of the failed merge, nothing else repeated.
+    const mergePrompts = calls.filter((c) => c.messages[1]!.content.includes('Merge them')).map((c) => c.messages[1]!.content);
+    expect(mergePrompts.length).toBe(new Set(mergePrompts).size + 1);
+    expect(summaries.list(long)[0]!.markdown).toContain('cite:');
   });
 
   it('a piece too large for the service is retried smaller, automatically', async () => {

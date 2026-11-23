@@ -81,26 +81,44 @@ export async function toProviderError(response: Response): Promise<ProviderError
   return new ProviderError('rejected', detail ? `The service refused this request: ${detail.slice(0, 200)}` : `The service refused this request (HTTP ${status}).`);
 }
 
+/**
+ * How long one request may take. A connection that stalls must never leave a job "running" forever:
+ * after this it fails as a network error, is retried, and continues from the saved parts.
+ */
+export const REQUEST_TIMEOUT_MS = 5 * 60_000;
+
+/**
+ * Sends a request that gives up after `timeoutMs`. Canceling through `init.signal` still rethrows the
+ * abort as it was, so a canceled job is never mistaken for a failed one.
+ */
+export async function fetchWithTimeout(fetchFn: typeof fetch, url: string, init: RequestInit, timeoutMs: number, unreachable: string): Promise<Response> {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  try {
+    return await fetchFn(url, { ...init, signal });
+  } catch (e) {
+    if (init.signal?.aborted) throw e;
+    if (timeout.aborted) throw new ProviderError('network', 'The service did not answer in time. EchoMind will try again.');
+    if (e instanceof Error && e.name === 'AbortError') throw e;
+    throw new ProviderError('network', unreachable);
+  }
+}
+
 /** Any OpenAI-compatible transcription endpoint, such as Groq or a self-hosted Whisper server. */
 export class WhisperHttpProvider implements TranscriptionProvider {
   constructor(
     private readonly baseUrl: string,
     private readonly apiKey: string | null,
     private readonly fetchFn: typeof fetch = fetch,
+    private readonly timeoutMs = REQUEST_TIMEOUT_MS,
   ) {}
 
   private headers(): Record<string, string> {
     return this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {};
   }
 
-  private async send(url: string, init: RequestInit): Promise<Response> {
-    try {
-      return await this.fetchFn(url, init);
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') throw e;
-      if (e instanceof Error && e.name === 'AbortError') throw e;
-      throw new ProviderError('network', 'Could not reach the transcription service. Check your internet connection.');
-    }
+  private send(url: string, init: RequestInit): Promise<Response> {
+    return fetchWithTimeout(this.fetchFn, url, init, this.timeoutMs, 'Could not reach the transcription service. Check your internet connection.');
   }
 
   async transcribe(request: TranscribeRequest): Promise<TranscribeResult> {

@@ -147,6 +147,19 @@ export const LLM_PROVIDER_INFO: Record<LlmProviderId, LlmProviderInfo> = {
   },
 };
 
+/**
+ * Extra request fields for models that think before answering. Their hidden reasoning counts against the
+ * answer's length limit: seen live, Groq's gpt-oss-120b spent 1,498 of 1,500 tokens thinking about one
+ * part of a 3-hour transcript and returned nothing, 77 times in a row. EchoMind's tasks (notes, summaries,
+ * JSON) need little reasoning, so these models are asked to keep it short. Other services get nothing
+ * extra, because an unknown field can make a strict service refuse the request.
+ */
+export function reasoningOptions(provider: LlmProviderId, model: string): Record<string, unknown> {
+  if (provider === 'groq' && model.startsWith('openai/gpt-oss')) return { reasoning_effort: 'low' };
+  if (provider === 'gemini' && /^gemini-(2\.5|[3-9])/.test(model)) return { reasoning_effort: 'low' };
+  return {};
+}
+
 /** Any provider's display name, for screens that list jobs from every kind. */
 export function providerLabel(id: string): string {
   return (PROVIDER_INFO as Record<string, { label: string }>)[id]?.label ?? (LLM_PROVIDER_INFO as Record<string, { label: string }>)[id]?.label ?? id;

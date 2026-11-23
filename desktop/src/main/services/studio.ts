@@ -33,20 +33,21 @@ import {
   type StudioOutput,
   type TaskSuggestion,
 } from '@shared/studio';
-import type { ChatMessage } from '@shared/summaries';
+import { mergeNotesMessages, type ChatMessage } from '@shared/summaries';
 import { ProviderError, type ChatProvider } from '../ai/types';
 import type { LibraryRepository } from '../db/library';
 import type { StudioRepository, TaskRepository } from '../db/studio';
 import type { SummaryRepository } from '../db/summaries';
 import type { JobRepository, StoredJob, TranscriptRepository, UsageRepository } from '../db/transcripts';
 import type { JobHandler, JobQueue } from './job-queue';
+import { reduceNotes } from './reduce-notes';
 
 const CONTEXT_CAP_CHARS = 48_000;
 const PROMPT_OVERHEAD_CHARS = 3000;
 const MIN_PIECE_CHARS = 1500;
 const JSON_MAX_TOKENS = 3500;
 const WRITING_MAX_TOKENS = 3500;
-const NOTES_MAX_TOKENS = 1500;
+const NOTES_MAX_TOKENS = 2000;
 /** A translation is about as long as what it translates, so its pieces are smaller. */
 const TRANSLATE_PIECE_CHARS = 5000;
 
@@ -145,7 +146,8 @@ export class StudioService implements JobHandler {
   private async perPiece(job: StoredJob, pieces: string[], stage: string, work: (piece: string, i: number) => Promise<string>): Promise<string[]> {
     const { jobs } = this.deps;
     let stored = jobs.pieceResults(job.id);
-    if (stored.length !== pieces.length) {
+    // Slots after the pieces hold merged notes, so only too few rows means a different plan.
+    if (stored.length < pieces.length) {
       jobs.clearChunks(job.id);
       jobs.addChunks(job.id, pieces.map(() => ({ startMs: 0, endMs: 0 })));
       stored = jobs.pieceResults(job.id);
@@ -279,9 +281,21 @@ export class StudioService implements JobHandler {
           truncated = result.truncated;
         } else {
           const notes = await this.perPiece(job, pieces, 'Reading', async (piece, i) => (await this.complete(job, provider, writingNotesMessages(instruction, piece, i + 1, pieces.length), NOTES_MAX_TOKENS, false, signal)).text);
+          const { jobs } = this.deps;
+          const fitted = await reduceNotes(
+            notes,
+            maxChars,
+            { get: (slot) => jobs.storedResult(job.id, slot), save: (slot, text) => jobs.storeResult(job.id, slot, text) },
+            pieces.length,
+            async (group) => (await this.complete(job, provider, mergeNotesMessages(group), NOTES_MAX_TOKENS, false, signal)).text,
+            (round, done, total) => {
+              jobs.setRunning(job.id, `Combining notes (round ${round}, ${done + 1} of ${total})`, pieces.length / (pieces.length + 1));
+              this.deps.changed();
+            },
+          );
           this.deps.jobs.setRunning(job.id, 'Writing', pieces.length / (pieces.length + 1));
           this.deps.changed();
-          const result = await this.complete(job, provider, writingCombineMessages(instruction, notes), WRITING_MAX_TOKENS, false, signal);
+          const result = await this.complete(job, provider, writingCombineMessages(instruction, fitted), WRITING_MAX_TOKENS, false, signal);
           text = result.text;
           truncated = result.truncated;
         }

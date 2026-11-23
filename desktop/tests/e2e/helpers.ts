@@ -53,7 +53,8 @@ export function killTree(app: ElectronApplication): void {
 
 /** The hidden media worker is also a window; tests always drive the main one. */
 async function firstMainWindow(app: ElectronApplication): Promise<Page> {
-  for (let i = 0; i < 100; i++) {
+  // Up to 30 s: a first start in a new folder, on a busy machine, can take a while.
+  for (let i = 0; i < 300; i++) {
     const main = app.windows().find((w) => !w.url().endsWith('media.html'));
     if (main) return main;
     await new Promise((r) => setTimeout(r, 100));

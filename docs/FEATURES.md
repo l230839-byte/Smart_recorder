@@ -7,7 +7,7 @@ Only what is implemented and verified is listed as **Working**.
 | Onboarding, local profile, privacy choice, key step | Working |
 | Light, dark and system themes | Working |
 | Recording with modes, bookmarks, notes, live waveform | Working (tested with a simulated microphone) |
-| Crash recovery | Working |
+| Crash recovery: recordings, jobs and a crashed window; diagnostics log of starts, quits and crashes | Working |
 | Import: MP3, WAV, M4A, AAC, OGG, Opus, FLAC, WebM; audio from video | Working |
 | Import: AMR, WMA and others through the FFmpeg add-on | Working (verified 2026-11-10; needs `npm run fetch:ffmpeg` once) |
 | Batch queue, duplicates, corrupt file handling | Working |
@@ -15,7 +15,8 @@ Only what is implemented and verified is listed as **Working**.
 | Player: speed, skip silence, voice boost, bookmarks, trim | Working |
 | Storage management | Working |
 | Transcription: job queue, chunking, retry, resume, consent, encrypted keys | Working (tested with a local server following Groq's format) |
-| Transcription on live Groq | Written, not yet run. Needs a key. |
+| Transcription on live Groq | Working (live-checked 2026-11-20 and on a 3-hour recording 2026-11-22: all facts found, under 1 s timing drift, resumes after a kill) |
+| Recordings of 1 to 3 hours: transcription, summaries, chapters, titles, minutes, quizzes, tasks and chat | Working (3-hour meeting live-checked 2026-11-22 and 23; free Groq limits mean waits, handled automatically; see FREE_STACK.md) |
 | Transcript viewer: six views, editing with preserved original, versions, find, synced playback, export to TXT, SRT, VTT | Working |
 | Speaker labels | Display works. Whisper providers supply none. |
 | Usage and limits | Working |
