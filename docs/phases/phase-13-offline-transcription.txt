@@ -76,8 +76,8 @@ tier, every AI tool on a 3-hour recording cannot finish in one day; Gemini can.
 During the run, EchoMind's window was closed after 9.5 minutes. The new diagnostics log
 shows an orderly close of the window itself (window-close, then quit, exit 0), the
 pattern of the close button or Alt+F4, not a crash or a quit by the app. The test windows
-open on the desktop, so this, and the "app quit by itself" seen in Phase 9, are most
-likely a test window being closed; the log will show it if it ever happens otherwise.
+open on the desktop, and the owner confirmed closing them by hand, both this one and the
+"app quit by itself" of Phase 9. There is no self-quit bug.
 
 The whisper.cpp download script was run from a clean folder: hash checked, licence
 checked, and the options EchoMind uses confirmed in the tool's own help.

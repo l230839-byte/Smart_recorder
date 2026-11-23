@@ -73,7 +73,8 @@ F7  The app closed itself once, about 4 seconds after a Groq summary started on 
     minutes each, with every quit and window path instrumented. The fixes above remove
     the conditions it was seen in, a crashed window now reopens instead of closing, and
     the new log records any start, quit, crash or uncaught error, so a repeat leaves
-    evidence. Reported honestly as not reproduced, not as proven fixed.
+    evidence. Resolved 2026-11-23: the owner confirmed closing that test window by
+    hand. Not an app bug. The crash recovery and log stay, as general safeguards.
 F8  Language boxes hid their own list; Library rows wasted a column; the dev window had
     the wrong icon. Fixed (section 2).
 
