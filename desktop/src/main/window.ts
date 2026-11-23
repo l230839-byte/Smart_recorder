@@ -9,7 +9,7 @@ function overlay() {
 }
 
 export function backgroundColor(): string {
-  return nativeTheme.shouldUseDarkColors ? '#14131A' : '#F7F6F2';
+  return nativeTheme.shouldUseDarkColors ? '#111218' : '#F5F6F9';
 }
 
 /** `minimized` is for starting with Windows: EchoMind runs for reminders without covering the desktop. */

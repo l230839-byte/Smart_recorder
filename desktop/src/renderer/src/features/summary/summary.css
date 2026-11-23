@@ -139,12 +139,12 @@
   border-top: 1px solid var(--border);
 }
 .chapter-row:hover .chapter-title {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .chapter-time {
   flex: none;
   width: 48px;
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 12.5px;
   line-height: 1.7;
 }

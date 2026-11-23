@@ -74,7 +74,7 @@
   height: 34px;
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .template-card[aria-checked='true'] .template-icon {
   background: var(--surface);
@@ -113,7 +113,7 @@
   background: var(--primary-soft);
 }
 .source-option:has(input:focus-visible) {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 .source-option input {
@@ -508,7 +508,7 @@
   border-bottom: 0;
 }
 .doc-mini:hover .doc-row-title {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .doc-toolbar .icon-btn {
   width: 30px;

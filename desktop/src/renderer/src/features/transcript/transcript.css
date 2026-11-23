@@ -40,7 +40,7 @@
   padding: 2px 0;
   border: 0;
   background: none;
-  color: var(--primary);
+  color: var(--primary-text);
   font: 500 12.5px/1.6 var(--font);
   cursor: pointer;
 }
@@ -101,7 +101,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--primary);
+  color: var(--primary-text);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;

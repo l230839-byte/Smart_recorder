@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Phase 11: Themes
+
+- Light mode moves from warm cream to cool "ink on paper" neutrals that suit the indigo brand.
+- Dark mode buttons are saturated with white text (they looked disabled before); pages, surfaces and menus or dialogs now sit on three clear levels.
+- Six accent colours (indigo, teal, rose, amber, green, slate) and high contrast in light and dark, which can follow Windows. Settings > Appearance.
+- Every combination checked for WCAG AA contrast; the automated audit now runs on every accent and on high contrast.
+- Appearance settings only accept their listed values. Theme changes cross-fade briefly, unless reduced motion is on.
+
 ### Phase 10: Logo and icons
 
 - New mark, the "Level E": an E built from three audio-level bars with an echo dot. In the app it takes the theme's accent; the app icon is indigo.

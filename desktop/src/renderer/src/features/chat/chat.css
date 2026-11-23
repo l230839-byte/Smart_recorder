@@ -390,7 +390,7 @@
   font-weight: 600;
 }
 .result-head:hover .result-title {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .hit-list {
   display: flex;

@@ -23,6 +23,10 @@ your computer, works with free AI services using your own key, and sends nothing
 - **Search** (Ctrl+K) looks through names, transcripts, chapters, speakers, summaries and documents.
 - **Ask AI** from Home or AI Studio asks across your whole library, a collection or chosen recordings.
 
+## Making it yours
+
+- **Appearance**: Settings > Appearance. Light, dark or follow Windows; six accent colours (indigo, teal, rose, amber, green, slate); and high contrast, which uses black and white with strong outlines. Contrast set to System switches to high contrast whenever Windows asks for more contrast.
+
 ## Keeping your library safe
 
 - **App lock**: Settings > Security and backup > App lock. A PIN when EchoMind opens, after idle time, and when Windows locks. A forgotten PIN cannot be recovered.

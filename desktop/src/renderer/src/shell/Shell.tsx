@@ -21,7 +21,7 @@ export const BRAND_PATH = 'M20 17v30M20 17h24M20 32h15M20 47h21';
 export function BrandMark({ size = 26 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden className="brand-mark">
-      <rect width="64" height="64" rx="16" fill="var(--primary-fill, var(--primary))" />
+      <rect width="64" height="64" rx="16" fill="var(--primary)" />
       <path d={BRAND_PATH} fill="none" stroke="var(--on-primary)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="45" cy="32" r="3.2" fill="var(--on-primary)" opacity="0.72" />
     </svg>

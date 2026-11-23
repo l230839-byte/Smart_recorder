@@ -5,7 +5,7 @@ Only what is implemented and verified is listed as **Working**.
 | Feature | Status |
 | --- | --- |
 | Onboarding, local profile, privacy choice, key step | Working |
-| Light, dark and system themes | Working |
+| Themes: light, dark or system; six accent colours; high contrast (or follow Windows) | Working |
 | Recording with modes, bookmarks, notes, live waveform | Working (tested with a simulated microphone) |
 | Crash recovery: recordings, jobs and a crashed window; diagnostics log of starts, quits and crashes | Working |
 | Import: MP3, WAV, M4A, AAC, OGG, Opus, FLAC, WebM; audio from video | Working |
@@ -46,4 +46,4 @@ Only what is implemented and verified is listed as **Working**.
 | Share bundles: a recording with its transcript, summaries, chapters and documents in one file; opens with a double-click | Working |
 | Start with Windows, minimized, for task reminders | Working in the installed app |
 | Windows installer (NSIS, per user, file association) | Working. Not code-signed, so SmartScreen warns once. |
-| Accessibility: WCAG 2.1 A/AA automated audit of every main screen, light and dark | Passing (axe-core). Not yet checked with a screen reader by a person. |
+| Accessibility: WCAG 2.1 A/AA automated audit of every main screen in light and dark, and of the main screens in every accent and in high contrast | Passing (axe-core). Not yet checked with a screen reader by a person. |

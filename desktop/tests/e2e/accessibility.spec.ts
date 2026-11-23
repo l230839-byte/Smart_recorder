@@ -21,9 +21,9 @@ function call<T>(page: Page, method: string, ...args: unknown[]): Promise<T> {
   return page.evaluate(([m, a]) => (window.echomind.call as unknown as (m: string, ...x: unknown[]) => Promise<T>)(m as string, ...(a as unknown[])), [method, args] as const);
 }
 
-/** WCAG 2.1 A and AA, checked by axe on the real screens, in light and dark themes. */
-test('every main screen passes an automated WCAG 2.1 AA check, in light and dark', async () => {
-  test.setTimeout(240_000);
+/** WCAG 2.1 A and AA, checked by axe on the real screens, in every theme, accent and contrast. */
+test('every main screen passes an automated WCAG 2.1 AA check, in light and dark, every accent and high contrast', async () => {
+  test.setTimeout(480_000);
   const dataDir = tempDataDir();
   const { app, page } = await launch(dataDir);
   const problems: string[] = [];
@@ -49,8 +49,9 @@ test('every main screen passes an automated WCAG 2.1 AA check, in light and dark
     };
     const nav = (name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name, exact: true }).click();
 
+    // Every screen in the default look, light and dark.
     for (const theme of ['light', 'dark'] as const) {
-      await call(page, 'updateSettings', { theme });
+      await call(page, 'updateSettings', { theme, accent: 'indigo', contrast: 'standard' });
       await nav('Home');
       await check(`${theme} home`);
       await nav('Library');
@@ -78,6 +79,26 @@ test('every main screen passes an automated WCAG 2.1 AA check, in light and dark
       await check(`${theme} settings`);
       await page.getByRole('button', { name: /Backup and restore/ }).click();
       await check(`${theme} backup`);
+    }
+
+    // Every other accent and high contrast, in both themes, on the screens that use colour most.
+    const variants: Record<string, string>[] = [
+      ...(['teal', 'rose', 'amber', 'green', 'slate'] as const).flatMap((accent) => (['light', 'dark'] as const).map((theme) => ({ theme, accent, contrast: 'standard' }))),
+      { theme: 'light', accent: 'indigo', contrast: 'high' },
+      { theme: 'dark', accent: 'indigo', contrast: 'high' },
+    ];
+    for (const v of variants) {
+      await call(page, 'updateSettings', v);
+      const name = `${v.theme} ${v.contrast === 'high' ? 'high contrast' : v.accent}`;
+      await nav('Home');
+      await check(`${name} home`);
+      await nav('Library');
+      await page.locator('.rec-main').first().click();
+      await check(`${name} recording`);
+      await nav('AI Studio');
+      await check(`${name} studio`);
+      await nav('Settings');
+      await check(`${name} settings`);
     }
     console.warn(`accessibility: ${problems.length} problems\n${problems.join('\n')}`);
     expect(problems).toEqual([]);

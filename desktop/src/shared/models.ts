@@ -276,6 +276,10 @@ export interface ProviderStatus {
 }
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
+export const ACCENTS = ['indigo', 'teal', 'rose', 'amber', 'green', 'slate'] as const;
+export type AccentSetting = (typeof ACCENTS)[number];
+/** "system" follows Windows: high contrast when Windows asks for more contrast. */
+export type ContrastSetting = 'system' | 'standard' | 'high';
 export type AudioQuality = 'voice' | 'standard' | 'high';
 
 export const AUDIO_QUALITY: Record<AudioQuality, { label: string; hint: string; bitrate: number }> = {
@@ -288,6 +292,8 @@ export interface Settings {
   onboardingComplete: boolean;
   displayName: string;
   theme: ThemeSetting;
+  accent: AccentSetting;
+  contrast: ContrastSetting;
   /** While true, nothing may leave this computer. Starts on; the user turns it off deliberately. */
   offlineOnly: boolean;
   defaultMode: RecordingMode;
@@ -315,10 +321,20 @@ export interface Settings {
   lastBackupAt: number | null;
 }
 
+/** Settings that take one of a fixed set of values. Anything else is refused, never stored. */
+export const SETTING_CHOICES: Partial<Record<keyof Settings, readonly string[]>> = {
+  theme: ['system', 'light', 'dark'],
+  accent: ACCENTS,
+  contrast: ['system', 'standard', 'high'],
+  audioQuality: ['voice', 'standard', 'high'],
+};
+
 export const DEFAULT_SETTINGS: Settings = {
   onboardingComplete: false,
   displayName: '',
   theme: 'system',
+  accent: 'indigo',
+  contrast: 'system',
   offlineOnly: true,
   defaultMode: 'lecture',
   audioQuality: 'standard',

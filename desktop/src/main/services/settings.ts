@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type Settings } from '@shared/models';
+import { DEFAULT_SETTINGS, SETTING_CHOICES, type Settings } from '@shared/models';
 import { LLM_PROVIDER_INFO, PROVIDER_INFO } from '@shared/providers';
 import type { Db } from '../db/database';
 
@@ -6,6 +6,8 @@ import type { Db } from '../db/database';
 function validType(key: keyof Settings, value: unknown): boolean {
   const fallback = DEFAULT_SETTINGS[key];
   if (value === null) return fallback === null;
+  const choices = SETTING_CHOICES[key];
+  if (choices && !choices.includes(value as string)) return false;
   return fallback === null || typeof value === typeof fallback;
 }
 

@@ -1,0 +1,70 @@
+ECHOMIND DESKTOP: PHASE 11, THEMES
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §18 design (themes, accessibility); §16 settings
+Date:        2026-11-23
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Polish light and dark, and add accent colours and high contrast, as the owner asked
+("all 3 options"), with every combination readable.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+Settings > Appearance now has three choices:
+- Theme: System, Light or Dark (as before).
+- Accent colour: indigo (default), teal, rose, amber, green or slate, as round swatches
+  (arrow keys move between them). Buttons, links, the selected page and the EchoMind
+  mark take the accent.
+- Contrast: System, Standard or High. High uses black on white (or white on black with
+  yellow actions, as Windows does), strong outlines and no shadows. System switches to
+  high contrast whenever Windows asks for more contrast.
+
+Polish:
+- Light: cool "ink on paper" greys instead of warm cream. Warm cream is a very common
+  default and sat oddly beside the cool indigo brand.
+- Dark: buttons are a saturated colour with white text; before, a pale lavender with
+  dark text made the main action look disabled. Page, surface and raised surfaces
+  (menus, dialogs) are three distinct levels, and shadows keep a faint edge.
+- Focus rings use their own colour, light enough to see on dark pages.
+- Changing theme, accent or contrast cross-fades briefly (not with reduced motion).
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Primary has two roles. --primary is the solid fill and always carries --on-primary
+    text; --primary-text is the accent as text on the page. In dark they differ (a
+    saturated fill for white text; a light tint for text on a dark page). Every text use
+    of the old token moved to --primary-text in one mechanical change.
+D2  Accents and contrast are attributes on <html> (data-accent, data-contrast) read by
+    tokens.css; light or dark stays with Electron's theme, which already drives
+    prefers-color-scheme and the title bar. High contrast comes last, so it always wins.
+D3  Soft tints disappear in high contrast, so tinted shapes (icon tiles, selected items,
+    tonal buttons, notices) get an outline there instead.
+D4  Every pair was checked before building (palette sheet shown to the owner: button
+    text, links on page and card, tinted chips, muted text, and controls against the
+    page). The one failure, slate's dark button against the page (2.7:1), was fixed
+    (3.4:1) before anything was applied.
+D5  Settings with fixed choices (theme, accent, contrast, audio quality) now refuse any
+    other value instead of storing it; before, any string was accepted.
+
+
+4. TESTS
+--------------------------------------------------------------------------------
+- Accessibility (axe, WCAG 2.1 A/AA): every main screen in light and dark, plus Home,
+  a recording, AI Studio and Settings in each of the five other accents in light and
+  dark, and in high contrast light and dark: 0 problems.
+- Unit: settings refuse unlisted values (271 passing). Full end-to-end suite passing.
+- Screens reviewed by eye: light, dark, dark teal, light rose, high contrast light and
+  dark on Home, a recording, Summaries, AI Studio and Settings.
+
+
+5. REVIEW
+--------------------------------------------------------------------------------
+Designer: dark mode's main actions now read as main actions; high contrast follows the
+conventions of Windows' own contrast themes. The accent changes the app's character
+without touching the fixed meanings (teal for AI, ember for bookmarks, red for record).
+Developer: one token file, no colours in components except the swatches (which must show
+their own colour); canvases redraw on any appearance change.

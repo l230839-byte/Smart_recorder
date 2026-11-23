@@ -129,7 +129,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--primary);
+  color: var(--primary-text);
   font: inherit;
   text-decoration: underline;
   cursor: pointer;
@@ -142,7 +142,7 @@
 .feature-line svg {
   flex: none;
   margin-top: 2px;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .choice {
   display: flex;

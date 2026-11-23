@@ -1,20 +1,36 @@
-/* Design tokens. Components use only these, so both themes stay consistent. */
+/*
+ * Design tokens. Components use only these, so every theme stays consistent.
+ *
+ * Three independent choices, all in Settings > Appearance:
+ *   light or dark   follows prefers-color-scheme, which Electron sets from the Theme setting
+ *   accent          :root[data-accent=…], six colours, default indigo
+ *   contrast        :root[data-contrast='high'], which overrides any accent
+ *
+ * Primary has two roles: --primary is the solid fill (buttons, toggles, checked boxes) and always
+ * carries --on-primary text; --primary-text is the accent used as text or icons on the page. In dark
+ * themes they differ: a saturated fill for white text, a light tint for text on a dark page.
+ * Every pairing below was checked for WCAG AA contrast (4.5:1 text, 3:1 controls).
+ */
 :root {
   color-scheme: light;
 
-  /* Brand: ink indigo, with teal for AI and ember for bookmarks */
+  /* Accent: ink indigo */
   --primary: #4338ca;
   --primary-hover: #3730a3;
   --on-primary: #ffffff;
-  --primary-soft: #e8e6fb;
+  --primary-text: #4338ca;
+  --primary-soft: #e7e6fb;
   --on-primary-soft: #2a2380;
+  --focus: #4338ca;
+
+  /* Fixed meanings: teal for AI, ember for bookmarks and meetings, red for recording */
   --teal: #0f766e;
   --teal-soft: #d5f2ec;
   --ember: #c2410c;
   --ember-soft: #fde8db;
   --record: #dc2626;
   --record-hover: #b91c1c;
-  /* Behind white text, in both themes: keeps the record button's label at AA contrast. */
+  /* Behind white text, in every theme: keeps the record button's label at AA contrast. */
   --record-strong: #dc2626;
   --record-soft: #fde4e4;
   --success: #15803d;
@@ -25,21 +41,22 @@
   --danger: #b91c1c;
   --danger-soft: #fde4e4;
 
-  /* Warm neutrals */
-  --bg: #f7f6f2;
+  /* Neutrals: cool "ink on paper", in tune with the indigo brand */
+  --bg: #f5f6f9;
   --surface: #ffffff;
-  --surface-sunken: #efeee9;
-  --surface-hover: #f1f0eb;
-  --sidebar: #efeee8;
-  --border: #e3e1da;
-  --border-strong: #cfccc3;
-  --text: #1c1b18;
-  --text-muted: #63605a;
-  --text-faint: #8a877f;
+  --surface-raised: #ffffff;
+  --surface-sunken: #edeef3;
+  --surface-hover: #eff0f5;
+  --sidebar: #eceef4;
+  --border: #e0e2ea;
+  --border-strong: #c7cad6;
+  --text: #15161d;
+  --text-muted: #585b6c;
+  --text-faint: #7f8294;
 
-  --shadow-sm: 0 1px 2px rgb(28 27 24 / 6%);
-  --shadow-md: 0 4px 14px rgb(28 27 24 / 9%), 0 1px 3px rgb(28 27 24 / 6%);
-  --shadow-lg: 0 18px 50px rgb(28 27 24 / 20%), 0 4px 12px rgb(28 27 24 / 10%);
+  --shadow-sm: 0 1px 2px rgb(21 22 29 / 6%);
+  --shadow-md: 0 4px 14px rgb(21 22 29 / 8%), 0 1px 3px rgb(21 22 29 / 6%);
+  --shadow-lg: 0 18px 50px rgb(21 22 29 / 18%), 0 4px 12px rgb(21 22 29 / 9%);
 
   /* Spacing: 4 px grid */
   --s1: 4px;
@@ -64,14 +81,60 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* Accents, light */
+:root[data-accent='teal'] {
+  --primary: #0f766e;
+  --primary-hover: #0b5f58;
+  --primary-text: #0f766e;
+  --primary-soft: #d6f1ec;
+  --on-primary-soft: #0b4f4a;
+  --focus: #0f766e;
+}
+:root[data-accent='rose'] {
+  --primary: #be123c;
+  --primary-hover: #9f1239;
+  --primary-text: #be123c;
+  --primary-soft: #fde4ea;
+  --on-primary-soft: #7c0b28;
+  --focus: #be123c;
+}
+:root[data-accent='amber'] {
+  --primary: #a34a06;
+  --primary-hover: #8a3e05;
+  --primary-text: #9a4605;
+  --primary-soft: #fdeccf;
+  --on-primary-soft: #6b3004;
+  --focus: #9a4605;
+}
+:root[data-accent='green'] {
+  --primary: #15803d;
+  --primary-hover: #116932;
+  --primary-text: #15803d;
+  --primary-soft: #dbf3e3;
+  --on-primary-soft: #0c4f25;
+  --focus: #15803d;
+}
+:root[data-accent='slate'] {
+  --primary: #334155;
+  --primary-hover: #1e293b;
+  --primary-text: #334155;
+  --primary-soft: #e5e8ee;
+  --on-primary-soft: #1e293b;
+  --focus: #334155;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --primary: #8f88f5;
-    --primary-hover: #a5a0f8;
-    --on-primary: #16123f;
-    --primary-soft: #2a2755;
+    /* A saturated fill for white text; a light tint for accent text on the dark page. */
+    --primary: #5a4ff0;
+    --primary-hover: #4f44e0;
+    --on-primary: #ffffff;
+    --primary-text: #aaa5ff;
+    --primary-soft: #26244f;
     --on-primary-soft: #d9d7ff;
+    --focus: #aaa5ff;
+
     --teal: #5eead4;
     --teal-soft: #113a37;
     --ember: #fdba8c;
@@ -86,19 +149,165 @@
     --danger: #fca5a5;
     --danger-soft: #451a1a;
 
-    --bg: #14131a;
-    --surface: #1d1c24;
-    --surface-sunken: #111016;
-    --surface-hover: #26252e;
-    --sidebar: #0f0e14;
-    --border: #2c2b35;
-    --border-strong: #403f4b;
-    --text: #efedea;
-    --text-muted: #a7a4ae;
-    --text-faint: #7f7c87;
+    /* Three clear levels: page, surface, raised (menus and dialogs) */
+    --bg: #111218;
+    --surface: #191a22;
+    --surface-raised: #20212b;
+    --surface-sunken: #0c0d12;
+    --surface-hover: #22232d;
+    --sidebar: #0d0e13;
+    --border: #272833;
+    --border-strong: #3a3b49;
+    --text: #ececf2;
+    --text-muted: #a3a4b4;
+    --text-faint: #7c7d8f;
 
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
-    --shadow-md: 0 4px 14px rgb(0 0 0 / 35%);
-    --shadow-lg: 0 18px 50px rgb(0 0 0 / 55%);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 35%);
+    --shadow-md: 0 4px 14px rgb(0 0 0 / 40%), 0 0 0 1px rgb(255 255 255 / 3%);
+    --shadow-lg: 0 18px 50px rgb(0 0 0 / 60%), 0 0 0 1px rgb(255 255 255 / 4%);
+  }
+
+  /* Accents, dark */
+  :root[data-accent='teal'] {
+    --primary: #0f766e;
+    --primary-hover: #0d665f;
+    --primary-text: #5eead4;
+    --primary-soft: #10332f;
+    --on-primary-soft: #c6f7ee;
+    --focus: #5eead4;
+  }
+  :root[data-accent='rose'] {
+    --primary: #c0163f;
+    --primary-hover: #a8123a;
+    --primary-text: #fda4b8;
+    --primary-soft: #3d1420;
+    --on-primary-soft: #ffd7e0;
+    --focus: #fda4b8;
+  }
+  :root[data-accent='amber'] {
+    --primary: #a34a06;
+    --primary-hover: #8f4105;
+    --primary-text: #fcd34d;
+    --primary-soft: #3a2a0b;
+    --on-primary-soft: #fdecc0;
+    --focus: #fcd34d;
+  }
+  :root[data-accent='green'] {
+    --primary: #16803e;
+    --primary-hover: #136d35;
+    --primary-text: #86efac;
+    --primary-soft: #12321f;
+    --on-primary-soft: #cdf7dc;
+    --focus: #86efac;
+  }
+  :root[data-accent='slate'] {
+    --primary: #5b6b84;
+    --primary-hover: #4d5c74;
+    --primary-text: #cbd5e1;
+    --primary-soft: #262c37;
+    --on-primary-soft: #e2e8f0;
+    --focus: #cbd5e1;
+  }
+}
+
+/* High contrast, light: black on white, strong outlines, no soft tints or shadows. Comes after the
+   accents so it always wins. */
+:root[data-contrast='high'] {
+  --primary: #1a0dab;
+  --primary-hover: #12088a;
+  --on-primary: #ffffff;
+  --primary-text: #1a0dab;
+  --primary-soft: #ffffff;
+  --on-primary-soft: #1a0dab;
+  --focus: #000000;
+
+  --teal: #00524c;
+  --teal-soft: #ffffff;
+  --ember: #8a2c00;
+  --ember-soft: #ffffff;
+  --record: #c00000;
+  --record-hover: #990000;
+  --record-strong: #c00000;
+  --record-soft: #ffffff;
+  --success: #0a5c24;
+  --success-soft: #ffffff;
+  --warning: #5c3a00;
+  --warning-soft: #ffffff;
+  --danger: #9b0000;
+  --danger-soft: #ffffff;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ffffff;
+  --surface-hover: #ececec;
+  --sidebar: #ffffff;
+  --border: #000000;
+  --border-strong: #000000;
+  --text: #000000;
+  --text-muted: #1f1f1f;
+  --text-faint: #333333;
+
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: 0 0 0 2px #000000;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* High contrast, dark: white on black with yellow for actions, as in Windows' own contrast themes. */
+  :root[data-contrast='high'] {
+    --primary: #ffff00;
+    --primary-hover: #e6e600;
+    --on-primary: #000000;
+    --primary-text: #ffff00;
+    --primary-soft: #000000;
+    --on-primary-soft: #ffff00;
+    --focus: #ffff00;
+
+    --teal: #5ff5e0;
+    --teal-soft: #000000;
+    --ember: #ffb070;
+    --ember-soft: #000000;
+    --record: #ff5c5c;
+    --record-hover: #ff8080;
+    --record-strong: #c00000;
+    --record-soft: #000000;
+    --success: #7dff9a;
+    --success-soft: #000000;
+    --warning: #ffd400;
+    --warning-soft: #000000;
+    --danger: #ff8080;
+    --danger-soft: #000000;
+
+    --bg: #000000;
+    --surface: #000000;
+    --surface-raised: #000000;
+    --surface-sunken: #000000;
+    --surface-hover: #1c1c1c;
+    --sidebar: #000000;
+    --border: #ffffff;
+    --border-strong: #ffffff;
+    --text: #ffffff;
+    --text-muted: #e6e6e6;
+    --text-faint: #cccccc;
+
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: 0 0 0 2px #ffffff;
+  }
+}
+
+/* Soft tints vanish in high contrast, so tinted shapes (tiles, selected items, tonal buttons, notices)
+   keep their outline instead. */
+:root[data-contrast='high'] :is(.icon-tile, .mode-badge, .home-action-icon, .btn-tonal, .notice, .chip[aria-pressed='true'], .nav-item[aria-current='page']) {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+/* A short cross-fade when the theme, accent or contrast changes; never for people who ask for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  :root.theme-changing,
+  :root.theme-changing * {
+    transition: background-color 180ms var(--ease), border-color 180ms var(--ease), color 180ms var(--ease), fill 180ms var(--ease) !important;
   }
 }

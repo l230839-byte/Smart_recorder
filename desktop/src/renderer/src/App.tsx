@@ -29,6 +29,7 @@ import { LockScreen } from './features/security/LockScreen';
 import { api, onEvent, useQuery } from './lib/api';
 import { player } from './lib/player';
 import { RouterProvider, useRouter } from './lib/router';
+import { useAppearance } from './lib/appearance';
 import { ToastProvider } from './lib/toast';
 import { DropTarget, GlobalEvents, MiniPlayer, RecordingIndicator } from './shell/Overlays';
 import { ErrorBoundary } from './shell/ErrorBoundary';
@@ -113,6 +114,7 @@ function useAppLock() {
 export function App() {
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
   const [lock, setLock] = useAppLock();
+  useAppearance(settings.data);
   return (
     <ToastProvider>
       {!settings.data ? (

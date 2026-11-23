@@ -117,7 +117,7 @@
   white-space: nowrap;
 }
 .rec-tag {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .rec-star {
   flex: none;
@@ -257,7 +257,7 @@
   cursor: pointer;
 }
 .bookmark-jump:hover .bookmark-text {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .bookmark-time {
   flex: none;
@@ -330,7 +330,7 @@
   cursor: pointer;
 }
 .mini-title:hover .truncate:first-child {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .mini-player .play-btn {
   width: 36px;
@@ -419,7 +419,7 @@
   border: 2px dashed var(--primary);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
-  color: var(--primary);
+  color: var(--primary-text);
   font-size: 17px;
   font-weight: 620;
   pointer-events: none;
@@ -452,11 +452,11 @@
   cursor: pointer;
 }
 .collection-open:hover {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .collection-open svg {
   flex: none;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 /* Home */

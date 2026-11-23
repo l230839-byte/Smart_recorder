@@ -45,7 +45,7 @@
 }
 .mode-check {
   flex: none;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .record-panel {

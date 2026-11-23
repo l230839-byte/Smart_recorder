@@ -56,4 +56,14 @@ describe('settings', () => {
     expect(settings.displayName).toBe('علی');
     expect(settings).not.toHaveProperty('hacked');
   });
+
+  it('take only the listed values for appearance and quality, so nothing invalid reaches Electron', () => {
+    db = openDatabase(':memory:');
+    const store = new SettingsStore(db);
+    expect(store.get()).toMatchObject({ accent: 'indigo', contrast: 'system' });
+    store.update({ accent: 'rose', contrast: 'high', theme: 'light' });
+    expect(store.get()).toMatchObject({ accent: 'rose', contrast: 'high', theme: 'light' });
+    store.update({ accent: 'purple', contrast: 'max', theme: 'sepia', audioQuality: 'lossless' } as never);
+    expect(store.get()).toMatchObject({ accent: 'rose', contrast: 'high', theme: 'light', audioQuality: 'standard' });
+  });
 });

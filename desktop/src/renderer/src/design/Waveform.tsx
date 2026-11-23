@@ -39,14 +39,19 @@ function drawBar(ctx: CanvasRenderingContext2D, x: number, value: number, height
   ctx.fill();
 }
 
-/** Keeps canvas colors in step with the light and dark themes. */
+/** Keeps canvas colors in step with the theme: light or dark, accent and contrast. */
 function useThemeTick(): number {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => setTick((t) => t + 1);
     media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
+    const observer = new MutationObserver(onChange);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-accent', 'data-contrast'] });
+    return () => {
+      media.removeEventListener('change', onChange);
+      observer.disconnect();
+    };
   }, []);
   return tick;
 }

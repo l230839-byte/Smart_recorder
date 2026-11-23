@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Activity, ChevronRight, FolderOpen, Gauge, HardDrive, KeyRound } from 'lucide-react';
-import type { Settings as SettingsModel, ThemeSetting } from '@shared/models';
+import { ACCENTS, type AccentSetting, type ContrastSetting, type Settings as SettingsModel, type ThemeSetting } from '@shared/models';
 import { Button, Card, ConfirmDialog, Loading, PageHeader, Segmented, SwitchRow } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { useRouter } from '../../lib/router';
@@ -13,6 +13,50 @@ const THEMES: { value: ThemeSetting; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
+
+const CONTRASTS: { value: ContrastSetting; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'high', label: 'High' },
+];
+
+const ACCENT_LABELS: Record<AccentSetting, string> = { indigo: 'Indigo', teal: 'Teal', rose: 'Rose', amber: 'Amber', green: 'Green', slate: 'Slate' };
+
+/** Colour swatches as a radio group: arrow keys move between them, as in any set of options. */
+function AccentPicker({ value, onChange }: { value: AccentSetting; onChange: (accent: AccentSetting) => void }) {
+  const move = (from: number, step: number) => {
+    const next = ACCENTS[(from + step + ACCENTS.length) % ACCENTS.length]!;
+    onChange(next);
+    requestAnimationFrame(() => document.getElementById(`accent-${next}`)?.focus());
+  };
+  return (
+    <div className="accent-picker" role="radiogroup" aria-label="Accent colour">
+      {ACCENTS.map((accent, i) => (
+        <button
+          key={accent}
+          id={`accent-${accent}`}
+          type="button"
+          role="radio"
+          aria-checked={value === accent}
+          tabIndex={value === accent ? 0 : -1}
+          title={ACCENT_LABELS[accent]}
+          aria-label={ACCENT_LABELS[accent]}
+          className={`accent-swatch swatch-${accent}`}
+          onClick={() => onChange(accent)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              move(i, 1);
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              move(i, -1);
+            }
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export function Settings() {
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
@@ -40,6 +84,20 @@ export function Settings() {
           <div className="setting-line">
             <div className="grow">Theme</div>
             <Segmented label="Theme" options={THEMES} value={s.theme} onChange={(theme) => update({ theme })} />
+          </div>
+          <div className="setting-line">
+            <div className="grow">
+              Accent colour
+              <div className="muted small">{ACCENT_LABELS[s.accent]}. Used for buttons, links and the EchoMind mark.</div>
+            </div>
+            <AccentPicker value={s.accent} onChange={(accent) => update({ accent })} />
+          </div>
+          <div className="setting-line">
+            <div className="grow">
+              Contrast
+              <div className="muted small">High contrast uses black and white with strong outlines. System follows Windows.</div>
+            </div>
+            <Segmented label="Contrast" options={CONTRASTS} value={s.contrast} onChange={(contrast) => update({ contrast })} />
           </div>
         </Card>
       </section>

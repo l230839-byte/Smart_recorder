@@ -48,7 +48,7 @@ h3 {
 }
 
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -209,7 +209,7 @@ h3 {
   cursor: not-allowed;
 }
 .icon-btn.active {
-  color: var(--primary);
+  color: var(--primary-text);
   background: var(--primary-soft);
 }
 
@@ -439,7 +439,7 @@ h3 {
 }
 .spin {
   animation: spin 1s linear infinite;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .center-fill {
   display: flex;
@@ -487,7 +487,7 @@ dialog.dialog {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   box-shadow: var(--shadow-lg);
 }
@@ -524,7 +524,7 @@ dialog.dialog::backdrop {
   padding: var(--s1);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-md);
 }
 .menu button {
@@ -551,7 +551,7 @@ dialog.dialog::backdrop {
   color: var(--danger);
 }
 .menu button.current {
-  color: var(--primary);
+  color: var(--primary-text);
   font-weight: 600;
 }
 

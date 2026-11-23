@@ -37,7 +37,7 @@
   padding: 0 var(--s1);
 }
 .setting-link:hover {
-  color: var(--primary);
+  color: var(--primary-text);
 }
 .setting-input {
   flex: none;
@@ -46,4 +46,50 @@
 .setting-select {
   flex: none;
   width: 240px;
+}
+
+/* Accent swatches. Each shows its own colour, so these are the one place colours are written out;
+   they match the fills in tokens.css. */
+.accent-picker {
+  display: flex;
+  gap: var(--s2);
+}
+.accent-swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--swatch);
+  background-clip: content-box;
+  box-shadow: inset 0 0 0 2px var(--surface);
+  cursor: pointer;
+}
+.accent-swatch[aria-checked='true'] {
+  border-color: var(--swatch);
+}
+.accent-swatch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.swatch-indigo { --swatch: #4338ca; }
+.swatch-teal { --swatch: #0f766e; }
+.swatch-rose { --swatch: #be123c; }
+.swatch-amber { --swatch: #a34a06; }
+.swatch-green { --swatch: #15803d; }
+.swatch-slate { --swatch: #334155; }
+@media (prefers-color-scheme: dark) {
+  .swatch-indigo { --swatch: #6c63ff; }
+  .swatch-teal { --swatch: #14b8a6; }
+  .swatch-rose { --swatch: #f43f5e; }
+  .swatch-amber { --swatch: #f59e0b; }
+  .swatch-green { --swatch: #22c55e; }
+  .swatch-slate { --swatch: #94a3b8; }
+}
+@media (max-width: 980px) {
+  .accent-picker {
+    flex-wrap: wrap;
+    max-width: 136px;
+  }
 }
