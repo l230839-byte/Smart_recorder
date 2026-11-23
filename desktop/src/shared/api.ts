@@ -109,6 +109,11 @@ export interface EchoApi {
   saveProviderKey(provider: TranscriptionProviderId | LlmProviderId, key: string): void;
   clearProviderKey(provider: TranscriptionProviderId | LlmProviderId): void;
   testProvider(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): Promise<void>;
+  /**
+   * The models to offer in Settings: EchoMind's tested choices first, then whatever else the service
+   * offers today for this purpose. `live` is false when the list could not be read (offline, no key).
+   */
+  listProviderModels(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): Promise<{ recommended: string[]; others: string[]; live: boolean }>;
   acceptConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;
   revokeConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;
   getUsage(): UsageSummary[];

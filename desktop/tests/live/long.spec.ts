@@ -37,7 +37,7 @@ import {
 /**
  * One- to three-hour recordings on the real services. Run with
  *   npm run test:live -- long.spec.ts            (LIVE_LONG_MINUTES=180 by default)
- * Stage 1 transcribes once with Groq and keeps the library in test-results/live-long; stage 2 runs every
+ * Stage 1 transcribes once with Groq and keeps the library in .live-cache/long; stage 2 runs every
  * text task on it, so text work can be repeated without spending the audio allowance again.
  */
 const MINUTES = Number(process.env.LIVE_LONG_MINUTES ?? 180);
@@ -119,7 +119,7 @@ test("long stage 1: a long recording imports and transcribes on live Groq", asyn
   test.skip(!keys.GROQ_API_KEY, "Add GROQ_API_KEY to desktop/.env.live.");
   test.skip(
     existsSync(DONE),
-    "Already transcribed; delete test-results/live-long to start again.",
+    "Already transcribed; delete .live-cache/long to start again.",
   );
   test.setTimeout(6 * 3600_000);
 

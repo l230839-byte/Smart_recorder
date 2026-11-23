@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { app, dialog, ipcMain, nativeTheme, Notification, powerMonitor, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
 import { AppLock } from './services/app-lock';
-import { ModelFallbackProvider } from './ai/model-fallback';
+import { ModelFallbackProvider, modelsFor } from './ai/model-fallback';
 import { inspectArchive } from './services/archive';
 import { applyPendingRestore, BackupService } from './services/backup';
 import { BundleService } from './services/bundles';
@@ -27,6 +27,7 @@ import { renderPdf } from './documents/pdf';
 import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, UsageRepository, type Cipher } from './db/transcripts';
 import { hardenContents, hardenSession } from './security';
 import { initLogFile, logError, logEvent } from './log';
+import { GeminiTranscribeProvider } from './ai/gemini-transcribe';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
 import { IngestPipeline } from './services/ingest';
@@ -182,6 +183,8 @@ async function start(): Promise<void> {
     const key = secrets.get(keyName(id));
     const baseUrl = id === 'custom' ? settings.get().customBaseUrl : PROVIDER_INFO[id].baseUrl;
     if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
+    // Gemini pieces are up to 25 minutes, so a request may take longer than the usual five.
+    if (id === 'gemini') return new GeminiTranscribeProvider(baseUrl, key, fetch, 10 * 60_000);
     // A Whisper server on your own computer may need far longer than a cloud service for a 10-minute part.
     return new WhisperHttpProvider(baseUrl, key, fetch, id === 'custom' ? 30 * 60_000 : undefined);
   };
@@ -209,6 +212,9 @@ async function start(): Promise<void> {
     },
     queue,
   });
+
+  /** Model lists per provider and purpose, kept ten minutes so Settings does not ask on every visit. */
+  const modelLists = new Map<string, { at: number; models: string[] }>();
 
   const makeChatProvider = (id: LlmProviderId) => {
     if (id === 'fake') return new FakeChatProvider();
@@ -612,6 +618,30 @@ async function start(): Promise<void> {
       } finally {
         clearTimeout(timer);
       }
+    },
+    listProviderModels: async (provider, purpose) => {
+      const info = purpose === 'text' ? LLM_PROVIDER_INFO[provider as LlmProviderId] : PROVIDER_INFO[provider as TranscriptionProviderId];
+      const recommended = info?.models ?? [];
+      const fallback = { recommended, others: [], live: false };
+      // Like "Test connection", this sends only the key to its own service, never anything recorded.
+      if (!info || info.local || settings.get().offlineOnly) return fallback;
+      const key = secrets.get(keyName(provider));
+      if (info.needsKey && !key) return fallback;
+      const cacheKey = `${provider}:${purpose}`;
+      const cached = modelLists.get(cacheKey);
+      let available = cached && Date.now() - cached.at < 10 * 60_000 ? cached.models : null;
+      if (!available) {
+        // Model lists come from the OpenAI-compatible address, which Gemini offers for text.
+        const base = provider === 'custom' ? settings.get().customBaseUrl : provider === 'custom-chat' ? settings.get().llmBaseUrl : provider === 'gemini' ? LLM_PROVIDER_INFO.gemini.baseUrl : info.baseUrl;
+        if (!base) return fallback;
+        available = await new ChatHttpProvider(base, key, fetch, 20_000).listModels(AbortSignal.timeout(20_000)).catch(() => null);
+        if (!available) return fallback;
+        modelLists.set(cacheKey, { at: Date.now(), models: available });
+      }
+      const others = modelsFor(available, purpose === 'text' ? 'text' : 'audio')
+        .filter((m) => !recommended.includes(m))
+        .sort();
+      return { recommended, others, live: true };
     },
     acceptConsent: (provider, purpose) => {
       consents.accept(consentKey(provider, purpose));

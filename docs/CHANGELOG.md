@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Phase 12: AI models
+
+- Gemini 3.5 Transcribe as a transcription provider: speaker labels and word timings from the audio. Live: all 12 facts, turns within 0.1 s of Groq Whisper, two voices told apart 100%. 25-minute pieces keep speaker labels steady for longer.
+- Settings shows every suitable model a service offers today, with EchoMind's tested models first.
+- An overloaded model ("high demand") hands the request to another model in the list instead of failing.
+- Gemini's errors (sent as a JSON array) are now read properly; retired-model fallback never picks an image, music or other specialised model.
+- Gemini text default stays 3.5 Flash-Lite (fastest and available); 3.6 Flash and Flash-Lite latest added as fallbacks.
+
 ### Phase 11: Themes
 
 - Light mode moves from warm cream to cool "ink on paper" neutrals that suit the indigo brand.

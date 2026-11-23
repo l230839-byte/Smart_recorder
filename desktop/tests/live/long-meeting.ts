@@ -54,7 +54,7 @@ export const SESSIONS: Session[] = [
   { topic: 'next year\'s conference', presenter: 'Daniel', city: 'Cape Town', fact: 'Next year\'s conference will be in Cape Town on the ninth of October.', factPattern: /cape town[^.]*((9th|ninth|9)( of)? october|october (9|ninth))/i, decision: 'We decided to stream every talk online for free.', action: 'Daniel will book the conference hall by the end of the quarter.', actionOwner: 'Daniel', nouns: ['speakers', 'ticket prices', 'live streams', 'hotel deals', 'sponsors', 'workshops'] },
 ];
 
-const NUMBER_WORDS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty one', 'twenty two', 'twenty three', 'twenty four', 'twenty five', 'twenty six', 'twenty seven', 'twenty eight', 'twenty nine', 'thirty'];
+export const NUMBER_WORDS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty one', 'twenty two', 'twenty three', 'twenty four', 'twenty five', 'twenty six', 'twenty seven', 'twenty eight', 'twenty nine', 'thirty'];
 
 /** Ordinary discussion, so each session sounds like talk and not a list of facts. */
 const FILLER: ((n: string[], s: Session) => string)[] = [

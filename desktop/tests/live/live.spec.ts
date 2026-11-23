@@ -15,7 +15,7 @@ test('live: real transcription, summary, chapters, document and chat, judged aga
   const keys = loadKeys();
   test.skip(!keys.GROQ_API_KEY, 'Add GROQ_API_KEY to desktop/.env.live to run against live Groq (and GEMINI_API_KEY for Gemini).');
 
-  const reportDir = resolve('test-results/live');
+  const reportDir = resolve('.live-cache/reports');
   mkdirSync(reportDir, { recursive: true });
   const dataDir = tempDataDir();
   const audio = makeSpeech(dataDir);

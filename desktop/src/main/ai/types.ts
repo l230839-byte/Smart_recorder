@@ -24,6 +24,11 @@ export class ProviderError extends Error {
     readonly kind: ProviderErrorKind,
     message: string,
     readonly retryAfterMs: number | null = null,
+    /**
+     * The model itself is overloaded ("high demand"), not the service: another model may answer now.
+     * Seen live on Gemini's free tier, often for one model while others answered.
+     */
+    readonly busy = false,
   ) {
     super(message);
   }

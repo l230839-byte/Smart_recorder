@@ -3,7 +3,7 @@
  * account are deliberately absent: EchoMind shows what the provider reports and what the user configures.
  */
 
-export const TRANSCRIPTION_PROVIDERS = ['groq', 'custom', 'fake'] as const;
+export const TRANSCRIPTION_PROVIDERS = ['groq', 'gemini', 'custom', 'fake'] as const;
 export type TranscriptionProviderId = (typeof TRANSCRIPTION_PROVIDERS)[number];
 
 export interface ProviderInfo {
@@ -17,6 +17,11 @@ export interface ProviderInfo {
   models: string[];
   /** The largest audio chunk this provider accepts. EchoMind splits recordings to fit. */
   maxChunkBytes: number;
+  /**
+   * Longer pieces than the usual 10 minutes, where a provider benefits: Gemini's speaker labels restart
+   * with every request, so fewer, longer pieces keep "Speaker A" the same person for longer.
+   */
+  maxChunkMs?: number;
   keyUrl: string | null;
   limitsUrl: string | null;
   /** Shown before the first upload. States what is known and where to check, and promises nothing. */
@@ -39,6 +44,25 @@ export const PROVIDER_INFO: Record<TranscriptionProviderId, ProviderInfo> = {
     disclosure:
       "Audio from your recording is sent to Groq, in pieces, to create the transcript. Groq's documentation says it does not use customer data for training, and does not keep inputs by default, except that it may log them for up to 30 days for reliability and abuse checks. Terms can change, so check Groq's data policy if this recording is sensitive.",
     speakerLabels: false,
+  },
+  gemini: {
+    id: 'gemini',
+    label: 'Google Gemini Transcribe',
+    hint: 'Tells speakers apart and times every word. The same free key as Gemini text. Free use may help improve Google products.',
+    local: false,
+    needsKey: true,
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    // Checked live on 2026-11-23. Up to 30 minutes per request with speakers and word times on.
+    models: ['gemini-3.5-transcribe'],
+    maxChunkBytes: 20 * 1024 * 1024,
+    // Gemini accepts 30 minutes per request with speakers and word times on; 25 leaves room. At 32 kbps
+    // a piece is about 6 MB, 8 MB as base64.
+    maxChunkMs: 25 * 60 * 1000,
+    keyUrl: 'https://aistudio.google.com/apikey',
+    limitsUrl: 'https://ai.google.dev/gemini-api/docs/rate-limits',
+    disclosure:
+      "Audio from your recording is sent to Google, in pieces, to create the transcript. On Gemini's free tier, Google's terms say it may use what you submit, and the results, to improve its products and machine learning technology. Do not use this for confidential recordings. Groq Whisper or the offline demo are alternatives.",
+    speakerLabels: true,
   },
   custom: {
     id: 'custom',
@@ -112,7 +136,8 @@ export const LLM_PROVIDER_INFO: Record<LlmProviderId, LlmProviderInfo> = {
     local: false,
     needsKey: true,
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    models: ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.1-flash-lite'],
+    // Checked live on 2026-11-23. Flash-Lite answers in about a second; the others are used when it is busy.
+    models: ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite'],
     maxInputChars: 200_000,
     keyUrl: 'https://aistudio.google.com/apikey',
     limitsUrl: 'https://ai.google.dev/gemini-api/docs/rate-limits',

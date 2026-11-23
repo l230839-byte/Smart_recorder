@@ -34,6 +34,7 @@ You supply your own key. Figures below were checked on 2026-10-31 and change oft
 | --- | --- | --- | --- |
 | Groq Whisper | Transcription | Free tier with a key. 25 MB per file. `retry-after` on HTTP 429. No training on customer data. Inputs not kept by default, with logs of up to 30 days for reliability or abuse checks. | [Limits](https://console.groq.com/settings/limits), [Your data](https://console.groq.com/docs/your-data) |
 | Groq chat | Summaries and writing | Same key and data terms as above. Models checked live on 2026-11-20: `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` (Llama 3.x has been retired). If Groq retires a model, EchoMind switches to one it still offers by itself. | [Models](https://console.groq.com/docs/models) |
+| Google Gemini Transcribe | Transcription with speaker labels | Same key and free-tier data terms as Gemini below: **Google may use free-tier audio to improve its products.** Model `gemini-3.5-transcribe`, up to 30 minutes per request with speakers and word times. | [Transcription](https://ai.google.dev/gemini-api/docs/transcribe) |
 | Google Gemini | Summaries and writing | Free tier with a key. **Google may use free-tier content to improve its products.** Forum reports of free daily limits range from 20 to 250 requests. Models checked: `gemini-3.5-flash-lite`, `gemini-3.8-flash`, `gemini-3.1-flash-lite`; the first was run live on 2026-11-20 (about 3 seconds per task). | [Pricing and data use](https://ai.google.dev/gemini-api/docs/pricing), [Models](https://ai.google.dev/gemini-api/docs/models) |
 | Other OpenAI-compatible service | Transcription or writing | Set by whoever runs it, including a local Ollama | Their terms |
 | Demo | Trying the app | Nothing leaves the computer. Placeholder text. | None |
@@ -45,9 +46,9 @@ Groq's public table shows Developer plan limits, and its free-plan values could 
 - **Groq Whisper** reported 7,200 seconds of audio an hour and 28,800 a day. A 3-hour recording (10,800 s) therefore transcribes in about 1 hour 40 minutes, mostly waiting; EchoMind waits by itself and continues. About two and a half such recordings fit in a day.
 - **Groq chat** (`gpt-oss-120b`) reported 8,000 tokens a minute and 200,000 a day. A 3-hour summary reads 16 parts at about 5,000 tokens each, one part every 30 seconds or so, about 10 minutes in all and 40% of the day's tokens. Running every AI tool on one 3-hour recording can exceed a day; Gemini is the better choice for very long recordings.
 - **Reasoning models** spend hidden "thinking" tokens from the same answer budget. Without a limit, `gpt-oss-120b` once spent 1,498 of 1,500 tokens thinking and wrote nothing, 77 times running. EchoMind now asks Groq's gpt-oss and Gemini's thinking models for low reasoning, which keeps it to a few hundred tokens.
-- **Gemini** reads a whole 3-hour transcript in one request. Its free models sometimes answer "high demand" (HTTP 503) for a while; EchoMind retries.
+- **Gemini** reads a whole 3-hour transcript in one request. Its free models often answer "high demand" (HTTP 503) for a while, one model at a time; EchoMind then tries the request on its other Gemini models (3.8 Flash, 3.6 Flash, Flash-Lite latest), and otherwise waits and retries.
 
-Gemini audio transcription is not used: its timestamps come from a prompt rather than the audio timeline, so they cannot be trusted the same way.
+Gemini transcription uses Google's dedicated model, Gemini 3.5 Transcribe, whose word times come from the audio itself (word_info annotations), not from text the model writes. Checked live on 2026-11-23 against Groq Whisper on the same meeting: every turn started within 0.1 s of Whisper's time, all 12 facts heard, and the two voices told apart with 100% accuracy. Speaker labels restart with each request, so EchoMind sends Gemini 25-minute pieces (it accepts 30 with speakers and word times on).
 
 ## How to swap a provider
 

@@ -104,7 +104,7 @@ export class TranscriptionService implements JobHandler {
       const provider = this.deps.makeProvider(job.provider as TranscriptionProviderId);
       let chunks = jobs.chunks(job.id);
       if (chunks.length === 0) {
-        jobs.addChunks(job.id, planChunks(recording.durationMs, library.peaks(recording.id), MAX_CHUNK_MS));
+        jobs.addChunks(job.id, planChunks(recording.durationMs, library.peaks(recording.id), PROVIDER_INFO[job.provider as TranscriptionProviderId]?.maxChunkMs ?? MAX_CHUNK_MS));
         chunks = jobs.chunks(job.id);
       }
       const totalMs = Math.max(1, recording.durationMs);

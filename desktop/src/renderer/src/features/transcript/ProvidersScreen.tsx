@@ -139,7 +139,12 @@ function ProviderCard({ provider, purpose, offlineOnly, baseUrl, onBaseUrl }: { 
   );
 }
 
-function ModelField({ id, models, value, custom, onChange }: { id: string; models: string[]; value: string | null; custom: boolean; onChange: (model: string | null) => void }) {
+/**
+ * The model choice. EchoMind's tested models come first; below them, whatever else the service offers
+ * today (read with your key), since free services add and retire models often.
+ */
+function ModelField({ id, provider, purpose, models, value, custom, onChange }: { id: string; provider: AnyProvider; purpose: AiPurpose; models: string[]; value: string | null; custom: boolean; onChange: (model: string | null) => void }) {
+  const list = useQuery(() => api.listProviderModels(provider, purpose), [provider, purpose], ['settings']);
   if (custom) {
     return (
       <div className="setting-line">
@@ -150,15 +155,39 @@ function ModelField({ id, models, value, custom, onChange }: { id: string; model
       </div>
     );
   }
-  if (models.length < 2) return null;
+  const recommended = list.data?.recommended ?? models;
+  const others = list.data?.others ?? [];
+  const current = value ?? recommended[0];
+  // A model chosen earlier that neither list shows any more is still displayed, so nothing changes silently.
+  const missing = current && !recommended.includes(current) && !others.includes(current) ? [current] : [];
+  if (recommended.length + others.length + missing.length < 2) return null;
   return (
     <div className="setting-line">
       <label className="grow" htmlFor={id}>
         Model
+        <div className="muted small">{list.data?.live ? 'Recommended models first, then the others this service offers today.' : 'EchoMind’s tested models. Add a key and go online to see everything the service offers.'}</div>
       </label>
-      <select id={id} className="select setting-select" value={value ?? models[0]} onChange={(e) => onChange(e.target.value)}>
-        {models.map((m) => (
-          <option key={m}>{m}</option>
+      <select id={id} className="select setting-select" value={current} onChange={(e) => onChange(e.target.value)}>
+        <optgroup label="Recommended">
+          {recommended.map((m, i) => (
+            <option key={m} value={m}>
+              {i === 0 ? `${m} (default)` : m}
+            </option>
+          ))}
+        </optgroup>
+        {others.length > 0 && (
+          <optgroup label="Also offered">
+            {others.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {missing.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
         ))}
       </select>
     </div>
@@ -194,7 +223,7 @@ export function ProvidersScreen() {
         </div>
         <ProviderCard provider={provider} purpose="audio" offlineOnly={s.offlineOnly} baseUrl={s.customBaseUrl} onBaseUrl={(customBaseUrl) => update({ customBaseUrl })} />
         <Card>
-          <ModelField id="model" models={info.models} value={s.transcriptionModel} custom={provider === 'custom'} onChange={(transcriptionModel) => update({ transcriptionModel })} />
+          <ModelField id="model" provider={provider} purpose="audio" models={info.models} value={s.transcriptionModel} custom={provider === 'custom'} onChange={(transcriptionModel) => update({ transcriptionModel })} />
           <div className="setting-line">
             <label className="grow" htmlFor="default-language">
               Default language
@@ -226,7 +255,7 @@ export function ProvidersScreen() {
         <ProviderCard provider={llm} purpose="text" offlineOnly={s.offlineOnly} baseUrl={s.llmBaseUrl} onBaseUrl={(llmBaseUrl) => update({ llmBaseUrl })} />
         {!llmInfo.local && (
           <Card>
-            <ModelField id="llm-model" models={llmInfo.models} value={s.llmModel} custom={llm === 'custom-chat'} onChange={(llmModel) => update({ llmModel })} />
+            <ModelField id="llm-model" provider={llm} purpose="text" models={llmInfo.models} value={s.llmModel} custom={llm === 'custom-chat'} onChange={(llmModel) => update({ llmModel })} />
           </Card>
         )}
       </section>

@@ -1,0 +1,104 @@
+﻿ECHOMIND DESKTOP: PHASE 12, AI MODELS
+================================================================================
+Status:      COMPLETE.
+Prompt refs: Â§5 transcription (speaker identification); Â§6 AI providers; Â§0 free stack
+Date:        2026-11-23
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Better AI models within the free stack, as the owner asked: refresh the model lists, add
+Gemini transcription (chosen by the owner), and survive the free tiers' habits (retired
+models, overloaded models). Offline transcription is Phase 13.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+Google Gemini Transcribe (Settings > AI providers > Transcription)
+- Transcripts that say who spoke: "Speaker A", "Speaker B"â€¦ on every line, which no
+  Whisper service provides. Rename speakers in the transcript as before.
+- Word timings come from the audio, so clicking a line plays exactly that moment.
+- The same free key as Gemini for summaries; audio permission is asked separately, with
+  a clear warning that Google may use free-tier audio to improve its products.
+- Long recordings are sent in 25-minute pieces, so speaker labels stay the same person
+  for longer (they restart with each piece; Gemini cannot carry them across requests).
+
+Model choice
+- The Model list shows EchoMind's tested models first, then every other suitable model
+  the service offers today, read with your key. Offline or without a key, the tested
+  list is shown.
+
+Busy models
+- When a free model answers "high demand", the request goes to the next Gemini model in
+  EchoMind's list instead of failing; Settings are not changed.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Gemini transcription was previously rejected (FREE_STACK.md) because prompted
+    timestamps are written by the model, not measured. Gemini 3.5 Transcribe is
+    different: a dedicated model whose word times are annotations from the audio. It was
+    adopted only after a live comparison with Whisper on the same audio (section 5).
+D2  The request goes to the Interactions endpoint with the audio inline as Ogg/Opus
+    (verified live; the docs only showed file uploads). No Files API upload, so nothing
+    is left stored at Google beyond the request itself.
+D3  Lines are built from the words: break at a change of speaker, at a sentence end after
+    a pause, and at sentence ends past 20 s (40 s at most), which gives short, citable
+    lines; Whisper's are paragraph-length.
+D4  Pieces are 25 minutes for Gemini (it allows 30 with speakers and timings) and stay 10
+    for everyone else, set per provider (maxChunkMs).
+D5  Gemini text default stays gemini-3.5-flash-lite: checked live it answered in about a
+    second while 3.8 Flash and 3.1 Flash-Lite were "high demand". 3.6 Flash and
+    flash-lite-latest were added as fallbacks.
+D6  "Busy" is a flag on the error, not a new kind: the queue's handling (wait and retry)
+    is unchanged when every model is busy.
+D7  Model lists are filtered by purpose, so image, music, robotics, live-audio and other
+    specialised models are never offered for summaries; the retired-model fallback uses
+    the same filter.
+
+
+4. BUGS FOUND AND FIXED
+--------------------------------------------------------------------------------
+F1  Gemini sends its errors as a JSON array ([{"error": â€¦}]). EchoMind read only plain
+    objects, so Gemini's own messages ("model no longer available", "high demand") were
+    lost and generic text was shown instead.
+F2  The retired-model fallback could choose any non-speech model, including image or
+    music models a service lists beside its text models.
+
+
+5. TESTS
+--------------------------------------------------------------------------------
+Unit (278 passing): word-to-line building, speaker names, silence, text without
+timings, clamping, unfinished replies; the exact request (inline audio, speakers, word
+times, key only in its header); array-wrapped errors and "busy" detection; busy fallback
+to other models without changing Settings; 25-minute pieces for Gemini.
+
+Live, two-voice meeting (tests/live/gemini-transcribe.spec.ts), 2026-11-23:
+                     Gemini 3.5 Transcribe     Groq Whisper
+  Facts heard        12 of 12                  12 of 12
+  Speakers           2, 100% correct           none
+  Lines              21 (sentence by sentence) 9 (paragraphs)
+  Time               6.1 s                     3.0 s
+  Every turn started within 0.1 s of Whisper's time (6.4, 14.8, 20.7, 39.1, 45.0, 63.0 s).
+
+Live, 60-minute meeting of 10 sessions in 25-minute pieces (LIVE_GEMINI_LONG_MINUTES=60),
+2026-11-23: transcribed in 5.3 minutes including two short rate-limit waits, which
+EchoMind handled by itself. All 10 session starts found, 9 within 0.2 s and one 3.3 s
+early; all 10 facts heard; two speakers.
+Speaker labels are the honest weak point: the announcer (always the same voice) was
+"Speaker A" for sessions 1 to 4 and "Speaker B" from session 5, a swap inside the first
+25-minute piece, and labels also restart between pieces. Labels are reliable for telling
+turns apart within a conversation, not for naming one person across a long recording;
+the docs say so. Renaming speakers in the transcript still works as before.
+
+
+6. REVIEW
+--------------------------------------------------------------------------------
+Designer: speaker labels are the most visible quality gain in this round; the privacy
+trade-off is stated where the provider is chosen and again before the first upload.
+Developer: one new provider behind the existing interface and pipeline (chunking, queue,
+retries, resume); no new dependencies.
+Open: the Groq 3-hour stage 2 rerun (Phase 9) still waits for Groq's daily token window,
+which had not reset when this phase ended; it moves to the end of Phase 13.
+Open: speaker labels restart with each 25-minute piece. Matching voices across pieces
+needs voice fingerprints (a candidate: sherpa-onnx, Apache-2.0, offline).

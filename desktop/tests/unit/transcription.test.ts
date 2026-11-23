@@ -502,6 +502,22 @@ describe('transcription queue', () => {
     expect(jobs.get(jobId)!.status).toBe('done');
   });
 
+  it('Gemini gets 25-minute pieces, so its speaker labels restart less often; others keep 10 minutes', async () => {
+    settings = { ...settings, transcriptionProvider: 'gemini' };
+    secrets.set(keyName('gemini'), 'AIza-test');
+    consents.accept('gemini');
+    const s = service();
+    const { jobId } = s.request(addRecording(3 * 3600_000)) as { jobId: string };
+    for (let i = 0; i < 12 && jobs.get(jobId)!.status !== 'done'; i++) {
+      await settle();
+      s.pump();
+    }
+    expect(jobs.get(jobId)!.status).toBe('done');
+    expect(calls).toHaveLength(planChunks(3 * 3600_000, new Uint8Array(800), 25 * 60_000).length);
+    expect(calls.length).toBeLessThanOrEqual(8);
+    expect(Math.max(...calls.map((c) => c.durationMs))).toBeLessThanOrEqual(25 * 60_000);
+  });
+
   it('a long recording on a flaky connection keeps going while parts finish: the limit is for failures in a row', async () => {
     // Every part of three hours fails once before it succeeds: many failures in all, never two in a row.
     const durationMs = 3 * 3600_000;

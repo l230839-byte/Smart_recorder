@@ -18,6 +18,10 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 5. **Merge.** `mergeChunks` shifts timestamps onto the recording's timeline and saves an `original` version.
 6. **Index.** The current version goes into `transcript_search`, so the Library can find it.
 
+### Gemini transcription
+
+Gemini 3.5 Transcribe is reached through the Gemini API's Interactions endpoint (`/v1beta/interactions`), with each piece sent inline as Ogg/Opus and `transcription_config.mode` asking for verbatim text, speaker diarization and word timestamps. `parseGeminiTranscript` builds lines from the words: a new line at a change of speaker, at a sentence end after a pause of 0.7 s or more, at any sentence end past 20 s, and in any case past 40 s. Times are clamped to the piece. Speakers become "Speaker A", "Speaker B"… Gemini's labels restart with every request, so Gemini gets 25-minute pieces (`maxChunkMs`) instead of the usual 10. Silence returns no text and is reported as "speech not found", as for Whisper.
+
 ## What happens when something fails
 
 | Failure | Behavior |
@@ -26,6 +30,7 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 | Daily or plan quota | Same, with a clear message and a longer default wait |
 | Network or server error | Exponential backoff with jitter, up to 6 failures in a row, then Retry. Each finished piece resets the count, so a long recording on a flaky connection keeps going. |
 | Bad key or refused request | Stops at once with a clear message |
+| Model overloaded ("high demand", HTTP 503) | The request is tried on the provider's other models in EchoMind's list, without changing Settings; if all are busy, the queue waits and retries |
 | Stalled connection | Every request has a time limit (5 minutes; 20 for a chat model and 30 for a Whisper server on your own computer), then counts as a network error |
 | App crash or quit | Resumes after the last finished piece on next launch (checked live: a 3-hour job killed in part 14 finished parts 14 to 19 after reopening) |
 | Window crash | The window's page is reloaded and says so; jobs keep running in the main process. Starts, quits and crashes are written to `logs/echomind.log` in the data folder, with paths and keys removed. |
@@ -67,6 +72,10 @@ Every Studio tool is a `studio` job on the shared queue. Lines are numbered S1, 
 - **Mind maps** need the whole picture, so long material is read as an even selection.
 - **Written tools** (study notes, rewrite, comparison, custom, summary translation) use one request when the material fits; otherwise notes per piece, merged in rounds if needed (as for summaries), then one combined result. Citations are checked as in chat.
 - Each finished piece is stored, so a retry continues where it stopped. "Too large" halves the piece size and starts again.
+
+## Choosing a model
+
+Settings › AI providers lists EchoMind's tested models first ("Recommended") and then the other models the service offers today ("Also offered"), read from its `/models` list with your key and kept for ten minutes. Only models fit for the purpose are shown: Whisper or Transcribe models for transcription; for text, everything except speech, safety, embedding, image, music and other specialised models. Offline, or without a key, the tested list is shown. Listing models sends only the key, never anything recorded.
 
 ## When a provider retires a model
 

@@ -54,8 +54,10 @@ export function rateFromHeaders(headers: Headers): ProviderRateInfo | null {
 
 async function errorText(response: Response): Promise<string> {
   try {
-    const body = (await response.json()) as { error?: { message?: unknown } };
-    return typeof body.error?.message === 'string' ? body.error.message : '';
+    // Gemini wraps its errors in an array ([{"error": …}]); OpenAI-style services do not.
+    const parsed = (await response.json()) as unknown;
+    const body = (Array.isArray(parsed) ? parsed[0] : parsed) as { error?: { message?: unknown } } | undefined;
+    return typeof body?.error?.message === 'string' ? body.error.message : '';
   } catch {
     return '';
   }
@@ -77,6 +79,9 @@ export async function toProviderError(response: Response): Promise<ProviderError
     return new ProviderError('model', 'The service no longer offers this model.');
   }
   if (status === 404) return new ProviderError('rejected', 'The service does not recognize this model or address. Check Settings.');
+  if (status === 503 && /high demand|overloaded|capacity|try again later/i.test(detail)) {
+    return new ProviderError('server', 'This AI model is busy right now. EchoMind will try again.', parseWait(response.headers.get('retry-after')), true);
+  }
   if (status >= 500) return new ProviderError('server', 'The transcription service is having problems.', parseWait(response.headers.get('retry-after')));
   return new ProviderError('rejected', detail ? `The service refused this request: ${detail.slice(0, 200)}` : `The service refused this request (HTTP ${status}).`);
 }

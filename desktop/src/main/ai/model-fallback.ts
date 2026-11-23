@@ -2,6 +2,14 @@ import { ProviderError, type ChatProvider, type ChatRequest, type ChatResult } f
 
 /** Models that are not for writing text: speech, safety filters, embeddings and the like. */
 const NOT_FOR_TEXT = /whisper|guard|safeguard|tts|orpheus|embed|moderation|vision-only|distil/i;
+/** Specialised models a service lists beside its text models (images, music, robots, live audio…). */
+const SPECIALISED = /image|banana|lyria|robotics|computer-use|transcribe|deep-research|antigravity|omni|-live|veo|imagen|aqa/i;
+
+/** Which of a service's models can do a purpose, for the choice offered in Settings. */
+export function modelsFor(available: string[], purpose: 'text' | 'audio'): string[] {
+  if (purpose === 'audio') return available.filter((m) => /whisper|transcribe/i.test(m) && !/-live|tts/i.test(m));
+  return available.filter((m) => !NOT_FOR_TEXT.test(m) && !SPECIALISED.test(m));
+}
 
 /**
  * The model to use when the chosen one is gone: the first of EchoMind's preferred models that the
@@ -9,7 +17,7 @@ const NOT_FOR_TEXT = /whisper|guard|safeguard|tts|orpheus|embed|moderation|visio
  */
 export function pickModel(available: string[], preferred: string[], current: string): string | null {
   const offered = available.filter((m) => m !== current);
-  return preferred.find((m) => offered.includes(m)) ?? offered.find((m) => !NOT_FOR_TEXT.test(m)) ?? null;
+  return preferred.find((m) => offered.includes(m)) ?? modelsFor(offered, 'text')[0] ?? null;
 }
 
 /**
@@ -31,6 +39,7 @@ export class ModelFallbackProvider implements ChatProvider {
     try {
       return await this.inner.complete({ ...request, model });
     } catch (e) {
+      if (e instanceof ProviderError && e.busy) return this.tryOthers(request, model, e);
       if (!(e instanceof ProviderError) || e.kind !== 'model' || !this.inner.listModels) throw e;
       // If even the list cannot be read, the address is probably wrong: the original error says so.
       const available = await this.inner.listModels(request.signal).catch(() => null);
@@ -41,6 +50,22 @@ export class ModelFallbackProvider implements ChatProvider {
       this.onSwitch(model, next);
       return this.inner.complete({ ...request, model: next });
     }
+  }
+
+  /**
+   * The chosen model is overloaded: this one request is tried on EchoMind's other preferred models, in
+   * order. Nothing is remembered, because "busy" passes; the person's choice stays as it is. If every
+   * model is busy, the first error goes back to the queue, which waits and retries.
+   */
+  private async tryOthers(request: ChatRequest, busyModel: string, first: ProviderError): Promise<ChatResult> {
+    for (const other of this.preferred.filter((m) => m !== busyModel)) {
+      try {
+        return await this.inner.complete({ ...request, model: other });
+      } catch (e) {
+        if (!(e instanceof ProviderError) || !(e.busy || e.kind === 'model')) throw e;
+      }
+    }
+    throw first;
   }
 
   listModels(signal: AbortSignal): Promise<string[]> {
