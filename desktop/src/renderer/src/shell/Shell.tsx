@@ -12,13 +12,18 @@ const SECTIONS: { key: TopLevel; label: string; icon: IconType; route: Route }[]
   { key: 'settings', label: 'Settings', icon: Settings, route: { name: 'settings' } },
 ];
 
+/**
+ * The EchoMind mark: an E built from three audio-level bars, with an echo dot. The same drawing as the
+ * app icon (scripts/make-icon.mjs), but in the theme's accent so it follows the person's colour choice.
+ */
+export const BRAND_PATH = 'M20 17v30M20 17h24M20 32h15M20 47h21';
+
 export function BrandMark({ size = 26 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="brand-mark">
-      <rect width="32" height="32" rx="9" fill="var(--primary)" />
-      <g stroke="var(--on-primary)" strokeWidth="2.4" strokeLinecap="round">
-        <path d="M8 14v4M12.5 10.5v11M17 7.5v17M21.5 11.5v9M26 14.5v3" />
-      </g>
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden className="brand-mark">
+      <rect width="64" height="64" rx="16" fill="var(--primary-fill, var(--primary))" />
+      <path d={BRAND_PATH} fill="none" stroke="var(--on-primary)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="45" cy="32" r="3.2" fill="var(--on-primary)" opacity="0.72" />
     </svg>
   );
 }

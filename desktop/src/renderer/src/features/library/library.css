@@ -510,6 +510,10 @@
   background: var(--primary-soft);
   color: var(--on-primary-soft);
 }
+.home-action-icon.tone-teal {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
 .home-action.primary .home-action-icon {
   background: rgb(255 255 255 / 16%);
   color: inherit;

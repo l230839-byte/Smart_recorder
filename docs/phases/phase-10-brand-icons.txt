@@ -1,0 +1,53 @@
+ECHOMIND DESKTOP: PHASE 10, LOGO AND ICONS
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §18 design (brand, consistency)
+Date:        2026-11-23
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+Give EchoMind a mark of its own, sharp at every size from the taskbar to the installer,
+and make the app's icons say something: what kind of tool each one is.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+- The new mark, chosen by the owner from three concepts: the "Level E", an E built from
+  three audio-level bars with an echo dot. It is a monogram and an equalizer at once, and
+  stays readable at 16 px. In the sidebar, onboarding and lock screen it follows the
+  theme's accent; the app icon is a fixed indigo.
+- The taskbar, Start menu, Explorer and installer use a real multi-size Windows icon.
+- AI Studio groups its 15 tools by purpose, each group with its own colour:
+    Summaries and writing (accent)  Study (teal)  Meetings and tasks (ember)
+    Documents and slides (neutral)
+- Home's Ask card uses the AI colour (teal), as Ask AI does elsewhere.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Three concepts were drawn and rendered at 160, 64, 32, 24 and 16 px on light and
+    dark before choosing; "Wave to words" was the most literal but blurred at 16 px.
+D2  The 16, 20, 24 and 32 px icons are placed on whole pixels by hand. Scaled vector
+    drawings put each bar between two pixels and the E turned grey (checked enlarged).
+D3  The icon file holds PNG images, which Windows has read since Vista; no new tool or
+    dependency was needed to build it.
+D4  Icon colours come only from theme tokens (one shared .icon-tile with four tones), so
+    the coming accent and high-contrast themes recolour them with no further change.
+D5  Groups in Studio are real headings, so screen readers can jump between them.
+
+
+4. TESTS
+--------------------------------------------------------------------------------
+- Accessibility (axe, WCAG 2.1 AA, light and dark), foundation and Studio end-to-end
+  tests pass. Unit tests, type check and lint pass.
+- Icon sizes extracted from icon.ico and checked enlarged at 16, 20, 24, 32 and 48 px.
+- Screens reviewed by eye in light and dark: Home, Library, AI Studio.
+
+
+5. REVIEW
+--------------------------------------------------------------------------------
+Designer: the mark is simple enough to recognise at a glance and has no lookalike among
+common recorder or chat apps. Studio is easier to scan with four labelled groups.
+Developer: one drawing (BRAND_PATH) is shared by the in-app mark; the icon script is the
+only place with pixel-placed sizes and says so. No new dependencies.

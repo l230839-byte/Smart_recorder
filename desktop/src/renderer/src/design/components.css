@@ -632,3 +632,31 @@ dialog.dialog::backdrop {
 .language-other {
   margin-top: var(--s2);
 }
+
+/* A coloured square behind an icon. The tone says what kind of thing it is; colours come from the
+   theme, so tiles stay readable in light, dark, high contrast and every accent. */
+.icon-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+.tone-primary {
+  background: var(--primary-soft);
+  color: var(--on-primary-soft);
+}
+.tone-teal {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.tone-ember {
+  background: var(--ember-soft);
+  color: var(--ember);
+}
+.tone-neutral {
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}

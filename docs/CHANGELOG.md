@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Phase 10: Logo and icons
+
+- New mark, the "Level E": an E built from three audio-level bars with an echo dot. In the app it takes the theme's accent; the app icon is indigo.
+- A real Windows icon (`icon.ico`, 16 to 256 px), with the four smallest sizes drawn on whole pixels so the taskbar icon is sharp.
+- AI Studio's 15 tools are grouped by purpose (summaries and writing, study, meetings and tasks, documents and slides), each group with its own colour tile; Home's Ask card uses the AI colour.
+
 ### Phase 9: Stabilise (long recordings and bug fixes)
 
 - 3-hour recordings proven live end to end: transcription (all 30 sessions' facts, under 1 s drift), resume after a kill, and every text task.

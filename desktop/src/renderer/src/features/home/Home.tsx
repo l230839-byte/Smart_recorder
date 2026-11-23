@@ -47,7 +47,7 @@ export function Home() {
           </span>
         </button>
         <button type="button" className="home-action" onClick={() => go({ name: 'chat', scope: { kind: 'library' } })}>
-          <span className="home-action-icon">
+          <span className="home-action-icon tone-teal">
             <MessagesSquare size={22} aria-hidden />
           </span>
           <span>

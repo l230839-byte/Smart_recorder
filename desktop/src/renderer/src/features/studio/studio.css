@@ -3,6 +3,12 @@
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--s3);
 }
+.studio-group-title {
+  margin: 0 0 var(--s3);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
 .studio-tool {
   display: flex;
   align-items: flex-start;

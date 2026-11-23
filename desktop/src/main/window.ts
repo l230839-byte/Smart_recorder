@@ -22,7 +22,7 @@ export function createMainWindow(options: { minimized?: boolean } = {}): Browser
     show: false,
     title: 'EchoMind',
     // The installed app takes its icon from the .exe; a development build would otherwise show Electron's.
-    ...(app.isPackaged ? {} : { icon: join(__dirname, '../../build/icon.png') }),
+    ...(app.isPackaged ? {} : { icon: join(__dirname, '../../build/icon.ico') }),
     backgroundColor: backgroundColor(),
     titleBarStyle: 'hidden',
     titleBarOverlay: overlay(),

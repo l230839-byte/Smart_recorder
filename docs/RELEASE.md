@@ -16,6 +16,8 @@ npm run test:packaged    # drives the packaged EchoMind.exe to prove the release
 `npm run dist` downloads Electron and the NSIS tools into electron-builder's cache the first time.
 The installer is about 190 MB with the FFmpeg add-on, about 110 MB without it.
 
+The icon files `build/icon.png` (512 px) and `build/icon.ico` (16 to 256 px) are committed. After changing the mark, run `npm run icon` to redraw both; sizes 16, 20, 24 and 32 are placed on whole pixels by hand in `scripts/make-icon.mjs`, so keep them in step with the drawing.
+
 ## What the installer does
 
 - Installs for the current user, so it needs no administrator rights. The folder can be changed.
