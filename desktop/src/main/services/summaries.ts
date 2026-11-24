@@ -1,5 +1,5 @@
 import type { AiOutcome, JobKind, Settings } from '@shared/models';
-import { LLM_PROVIDER_INFO, type LlmProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, llmChoice, type LlmProviderId } from '@shared/providers';
 import {
   chaptersMessages,
   combineMessages,
@@ -35,6 +35,8 @@ const JSON_MAX_TOKENS = 2000;
 const MIN_PIECE_CHARS = 1500;
 
 export interface SummaryDeps {
+  /** Whether an offline writing model is on disk. Offline writing cannot start without one. */
+  localReady?: (model: string) => boolean;
   jobs: JobRepository;
   queue: JobQueue;
   transcripts: TranscriptRepository;
@@ -76,6 +78,8 @@ export class SummaryService implements JobHandler {
   blockedBy(provider: LlmProviderId): Exclude<AiOutcome, { ok: true }> | null {
     const info = LLM_PROVIDER_INFO[provider];
     const s = this.deps.settings();
+    // The offline writing model needs no key, consent or network, but must be on this computer.
+    if (provider === 'local-llm') return this.deps.localReady?.(llmChoice(s).model) === false ? { ok: false, reason: 'needs-setup', provider, purpose: 'text' } : null;
     if (info.local) return null;
     if (s.offlineOnly) return { ok: false, reason: 'offline-only', provider, purpose: 'text' };
     if (provider === 'custom-chat' && !s.llmBaseUrl) return { ok: false, reason: 'needs-setup', provider, purpose: 'text' };
@@ -97,7 +101,7 @@ export class SummaryService implements JobHandler {
     if (!recording) throw new Error('This recording no longer exists.');
     if (recording.deletedAt !== null) throw new Error('Restore this recording before using AI features.');
     if (!transcripts.current(recordingId)) return { ok: false, reason: 'needs-transcript' };
-    return this.blockedBy(settings().llmProvider) ?? { ok: true, jobId: '' };
+    return this.blockedBy(llmChoice(settings()).provider) ?? { ok: true, jobId: '' };
   }
 
   request(recordingId: string, kind: 'summarize' | 'chapters' | 'suggest' | 'document', options: SummaryJobOptions = {}): AiOutcome {
@@ -108,9 +112,8 @@ export class SummaryService implements JobHandler {
     const active = kind === 'document' ? null : jobs.activeFor(recordingId, kind);
     if (active) return { ok: true, jobId: active.id };
 
-    const s = settings();
-    const model = s.llmModel ?? LLM_PROVIDER_INFO[s.llmProvider].models[0]!;
-    const id = jobs.create(recordingId, s.llmProvider, model, 'auto', kind, JSON.stringify(options));
+    const { provider, model } = llmChoice(settings());
+    const id = jobs.create(recordingId, provider, model, 'auto', kind, JSON.stringify(options));
     this.deps.changed();
     this.deps.queue.pump();
     return { ok: true, jobId: id };

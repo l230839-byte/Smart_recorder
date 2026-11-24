@@ -363,13 +363,18 @@ describe('transcription queue', () => {
   });
 
   describe('privacy: nothing leaves without permission', () => {
-    it('offline-only blocks every cloud provider, and nothing is sent', async () => {
+    it('offline-only never reaches a cloud provider: work goes to this computer, or waits for its model', async () => {
       settings.offlineOnly = true;
       const id = addRecording();
-      expect(service().request(id)).toEqual({ ok: false, reason: 'offline-only', provider: 'groq', purpose: 'audio' });
+      // The offline model is not downloaded: nothing starts, and the reason names the local provider.
+      const waiting = new TranscriptionService({ jobs, transcripts, library, usage, consents, secrets, settings: () => settings, makeProvider: () => provider, prepareChunk: async () => undefined, localModelReady: () => false, tempDir: tmpdir(), changed: () => undefined, transcriptReady: () => undefined, now: () => clock, schedule: (ms) => wakeups.push(ms) });
+      expect(waiting.request(id)).toEqual({ ok: false, reason: 'needs-setup', provider: 'local', purpose: 'audio' });
       await settle();
       expect(calls).toHaveLength(0);
-      expect(prepared).toBe(0);
+      // With the model on disk, the job runs on this computer; Groq is never the provider.
+      const outcome = service().request(id) as { ok: true; jobId: string };
+      expect(outcome.ok).toBe(true);
+      expect(jobs.get(outcome.jobId)).toMatchObject({ provider: 'local', model: 'small' });
     });
 
     it('without consent nothing is sent', async () => {

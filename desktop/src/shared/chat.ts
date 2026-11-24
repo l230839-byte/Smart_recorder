@@ -202,12 +202,16 @@ export interface ChatAnswer {
   general: string;
 }
 
+export const NOT_IN_RECORDINGS = 'The recordings do not mention this.';
+
 export function validateAnswer(value: unknown): ChatAnswer {
   const data = value as { answer?: unknown; found?: unknown; general?: unknown } | null;
-  const answer = typeof data?.answer === 'string' ? data.answer.trim() : '';
+  const found = data?.found === 'yes' || data?.found === 'partly' || data?.found === 'no' ? data.found : 'partly';
+  // A small offline model answered "not in the recordings" with an empty answer (seen live); the person
+  // still deserves a plain sentence rather than a blank reply.
+  const answer = (typeof data?.answer === 'string' ? data.answer.trim() : '') || (found === 'no' ? NOT_IN_RECORDINGS : '');
   const general = typeof data?.general === 'string' ? data.general.trim() : '';
   if (!answer && !general) throw new Error('The AI service returned an answer EchoMind could not read.');
-  const found = data?.found === 'yes' || data?.found === 'partly' || data?.found === 'no' ? data.found : 'partly';
   return { answer, found, general };
 }
 

@@ -316,6 +316,9 @@ export interface Settings {
   dailyAudioLimitMinutes: number | null;
   llmProvider: LlmProviderId;
   llmModel: string | null;
+  /** The models used on this computer: when "On this computer" is chosen, and whenever Offline only is on. */
+  offlineTranscriptionModel: string;
+  offlineLlmModel: string;
   llmBaseUrl: string | null;
   /** Start EchoMind, minimized, when Windows starts, so task reminders appear on time. */
   openAtLogin: boolean;
@@ -329,6 +332,8 @@ export const SETTING_CHOICES: Partial<Record<keyof Settings, readonly string[]>>
   accent: ACCENTS,
   contrast: ['system', 'standard', 'high'],
   audioQuality: ['voice', 'standard', 'high'],
+  offlineTranscriptionModel: ['tiny', 'base', 'small', 'medium', 'large-v3-turbo'],
+  offlineLlmModel: ['qwen3-4b', 'qwen3-1.7b'],
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -354,6 +359,8 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyAudioLimitMinutes: null,
   llmProvider: 'groq',
   llmModel: null,
+  offlineTranscriptionModel: 'small',
+  offlineLlmModel: 'qwen3-4b',
   llmBaseUrl: null,
   openAtLogin: false,
   lastBackupAt: null,

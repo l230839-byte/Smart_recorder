@@ -219,7 +219,9 @@ test('a real server: consent is separate for text, the request is correct, 429 w
     await page.getByRole('button', { name: 'Summaries', exact: true }).click();
 
     await page.getByRole('button', { name: /^Generate/ }).click();
-    await expect(page.getByRole('heading', { name: 'Offline only is on' })).toBeVisible();
+    // Offline only is on: the summary would run on this computer, whose model is not downloaded.
+    await expect(page.getByRole('heading', { name: 'Download the offline model first' })).toBeVisible();
+    expect(bodies).toHaveLength(0);
     await page.getByRole('button', { name: 'Turn off Offline only' }).click();
     await expect(page.getByRole('heading', { name: /^Send transcript text to/ })).toBeVisible();
     await page.screenshot({ path: 'test-shots/gate-text.png' });

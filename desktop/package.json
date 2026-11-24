@@ -1,7 +1,7 @@
 {
   "name": "echomind-desktop",
   "productName": "EchoMind",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Turn every recording into knowledge, documents and action.",
   "private": true,
   "license": "UNLICENSED",
@@ -54,6 +54,7 @@
     "dist": "electron-vite build && electron-builder --win",
     "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs",
     "fetch:whisper": "node scripts/fetch-whisper.mjs",
+    "fetch:llama": "node scripts/fetch-llama.mjs",
     "icon": "node scripts/run.mjs electron scripts/make-icon.mjs",
     "test:packaged": "node scripts/run.mjs playwright test -c playwright.packaged.config.ts"
   },

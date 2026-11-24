@@ -89,7 +89,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   <CloudOff size={20} aria-hidden />
                   <span>
                     <h3>Offline only (recommended to start)</h3>
-                    <span className="muted small">Nothing leaves this computer. Recording, importing and your library all work. You can change this any time.</span>
+                    <span className="muted small">Nothing leaves this computer. Recording, importing and your library all work, and AI runs on this computer once you download its offline models. You can change this any time.</span>
                   </span>
                 </button>
                 <button type="button" className="choice" role="radio" aria-checked={!offlineOnly} onClick={() => setOfflineOnly(false)}>

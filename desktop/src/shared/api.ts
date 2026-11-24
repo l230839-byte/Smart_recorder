@@ -27,7 +27,7 @@ import type {
   Transcript,
   UsageSummary,
 } from './models';
-import type { LlmProviderId, LocalModelId, LocalModelStatus, TranscriptionProviderId } from './providers';
+import type { LlmProviderId, LocalLlmModelId, LocalModelId, LocalModelStatus, TranscriptionProviderId } from './providers';
 import type { ChatDetail, ChatScope, ChatThread } from './chat';
 import type { DocumentSettings, ExportFormat } from './documents';
 import type { SearchQuery, SearchResult } from './search';
@@ -119,6 +119,11 @@ export interface EchoApi {
   downloadLocalModel(id: LocalModelId): Promise<void>;
   cancelLocalModelDownload(id: LocalModelId): void;
   deleteLocalModel(id: LocalModelId): Promise<void>;
+  /** Offline writing models (llama.cpp): which are on this computer, and any download in progress. */
+  listWritingModels(): { models: { id: LocalLlmModelId; installed: boolean; downloading: { received: number; total: number } | null; partialBytes: number }[]; installed: boolean };
+  downloadWritingModel(id: LocalLlmModelId): Promise<void>;
+  cancelWritingModelDownload(id: LocalLlmModelId): void;
+  deleteWritingModel(id: LocalLlmModelId): Promise<void>;
   listProviderModels(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): Promise<{ recommended: string[]; others: string[]; live: boolean }>;
   acceptConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;
   revokeConsent(provider: TranscriptionProviderId | LlmProviderId, purpose: AiPurpose): void;

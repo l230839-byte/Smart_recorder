@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckSquare, CircleAlert, Clock, FileText, Heading, LayoutGrid, ListTree, MessagesSquare, RotateCcw, Sparkles, Tag, Type, X } from 'lucide-react';
 import { formatDuration } from '@shared/format';
 import type { ProcessingJob, Recording } from '@shared/models';
-import { PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES } from '@shared/providers';
+import { llmChoice, PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES, transcriptionChoice } from '@shared/providers';
 import { Button, Card, ProgressBar } from '../../design/components';
 import { api, useQuery } from '../../lib/api';
 import { player } from '../../lib/player';
@@ -68,7 +68,8 @@ export function AiCard({ recording }: { recording: Recording }) {
   const active = current && ['queued', 'running', 'waiting'].includes(current.status);
   const failed = current?.status === 'failed';
   const chosen = language ?? settings.data?.transcriptionLanguage ?? 'auto';
-  const provider = settings.data?.transcriptionProvider;
+  // What will really run: with Offline only on, the model on this computer, whatever is chosen for online.
+  const provider = settings.data ? transcriptionChoice(settings.data).provider : undefined;
   const limit = settings.data?.dailyAudioLimitMinutes;
   const usedToday = usage.data?.find((u) => u.provider === provider)?.audioMsToday ?? 0;
   const overReminder = limit && usedToday > limit * 60_000;
@@ -214,7 +215,7 @@ export function AiCard({ recording }: { recording: Recording }) {
                 </span>
               </button>
             ))}
-            {settings.data?.llmProvider === 'fake' && <p className="muted small">These are demo chapters from {providerLabel('fake')}.</p>}
+            {settings.data && llmChoice(settings.data).provider === 'fake' && <p className="muted small">These are demo chapters from {providerLabel('fake')}.</p>}
           </Card>
         </section>
       )}

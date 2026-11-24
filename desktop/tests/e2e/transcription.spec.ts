@@ -139,9 +139,10 @@ test('privacy: offline-only and consent both stop uploads, with a real server co
     await call(page, 'updateSettings', { transcriptionProvider: 'custom', customBaseUrl: baseUrl, transcriptionModel: 'test-model' });
     await openRecording(page, 'recorder');
 
-    // Offline-only is the default: asks first, sends nothing.
+    // Offline-only is the default: transcription would run on this computer, whose model is not
+    // downloaded, so it asks first and sends nothing.
     await page.getByRole('button', { name: 'Transcribe', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Offline only is on' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Download the offline model first' })).toBeVisible();
     await page.screenshot({ path: 'test-shots/gate-offline.png' });
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
     expect(uploads).toBe(0);

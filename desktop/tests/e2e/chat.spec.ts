@@ -101,9 +101,10 @@ test('chat: ask a recording, citations play, sources, follow-ups, not found, man
     await page.locator('.thread-item', { hasText: 'How does the transcript' }).click();
     await box.fill('One more?');
     await box.press('Enter');
-    // Offline only is on by default, so that is the first thing that stops it.
-    await expect(page.getByRole('dialog', { name: 'Offline only is on' })).toBeVisible();
-    await page.getByRole('dialog', { name: 'Offline only is on' }).getByRole('button', { name: 'Cancel' }).click();
+    // Offline only is on by default: the question would go to the model on this computer, which is not
+    // downloaded, so nothing starts and nothing is sent.
+    await expect(page.getByRole('dialog', { name: 'Download the offline model first' })).toBeVisible();
+    await page.getByRole('dialog', { name: 'Download the offline model first' }).getByRole('button', { name: 'Cancel' }).click();
     expect((await call<ChatDetail>(page, 'getChat', thread.id)).turns.length).toBe(before);
     await call(page, 'updateSettings', { llmProvider: 'fake' });
 

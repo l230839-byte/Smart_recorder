@@ -18,6 +18,14 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 5. **Merge.** `mergeChunks` shifts timestamps onto the recording's timeline and saves an `original` version.
 6. **Index.** The current version goes into `transcript_search`, so the Library can find it.
 
+### Offline writing
+
+"On this computer (offline)" (`local-llm`) runs llama.cpp's `llama-server` from `LocalLlmServer` (`main/ai/local-llm.ts`): bound to 127.0.0.1 on a free port, one model at a time, started when first needed, reloaded if the model changes, and stopped after ten minutes unused or when EchoMind quits. It speaks the same OpenAI-compatible protocol, so `ChatHttpProvider` and every summary, chapter, chat, document and Studio path work unchanged, with longer time limits. Thinking is off (`--reasoning off` and `enable_thinking: false`), so answers are not spent on hidden reasoning. Pieces are 14,000 characters, so each step takes a minute or two on a CPU.
+
+### Offline only
+
+`transcriptionChoice` and `llmChoice` (`shared/providers.ts`) decide what really runs. With Offline only on, any cloud choice is replaced by the provider on this computer (offline Whisper, offline writing), with the offline model settings; the cloud choices are kept for when it is turned off. If the offline model is not downloaded, the privacy gate answers "needs setup" for the local provider, and the screens say to download it. Nothing in this path can reach the network.
+
 ### Offline transcription
 
 The "On this computer" provider runs whisper.cpp's `whisper-cli` on each piece, which the media worker writes as 16 kHz mono 16-bit WAV (`pieceFormat: 'wav16k'`) instead of Opus. Arguments: the chosen model, `-l auto` unless a language is set (whisper.cpp's own default is English), all but one CPU core (at most 8), and JSON output, which `parseWhisperCppJson` reads (offsets in milliseconds; non-speech tags such as `[BLANK_AUDIO]` are dropped). Cancelling kills the process. Because it is `local`, the privacy gate asks for no key, consent or network, and Offline only does not block it; instead the gate waits until the chosen model is on disk. Models download through `LocalModelStore`: resumable with HTTP Range, written to a `.part` file, and renamed only after the SHA-256 matches.

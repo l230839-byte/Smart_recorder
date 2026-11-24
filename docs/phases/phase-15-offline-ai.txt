@@ -1,0 +1,94 @@
+ECHOMIND DESKTOP: PHASE 15, EVERY AI FEATURE OFFLINE           (version 0.3.0)
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §0 free stack and local-first; §6 AI providers; §21 privacy
+Date:        2026-11-24
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+The owner reported "no feature is working offline". Transcription could already run
+offline (Phase 13) once a model was downloaded, but summaries, chapters, titles, chat,
+documents and AI Studio had no offline option at all, and "Offline only" simply
+switched AI off. Make every AI feature work with no internet.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+- A writing provider "On this computer (offline)": Qwen3 4B (2.4 GB, recommended) or
+  Qwen3 1.7B (1.1 GB, faster but noticeably less accurate), downloaded once.
+- Offline only now means "use this computer's AI", not "AI off". With the offline
+  models downloaded, every AI feature works with no internet: transcription,
+  summaries, chapters, titles, chat, documents and AI Studio. The online choices are
+  kept and come back when Offline only is turned off.
+- Settings > AI providers starts with "Work offline": what is ready, what is missing,
+  and one "Download for offline use" button; and "Turn on Offline only".
+- If Offline only is on and the model is not downloaded yet, EchoMind says exactly that,
+  with "Download the offline model" and "Turn off Offline only" (online services still
+  ask before anything is sent).
+- Model downloads resume by themselves after a dropped connection (up to six tries).
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  llama.cpp's server, not a native module: nothing to compile, a crash cannot take
+    EchoMind down, and it speaks the same OpenAI-compatible protocol, so every existing
+    summary, chat and Studio path (citations, JSON checks, splitting, merging, retries)
+    works unchanged.
+D2  Bound to 127.0.0.1 on a random free port, web page off, one model at a time; started
+    on first use, unloaded after ten idle minutes and when EchoMind quits.
+D3  Models chosen for licence first: Qwen3 is Apache-2.0 (Llama and Gemma carry use
+    restrictions). Thinking is switched off, so answers are not spent on hidden
+    reasoning (the Phase 9 lesson).
+D4  One rule decides what runs (transcriptionChoice, llmChoice), used by every service
+    and by the screens, so "Offline only" behaves the same everywhere.
+D5  Offline model choices are their own settings, so going offline and back never loses
+    the online choices.
+
+
+4. BUGS FOUND AND FIXED
+--------------------------------------------------------------------------------
+F1  A download whose connection closed early without an error was checksummed as it
+    was, failed, and was deleted: a 1.07 GB of 1.10 GB download would have started
+    over. Now a short file is treated as interrupted and resumed.
+F2  A dropped connection stopped a download at once; now it resumes by itself.
+F3  Citations written with their line time, [S11 0:38], were left as raw text (seen with
+    the 1.7B model); they are now checked and linked like [S11].
+F4  A "not in the recordings" answer with an empty text showed a blank reply; it now
+    says "The recordings do not mention this."
+During testing, two of my own download processes wrote to the same file at once; the
+file failed its published checksum and was discarded, which is what EchoMind's own
+downloader does too (and it never runs two downloads of one model).
+
+
+5. TESTS
+--------------------------------------------------------------------------------
+Unit (301 passing): the routing rule (online, offline, demo, kept choices); offline
+writing needs its model; downloads that break, end short, keep breaking, or resume;
+citations with times; empty "not found" answers.
+End to end: full suite passing. The three privacy tests now expect "Download the offline
+model first" with Offline only on, and still prove zero requests reach a server.
+Live, two-voice meeting, Offline only ON throughout, Whisper Small for transcription:
+                       Qwen3 4B (recommended)      Qwen3 1.7B
+  Summary              66 s, 11/12 facts,          37 s, 8/12 facts, wrong
+                       16 citations, none          due dates
+                       invented
+  Chapters             26 s, 3 at the right        11 s, 1 chapter
+                       moments
+  Chat (3 questions)   14-18 s each, all correct,  7-10 s each, one wrong date,
+                       "not mentioned" right       blank "not mentioned" (fixed)
+  Quiz (5 questions)   82 s                        41 s
+  Whole run            4.4 minutes                 3.0 minutes
+Speed on the development computer (7 threads): the model loads in about 23 s the first
+time; reading runs at about 110 tokens a second, writing at about 19 (1.7B).
+
+
+6. REVIEW
+--------------------------------------------------------------------------------
+Designer: "Offline only" now keeps its promise (nothing leaves the computer) without
+taking features away; the one network step, downloading a model, is explicit.
+Developer: no new npm dependency; one rule for provider choice; the server is a small,
+separate process with a clear lifecycle.
+Limits: offline is slower than online (minutes, not seconds, for long recordings) and
+needs about 4 GB of free memory for the 4B model; no GPU acceleration (the CPU build
+works on every Windows PC).

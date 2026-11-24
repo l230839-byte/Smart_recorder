@@ -278,8 +278,12 @@ export interface CitationResult {
  */
 export function normalizeCitationBrackets(markdown: string): string {
   // These brackets are usually written straight after a word, so a space is added to keep the time apart.
-  // Also [ S1 ] with spaces inside, seen live.
-  return markdown.replace(/(\S?)[【［([]\s*(S\d+(?:\s*[,;–-]\s*S?\d+)*)\s*[】］)\]]/g, (_m, before: string, ids: string) => `${before}${before && !/[\s([]/.test(before) ? ' ' : ''}[${ids.replace(/\s+/g, ' ')}]`);
+  // Also [ S1 ] with spaces inside, seen live; and [S11 0:38], the id copied with its line's time, seen
+  // live with a small offline model, since that is how the transcript lines it reads begin.
+  return markdown.replace(
+    /(\S?)[【［([]\s*(S\d+(?:\s*[,;–-]\s*S?\d+)*)(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?\s*[】］)\]]/g,
+    (_m, before: string, ids: string) => `${before}${before && !/[\s([]/.test(before) ? ' ' : ''}[${ids.replace(/\s+/g, ' ')}]`,
+  );
 }
 
 /** Turns `[S12]` into a link to that moment. Ids not in the transcript are removed, never shown. */

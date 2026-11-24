@@ -337,8 +337,12 @@ describe('summary jobs', () => {
 
   describe('privacy', () => {
     it('offline-only, a missing key and missing consent each stop it before anything is sent', async () => {
+      // Offline only never sends text to a cloud service: it goes to the model on this computer instead.
       settings.offlineOnly = true;
-      expect(service.request(id, 'summarize', { summary: DEFAULT_SUMMARY_OPTIONS })).toMatchObject({ ok: false, reason: 'offline-only', purpose: 'text' });
+      const offline = service.request(id, 'summarize', { summary: DEFAULT_SUMMARY_OPTIONS }) as { ok: true; jobId: string };
+      expect(offline.ok).toBe(true);
+      expect(jobs.get(offline.jobId)).toMatchObject({ provider: 'local-llm', model: 'qwen3-4b' });
+      jobs.setFailed(offline.jobId, 'test', false);
       settings.offlineOnly = false;
       consents.revoke(textConsentKey('groq'));
       expect(service.request(id, 'summarize', { summary: DEFAULT_SUMMARY_OPTIONS })).toMatchObject({ ok: false, reason: 'needs-consent' });
@@ -346,7 +350,8 @@ describe('summary jobs', () => {
       secrets.clear(keyName('groq'));
       expect(service.request(id, 'summarize', { summary: DEFAULT_SUMMARY_OPTIONS })).toMatchObject({ ok: false, reason: 'needs-setup' });
       await settle();
-      expect(calls).toHaveLength(0);
+      // Only the offline model was ever asked; the cloud model never was.
+      expect(calls.every((c) => c.model === 'qwen3-4b')).toBe(true);
     });
 
     it('agreeing to send audio is not agreeing to send text', () => {

@@ -94,8 +94,43 @@ describe('offline models', () => {
 
   it('a failed connection keeps the part file and says how to continue', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'echomind-models-'));
-    const store = new LocalModelStore(dir, () => undefined, async () => Promise.reject(new TypeError('fetch failed')), catalog);
+    let calls = 0;
+    const store = new LocalModelStore(dir, () => undefined, async () => {
+      calls++;
+      return Promise.reject(new TypeError('fetch failed'));
+    }, catalog, 1);
     await expect(store.download('medium')).rejects.toThrow(/continues where it stopped/);
+    // It tried by itself several times before asking.
+    expect(calls).toBe(6);
     expect(store.list().find((m) => m.id === 'medium')).toMatchObject({ installed: false, downloading: null });
+  });
+
+  it('a connection that ends early without an error resumes by itself, and the file is never mistaken for a bad one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'echomind-models-'));
+    const ranges: (string | null)[] = [];
+    // First the server sends only part of the file and closes cleanly; then the rest on request.
+    const store = new LocalModelStore(dir, () => undefined, async (_url, init) => {
+      const range = new Headers(init?.headers).get('range');
+      ranges.push(range);
+      const from = range ? Number(/bytes=(\d+)-/.exec(range)![1]) : 0;
+      const body = ranges.length === 1 ? content.subarray(0, 20) : content.subarray(from);
+      return new Response(body, { status: from ? 206 : 200, headers: { 'content-length': String(content.length - from) } });
+    }, catalog, 1);
+    await store.download('large-v3-turbo');
+    expect(ranges).toEqual([null, 'bytes=20-']);
+    expect(readFileSync(store.path('large-v3-turbo'))).toEqual(content);
+  });
+
+  it('a download that keeps breaking off keeps its part file for later, instead of deleting it as bad', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'echomind-models-'));
+    const store = new LocalModelStore(dir, () => undefined, async (_url, init) => {
+      const range = new Headers(init?.headers).get('range');
+      const from = range ? Number(/bytes=(\d+)-/.exec(range)![1]) : 0;
+      // Always one byte, then the connection closes.
+      return new Response(content.subarray(from, from + 1), { status: from ? 206 : 200, headers: { 'content-length': String(content.length - from) } });
+    }, catalog, 1);
+    await expect(store.download('base')).rejects.toThrow(/continues where it stopped/);
+    expect(store.list().find((m) => m.id === 'base')!.partialBytes).toBe(6);
+    expect(store.installed('base')).toBe(false);
   });
 });

@@ -2,7 +2,7 @@ import { isSilent } from '@shared/audio-level';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Settings, TranscribeOutcome } from '@shared/models';
-import { MAX_CHUNK_MS, PROVIDER_INFO, type TranscriptionProviderId } from '@shared/providers';
+import { MAX_CHUNK_MS, PROVIDER_INFO, transcriptionChoice, type TranscriptionProviderId } from '@shared/providers';
 import { mergeChunks, planChunks } from '@shared/transcript';
 import type { TranscriptionProvider } from '../ai/types';
 import type { LibraryRepository } from '../db/library';
@@ -50,7 +50,7 @@ export class TranscriptionService implements JobHandler {
   blockedBy(provider: TranscriptionProviderId): Exclude<TranscribeOutcome, { ok: true }> | null {
     const info = PROVIDER_INFO[provider];
     if (provider === 'local') {
-      const model = this.deps.settings().transcriptionModel ?? info.models[0]!;
+      const model = transcriptionChoice({ ...this.deps.settings(), transcriptionProvider: 'local' }).model;
       return this.deps.localModelReady?.(model) === false ? { ok: false, reason: 'needs-setup', provider, purpose: 'audio' } : null;
     }
     if (info.local) return null;
@@ -76,10 +76,10 @@ export class TranscriptionService implements JobHandler {
     if (active) return { ok: true, jobId: active.id };
 
     const s = settings();
-    const provider = s.transcriptionProvider;
+    const { provider, model } = transcriptionChoice(s);
     const blocked = this.blockedBy(provider);
     if (blocked) return blocked;
-    const id = jobs.create(recordingId, provider, s.transcriptionModel ?? PROVIDER_INFO[provider].models[0]!, language ?? s.transcriptionLanguage);
+    const id = jobs.create(recordingId, provider, model, language ?? s.transcriptionLanguage);
     this.deps.changed();
     this.queue.pump();
     return { ok: true, jobId: id };

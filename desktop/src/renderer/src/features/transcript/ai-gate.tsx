@@ -87,15 +87,45 @@ export function useTranscribe() {
         onClose={close}
       />
     );
+  } else if (blocked?.reason === 'needs-setup' && (blocked.provider === 'local' || blocked.provider === 'local-llm')) {
+    // Offline only (or a choice of "On this computer") without the model downloaded yet. Two ways on:
+    // download it once, or go back to the online services, which still ask before anything is sent.
+    const what = blocked.provider === 'local' ? 'transcription' : 'summaries, chat and AI Studio';
+    dialogs = (
+      <Dialog title="Download the offline model first" onClose={close}>
+        <p>
+          With Offline only on, {what} run on this computer, so nothing leaves it. The model for this is not downloaded yet. Download it once in Settings &gt; AI providers &gt; Work offline, or use your online services
+          instead.
+        </p>
+        <div className="dialog-actions">
+          <Button variant="ghost" onClick={close}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              close();
+              void api.updateSettings({ offlineOnly: false }).then(blocked.retry, toast.showError);
+            }}
+          >
+            Turn off Offline only
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              close();
+              go({ name: 'providers' });
+            }}
+          >
+            Download the offline model
+          </Button>
+        </div>
+      </Dialog>
+    );
   } else if (blocked?.reason === 'needs-setup') {
     dialogs = (
       <ConfirmDialog
         title={`Set up ${infoFor(blocked).label}`}
-        message={
-          blocked.provider === 'local'
-            ? 'Offline transcription needs its model on this computer first. Download it once in Settings; after that, nothing is sent anywhere.'
-            : 'This needs a provider. Add your own free key in Settings, or try the demo provider first.'
-        }
+        message="This needs a provider. Add your own free key in Settings, or try the demo provider first."
         confirmLabel="Open AI provider settings"
         onConfirm={() => go({ name: 'providers' })}
         onClose={close}

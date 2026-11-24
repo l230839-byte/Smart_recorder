@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { CircleCheck, ExternalLink, KeyRound, Trash2 } from 'lucide-react';
 import { formatDateTime, formatDurationLong } from '@shared/format';
 import type { AiPurpose } from '@shared/models';
-import { LLM_PROVIDER_INFO, LLM_PROVIDERS, PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES, TRANSCRIPTION_PROVIDERS, type LlmProviderId, type TranscriptionProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, LLM_PROVIDERS, LOCAL_LLM_MODELS, LOCAL_MODELS, PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES, TRANSCRIPTION_PROVIDERS, type LlmProviderId, type LocalLlmModelId, type LocalModelId, type TranscriptionProviderId } from '@shared/providers';
 import { Button, Card, Loading, PageHeader } from '../../design/components';
 import { api, errorMessage, useQuery } from '../../lib/api';
 import { useToast } from '../../lib/toast';
-import { LocalModelsCard } from './LocalModels';
+import { ModelsCard, OfflineCard, WHISPER, WRITING } from './LocalModels';
 import './transcript.css';
 
 type AnyProvider = TranscriptionProviderId | LlmProviderId;
@@ -65,7 +65,7 @@ function ProviderCard({ provider, purpose, offlineOnly, baseUrl, onBaseUrl }: { 
     <Card>
       {offlineOnly && (
         <div className="notice warning" role="status" style={{ marginBottom: 'var(--s3)' }}>
-          Offline only is on, so EchoMind will not contact this service. You can change that in Settings.
+          Offline only is on, so EchoMind will not contact this service. It uses the models on this computer instead (see Work offline above). You can change that in Settings.
         </div>
       )}
       {custom && (
@@ -208,7 +208,14 @@ export function ProvidersScreen() {
 
   return (
     <div className="page settings">
-      <PageHeader title="AI providers" subtitle="Use free services with your own key. Keys are encrypted, and are only ever sent to the service they belong to." />
+      <PageHeader title="AI providers" subtitle="Use free services with your own key, or models on this computer. Keys are encrypted, and are only ever sent to the service they belong to." />
+
+      <OfflineCard
+        transcriptionModel={(s.offlineTranscriptionModel in LOCAL_MODELS ? s.offlineTranscriptionModel : 'small') as LocalModelId}
+        writingModel={(s.offlineLlmModel in LOCAL_LLM_MODELS ? s.offlineLlmModel : 'qwen3-4b') as LocalLlmModelId}
+        offlineOnly={s.offlineOnly}
+        onTurnOn={() => update({ offlineOnly: true })}
+      />
 
       <section className="stack">
         <h2>Transcription</h2>
@@ -223,7 +230,7 @@ export function ProvidersScreen() {
           ))}
         </div>
         <ProviderCard provider={provider} purpose="audio" offlineOnly={s.offlineOnly} baseUrl={s.customBaseUrl} onBaseUrl={(customBaseUrl) => update({ customBaseUrl })} />
-        {provider === 'local' && <LocalModelsCard value={s.transcriptionModel} offlineOnly={s.offlineOnly} onChange={(transcriptionModel) => update({ transcriptionModel })} />}
+        {(provider === 'local' || s.offlineOnly) && <ModelsCard kind={WHISPER} value={s.offlineTranscriptionModel} fallback="small" offlineOnly={s.offlineOnly} onChange={(offlineTranscriptionModel) => update({ offlineTranscriptionModel })} />}
         <Card>
           {provider !== 'local' && <ModelField id="model" provider={provider} purpose="audio" models={info.models} value={s.transcriptionModel} custom={provider === 'custom'} onChange={(transcriptionModel) => update({ transcriptionModel })} />}
           <div className="setting-line">
@@ -255,6 +262,7 @@ export function ProvidersScreen() {
           ))}
         </div>
         <ProviderCard provider={llm} purpose="text" offlineOnly={s.offlineOnly} baseUrl={s.llmBaseUrl} onBaseUrl={(llmBaseUrl) => update({ llmBaseUrl })} />
+        {(llm === 'local-llm' || s.offlineOnly) && <ModelsCard kind={WRITING} value={s.offlineLlmModel} fallback="qwen3-4b" offlineOnly={s.offlineOnly} onChange={(offlineLlmModel) => update({ offlineLlmModel })} />}
         {!llmInfo.local && (
           <Card>
             <ModelField id="llm-model" provider={llm} purpose="text" models={llmInfo.models} value={s.llmModel} custom={llm === 'custom-chat'} onChange={(llmModel) => update({ llmModel })} />

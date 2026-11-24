@@ -18,6 +18,8 @@ EchoMind uses free and open-source software only. `npm run check:licenses` fails
 | pako (used by JSZip) | Compression | MIT and Zlib |
 | FFmpeg, optional add-on | Reads formats the built-in decoders cannot, such as AMR and WMA | LGPL (BtbN shared build) |
 | whisper.cpp (with ggml) | Offline transcription on this computer | MIT. Its Windows build also carries SDL2.dll (zlib licence). |
+| llama.cpp (with ggml) | Offline summaries, chat, documents and AI Studio, run by EchoMind on this computer only | MIT. Its Windows build also carries libomp.dll (LLVM OpenMP: Apache-2.0 with LLVM exception). |
+| Qwen3 4B Instruct, Qwen3 1.7B (GGUF, 4-bit) | The offline writing models, downloaded by the person when they choose | Apache-2.0 |
 | Whisper models (ggml files) | The offline models, downloaded by the person when they choose | MIT (OpenAI Whisper weights), converted by the whisper.cpp project |
 
 Build and test tools (not shipped): electron-builder and NSIS (MIT and zlib licences) make the installer; axe-core (MPL-2.0) runs the accessibility audit.
@@ -33,6 +35,12 @@ PDFs are printed by the Chromium inside Electron, so no PDF library is needed. T
 `npm run fetch:whisper` downloads the official Windows build of whisper.cpp release b5454 (published 2026-10-06, pinned rather than "latest"), checks it against the SHA-256 GitHub publishes for the file, keeps only `whisper-cli.exe` and the libraries it loads, saves the project's MIT licence beside them, and confirms the command-line options EchoMind uses. It stays out of the repository and is copied into the installer with FFmpeg. Models are not bundled: the person downloads one in Settings (31 MB to 547 MB) from huggingface.co/ggerganov/whisper.cpp, and EchoMind checks each file's published SHA-256 before using it.
 
 Measured on 2026-11-23 on the development computer (70 seconds of two-voice meeting, Offline only on): Tiny 11.5x real time, Small 2.2x real time, both 11 of 12 facts. A 3-hour recording on Small takes about 80 minutes there; faster computers are faster.
+
+### llama.cpp notes
+
+`npm run fetch:llama` downloads the official Windows CPU build of llama.cpp release b12193 (published 2026-11-07, pinned), checks it against the SHA-256 GitHub publishes, keeps `llama-server.exe` and the libraries beside it, saves the MIT licence and confirms the options EchoMind uses. Models are not bundled: the person downloads one in Settings (1.06 GB or 2.38 GB) from Hugging Face, checked against its published SHA-256. Chosen for licence first: Llama and Gemma models carry use restrictions, Qwen3 is Apache-2.0.
+
+Measured on the development computer (7 CPU threads): Qwen3 1.7B loads in about 23 seconds the first time, reads a transcript at about 110 tokens a second and writes at about 19.
 
 ## AI providers
 

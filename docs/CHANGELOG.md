@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 0.3.0, Phase 15: Every AI feature offline
+
+- "On this computer (offline)" for writing: summaries, chapters, titles, chat, documents and AI Studio run on llama.cpp (MIT) with Qwen3 4B (2.4 GB) or Qwen3 1.7B (1.1 GB), both Apache-2.0, served only on 127.0.0.1.
+- Offline only now means "use this computer's AI" instead of "AI off": every feature keeps working with no internet once the offline models are downloaded; the online choices are kept for later.
+- Settings > AI providers > Work offline: what is ready, and one button to download what is missing.
+- Model downloads resume by themselves after a dropped connection, and a download cut short is never deleted as a bad file.
+- Fixed: citations written with their line time ([S11 0:38]) were left as raw text; an empty "not in the recordings" answer showed a blank reply.
+
 ### 0.2.0, Phase 14: Recordings you can trust
 
 - A live microphone check on the Record screen names the device in use and warns, before recording, when no sound comes through.

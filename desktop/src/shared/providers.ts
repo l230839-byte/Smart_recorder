@@ -136,7 +136,7 @@ export const PROVIDER_INFO: Record<TranscriptionProviderId, ProviderInfo> = {
   },
 };
 
-export const LLM_PROVIDERS = ['groq', 'gemini', 'custom-chat', 'fake'] as const;
+export const LLM_PROVIDERS = ['groq', 'gemini', 'local-llm', 'custom-chat', 'fake'] as const;
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 
 export interface LlmProviderInfo {
@@ -186,6 +186,20 @@ export const LLM_PROVIDER_INFO: Record<LlmProviderId, LlmProviderInfo> = {
     disclosure:
       "Transcript text is sent to Google to write the result. On Gemini's free tier, Google's terms say it may use what you submit, and the responses, to improve its products and machine learning technology. Do not use this for confidential recordings. Groq or the offline demo are alternatives.",
   },
+  'local-llm': {
+    id: 'local-llm',
+    label: 'On this computer (offline)',
+    hint: 'Nothing leaves your computer, and no key is needed. Download a model once; slower than online services.',
+    local: true,
+    needsKey: false,
+    baseUrl: null,
+    models: ['qwen3-4b', 'qwen3-1.7b'],
+    // A small model on a CPU reads slowly; pieces of this size keep each step to a minute or two.
+    maxInputChars: 14_000,
+    keyUrl: null,
+    limitsUrl: null,
+    disclosure: '',
+  },
   'custom-chat': {
     id: 'custom-chat',
     label: 'Other OpenAI-compatible service',
@@ -223,8 +237,51 @@ export const LLM_PROVIDER_INFO: Record<LlmProviderId, LlmProviderInfo> = {
  */
 export function reasoningOptions(provider: LlmProviderId, model: string): Record<string, unknown> {
   if (provider === 'groq' && model.startsWith('openai/gpt-oss')) return { reasoning_effort: 'low' };
+  // Qwen3 1.7B thinks before answering unless told not to (the server also starts with reasoning off).
+  if (provider === 'local-llm') return { chat_template_kwargs: { enable_thinking: false } };
   if (provider === 'gemini' && /^gemini-(2\.5|[3-9])/.test(model)) return { reasoning_effort: 'low' };
   return {};
+}
+
+/**
+ * Writing models that run on this computer through llama.cpp (MIT). Both Apache-2.0, quantized to 4 bits.
+ * Hashes are the files' published SHA-256 on Hugging Face, checked after every download.
+ */
+export const LOCAL_LLM_MODELS = {
+  'qwen3-4b': {
+    label: 'Qwen3 4B',
+    file: 'Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
+    sizeMb: 2382,
+    sha256: '3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597',
+    url: 'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
+    hint: 'Recommended. Good summaries and answers; needs about 4 GB of free memory.',
+  },
+  'qwen3-1.7b': {
+    label: 'Qwen3 1.7B',
+    file: 'Qwen3-1.7B-Q4_K_M.gguf',
+    sizeMb: 1056,
+    sha256: 'b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897',
+    url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf',
+    hint: 'Faster and smaller, for older computers. Noticeably less accurate: in testing it got some dates and owners wrong.',
+  },
+} as const;
+export type LocalLlmModelId = keyof typeof LOCAL_LLM_MODELS;
+
+/**
+ * The provider and model a job will really use. With Offline only on, cloud services are replaced by the
+ * ones on this computer, so every AI feature keeps working without the internet; if their models are not
+ * downloaded yet, the privacy gate says so. The person's cloud choices are kept for when they go online.
+ */
+export function transcriptionChoice(s: { offlineOnly: boolean; transcriptionProvider: TranscriptionProviderId; transcriptionModel: string | null; offlineTranscriptionModel: string }): { provider: TranscriptionProviderId; model: string } {
+  const provider = s.offlineOnly && !PROVIDER_INFO[s.transcriptionProvider].local ? 'local' : s.transcriptionProvider;
+  if (provider === 'local') return { provider, model: s.offlineTranscriptionModel };
+  return { provider, model: s.transcriptionModel ?? PROVIDER_INFO[provider].models[0]! };
+}
+
+export function llmChoice(s: { offlineOnly: boolean; llmProvider: LlmProviderId; llmModel: string | null; offlineLlmModel: string }): { provider: LlmProviderId; model: string } {
+  const provider = s.offlineOnly && !LLM_PROVIDER_INFO[s.llmProvider].local ? 'local-llm' : s.llmProvider;
+  if (provider === 'local-llm') return { provider, model: s.offlineLlmModel };
+  return { provider, model: s.llmModel ?? LLM_PROVIDER_INFO[provider].models[0]! };
 }
 
 /** Any provider's display name, for screens that list jobs from every kind. */

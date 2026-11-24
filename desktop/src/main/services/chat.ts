@@ -1,5 +1,5 @@
 import type { AiOutcome, Settings } from '@shared/models';
-import { LLM_PROVIDER_INFO, type LlmProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, llmChoice, type LlmProviderId } from '@shared/providers';
 import {
   answerFromPlainText,
   answerMessages,
@@ -142,13 +142,12 @@ export class ChatService {
   }
 
   private providerChoice(): { provider: LlmProviderId; model: string } {
-    const s = this.deps.settings();
-    return { provider: s.llmProvider, model: s.llmModel ?? LLM_PROVIDER_INFO[s.llmProvider].models[0]! };
+    return llmChoice(this.deps.settings());
   }
 
   private check(scope: ChatScope): AiOutcome {
     if (this.scopeInfo(scope).withTranscript === 0) return { ok: false, reason: 'needs-transcript' };
-    return this.deps.blockedBy(this.deps.settings().llmProvider) ?? { ok: true, jobId: '' };
+    return this.deps.blockedBy(llmChoice(this.deps.settings()).provider) ?? { ok: true, jobId: '' };
   }
 
   private load(id: string): Loaded | null {

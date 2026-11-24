@@ -6,7 +6,7 @@ import { ChatHttpProvider } from '../../src/main/ai/chat-http';
 import { ModelFallbackProvider, pickModel } from '../../src/main/ai/model-fallback';
 import { ProviderError, type ChatProvider, type ChatRequest, type ChatResult } from '../../src/main/ai/types';
 import { toProviderError, WhisperHttpProvider } from '../../src/main/ai/whisper-http';
-import { reasoningOptions } from '../../src/shared/providers';
+import { llmChoice, reasoningOptions, transcriptionChoice } from '../../src/shared/providers';
 
 const response = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -330,5 +330,27 @@ describe('a busy model hands the request to another', () => {
   it('if every model is busy, the first error goes back to the queue to wait and retry', async () => {
     const inner: ChatProvider = { complete: async () => Promise.reject(busy()), testConnection: async () => undefined };
     await expect(new ModelFallbackProvider(inner, ['lite', 'flash'], () => undefined).complete(request)).rejects.toMatchObject({ busy: true, kind: 'server' });
+  });
+});
+
+describe('Offline only uses this computer instead of switching AI off', () => {
+  const base = { offlineOnly: false, transcriptionProvider: 'groq' as const, transcriptionModel: 'whisper-large-v3', offlineTranscriptionModel: 'small', llmProvider: 'gemini' as const, llmModel: 'gemini-3.8-flash', offlineLlmModel: 'qwen3-4b' };
+
+  it('online, the chosen services and models are used as they are', () => {
+    expect(transcriptionChoice(base)).toEqual({ provider: 'groq', model: 'whisper-large-v3' });
+    expect(llmChoice(base)).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash' });
+  });
+
+  it('with Offline only on, both run on this computer, and the online choices are kept for later', () => {
+    const offline = { ...base, offlineOnly: true };
+    expect(transcriptionChoice(offline)).toEqual({ provider: 'local', model: 'small' });
+    expect(llmChoice(offline)).toEqual({ provider: 'local-llm', model: 'qwen3-4b' });
+    expect(transcriptionChoice({ ...offline, offlineOnly: false })).toEqual({ provider: 'groq', model: 'whisper-large-v3' });
+  });
+
+  it('the demo and anything already on this computer stay as chosen', () => {
+    expect(llmChoice({ ...base, offlineOnly: true, llmProvider: 'fake', llmModel: null })).toEqual({ provider: 'fake', model: 'demo' });
+    expect(transcriptionChoice({ ...base, offlineOnly: true, transcriptionProvider: 'local', offlineTranscriptionModel: 'base' })).toEqual({ provider: 'local', model: 'base' });
+    expect(reasoningOptions('local-llm', 'qwen3-1.7b')).toEqual({ chat_template_kwargs: { enable_thinking: false } });
   });
 });

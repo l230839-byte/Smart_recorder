@@ -1,7 +1,7 @@
 import type { ContextRecording } from '@shared/chat';
 import { resolveChatCitations } from '@shared/chat';
 import type { AiOutcome, Settings } from '@shared/models';
-import { LLM_PROVIDER_INFO, type LlmProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, llmChoice, type LlmProviderId } from '@shared/providers';
 import { spreadSample } from '@shared/retrieval';
 import {
   contextPieces,
@@ -98,8 +98,8 @@ export class StudioService implements JobHandler {
       const summary = input.options.summaryId ? this.deps.summaries.get(input.options.summaryId) : null;
       if (!summary || summary.recordingId !== ids[0]) throw new Error('Choose a summary of this recording to translate.');
     }
-    const s = this.deps.settings();
-    const blocked = this.deps.blockedBy(s.llmProvider);
+    const { provider, model } = llmChoice(this.deps.settings());
+    const blocked = this.deps.blockedBy(provider);
     if (blocked) return blocked;
 
     const first = recordings[0]!.title;
@@ -107,9 +107,8 @@ export class StudioService implements JobHandler {
       input.kind === 'study' ? STUDY_TYPES[input.options.studyType].label : input.kind === 'rewrite' ? REWRITE_STYLES[input.options.rewriteStyle].label : input.kind === 'translate' ? `${info.label} (${input.options.targetLanguage})` : info.label;
     const title = input.title?.trim() || `${what}: ${first}${ids.length > 1 ? ` and ${ids.length - 1} more` : ''}`;
     const options = { ...input.options, count: Math.min(60, Math.max(3, Math.round(input.options.count || 15))) };
-    const outputId = this.deps.studio.create({ kind: input.kind, title, recordingIds: ids, options, provider: s.llmProvider });
-    const model = s.llmModel ?? LLM_PROVIDER_INFO[s.llmProvider].models[0]!;
-    this.deps.jobs.create(ids[0]!, s.llmProvider, model, 'auto', 'studio', JSON.stringify({ outputId } satisfies StudioJobOptions));
+    const outputId = this.deps.studio.create({ kind: input.kind, title, recordingIds: ids, options, provider });
+    this.deps.jobs.create(ids[0]!, provider, model, 'auto', 'studio', JSON.stringify({ outputId } satisfies StudioJobOptions));
     this.deps.changed();
     this.deps.queue.pump();
     return { ok: true, outputId };

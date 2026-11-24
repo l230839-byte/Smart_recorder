@@ -131,7 +131,7 @@ export function Settings() {
             title="Offline only"
             subtitle={
               s.offlineOnly
-                ? 'On. Nothing leaves this computer, and AI features that need a cloud provider stay off.'
+                ? 'On. Nothing leaves this computer. AI features run on this computer once its offline models are downloaded (Settings > AI providers > Work offline).'
                 : 'Off. AI features may use providers you set up, and only after you agree to what is sent.'
             }
             checked={s.offlineOnly}

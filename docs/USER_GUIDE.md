@@ -6,6 +6,7 @@ your computer, works with free AI services using your own key, and sends nothing
 ## First steps
 
 1. **Set up AI (optional).** Settings > AI providers. Get a free key from Groq (console.groq.com/keys) and paste it there. Without a key, choose the Demo provider to try everything; its results are labelled as demo text.
+   To use **everything with no internet**: Settings > AI providers > Work offline > "Download for offline use" (about 2.6 GB once), then turn on Offline only. Transcription, summaries, chat, documents and AI Studio then all run on your computer. They are slower than online services, especially on older computers.
    To transcribe with **no internet and no key**, choose **On this computer (offline Whisper)** and download a model once (Small is a good start). It works with Offline only on; larger models are more accurate but slower.
    For transcripts that say who spoke, choose **Google Gemini Transcribe** with a free key from aistudio.google.com/apikey. Google may use free-tier audio to improve its products, so keep confidential recordings on Groq or offline.
 2. **Turn off Offline only** in Settings > Privacy when you are ready to use a cloud provider. EchoMind asks for your agreement before the first upload to each one.

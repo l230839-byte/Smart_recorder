@@ -11,7 +11,7 @@ import { BundleService } from './services/bundles';
 import type { EchoApi, EchoEvents } from '@shared/api';
 import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
 import { markdownToClipboard } from '@shared/markdown';
-import { LLM_PROVIDER_INFO, LOCAL_MODELS, PROVIDER_INFO, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type LocalModelId, type TranscriptionProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, LOCAL_LLM_MODELS, LOCAL_MODELS, PROVIDER_INFO, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type LocalLlmModelId, type LocalModelId, type TranscriptionProviderId } from '@shared/providers';
 import { availableParallelism } from 'node:os';
 import { toPlainText, toSrt, toVtt } from '@shared/transcript';
 import { EXPORT_FORMATS, transcriptToCsv } from '@shared/documents';
@@ -30,6 +30,7 @@ import { hardenContents, hardenSession } from './security';
 import { initLogFile, logError, logEvent } from './log';
 import { GeminiTranscribeProvider } from './ai/gemini-transcribe';
 import { LocalWhisperProvider } from './ai/local-whisper';
+import { LocalLlmProvider, LocalLlmServer } from './ai/local-llm';
 import { LocalModelStore } from './services/local-models';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
@@ -186,6 +187,13 @@ async function start(): Promise<void> {
   const whisperCli = join(app.isPackaged ? join(process.resourcesPath, 'bin') : join(app.getAppPath(), 'resources', 'bin'), 'whisper', 'whisper-cli.exe');
   // Leaves a core free so the window and recording stay responsive while a model runs.
   const whisperThreads = Math.max(1, Math.min(8, availableParallelism() - 1));
+  // Offline writing: llama.cpp's server on 127.0.0.1, with a model downloaded into the same folder.
+  const writingModels = new LocalModelStore<LocalLlmModelId>(join(dataDir, 'models'), () => emit('data:changed', 'settings'), fetch, LOCAL_LLM_MODELS);
+  const localLlm = new LocalLlmServer({
+    exe: join(app.isPackaged ? join(process.resourcesPath, 'bin') : join(app.getAppPath(), 'resources', 'bin'), 'llama', 'llama-server.exe'),
+    modelPath: (model) => (model in LOCAL_LLM_MODELS ? writingModels.path(model as LocalLlmModelId) : null),
+    threads: whisperThreads,
+  });
 
   const makeProvider = (id: TranscriptionProviderId) => {
     if (id === 'fake') return new FakeProvider();
@@ -230,6 +238,7 @@ async function start(): Promise<void> {
 
   const makeChatProvider = (id: LlmProviderId) => {
     if (id === 'fake') return new FakeChatProvider();
+    if (id === 'local-llm') return new LocalLlmProvider(localLlm, (model) => reasoningOptions('local-llm', model));
     const baseUrl = id === 'custom-chat' ? settings.get().llmBaseUrl : LLM_PROVIDER_INFO[id].baseUrl;
     if (!baseUrl) throw new Error('This provider has no address set. Check Settings.');
     // If the service has retired the chosen model, the best one it still offers is used and remembered.
@@ -244,6 +253,7 @@ async function start(): Promise<void> {
   };
 
   const summaryService = new SummaryService({
+    localReady: (model) => model in LOCAL_LLM_MODELS && writingModels.installed(model as LocalLlmModelId),
     jobs,
     queue,
     transcripts,
@@ -635,6 +645,13 @@ async function start(): Promise<void> {
     downloadLocalModel: (id) => localModels.download(id),
     cancelLocalModelDownload: (id) => localModels.cancel(id),
     deleteLocalModel: (id) => localModels.remove(id),
+    listWritingModels: () => ({ models: writingModels.list(), installed: localLlm.installed }),
+    downloadWritingModel: (id) => writingModels.download(id),
+    cancelWritingModelDownload: (id) => writingModels.cancel(id),
+    deleteWritingModel: async (id) => {
+      localLlm.stop();
+      await writingModels.remove(id);
+    },
     listProviderModels: async (provider, purpose) => {
       const info = purpose === 'text' ? LLM_PROVIDER_INFO[provider as LlmProviderId] : PROVIDER_INFO[provider as TranscriptionProviderId];
       const recommended = info?.models ?? [];
@@ -956,6 +973,7 @@ async function start(): Promise<void> {
     closed = true;
     logEvent('quit');
     queue.stop();
+    localLlm.stop();
     void recorder.stopForQuit();
     media.destroy();
     // The database is deliberately left open: background work may still be unwinding, and WAL mode is

@@ -131,7 +131,7 @@ describe('model replies', () => {
 
   it('answers are read from JSON, with a safe fallback for plain text and never raw JSON', () => {
     expect(readAnswer('```json\n{"answer":"Yes [S1]","found":"yes","general":""}\n```')).toEqual({ answer: 'Yes [S1]', found: 'yes', general: '' });
-    expect(readAnswer('{"answer":"","general":"Paris","found":"no"}')).toEqual({ answer: '', found: 'no', general: 'Paris' });
+    expect(readAnswer('{"answer":"","general":"Paris","found":"no"}')).toEqual({ answer: 'The recordings do not mention this.', found: 'no', general: 'Paris' });
     expect(readAnswer('{"answer":"x","found":"maybe"}')!.found).toBe('partly');
     expect(readAnswer('{"answer":""}')).toBeNull();
     expect(readAnswer('not json')).toBeNull();
@@ -485,5 +485,19 @@ describe('demo model', () => {
     expect(budget.answer).toContain('The budget is fixed. [S1]');
     expect(budget.answer).not.toContain('[S2]');
     expect(await ask('Who won the match?')).toMatchObject({ found: 'no' });
+  });
+});
+
+describe('what a small offline model taught us', () => {
+  it('a citation written with its line time, [S11 0:38], is checked and linked like [S11]', async () => {
+    const { normalizeCitationBrackets } = await import('../../src/shared/summaries');
+    expect(normalizeCitationBrackets('Postponed [S11 0:38].')).toBe('Postponed [S11].');
+    expect(normalizeCitationBrackets('Due Friday [S5 1:02:07] and [S6].')).toBe('Due Friday [S5] and [S6].');
+  });
+
+  it('"not in the recordings" with an empty answer becomes a plain sentence, not a blank reply', async () => {
+    const { validateAnswer, NOT_IN_RECORDINGS } = await import('../../src/shared/chat');
+    expect(validateAnswer({ answer: '', found: 'no', general: '' })).toEqual({ answer: NOT_IN_RECORDINGS, found: 'no', general: '' });
+    expect(() => validateAnswer({ answer: '', found: 'yes', general: '' })).toThrow();
   });
 });
