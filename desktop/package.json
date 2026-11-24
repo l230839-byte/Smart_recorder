@@ -1,7 +1,7 @@
 {
   "name": "echomind-desktop",
   "productName": "EchoMind",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Turn every recording into knowledge, documents and action.",
   "private": true,
   "license": "UNLICENSED",

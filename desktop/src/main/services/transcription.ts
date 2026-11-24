@@ -1,3 +1,4 @@
+import { isSilent } from '@shared/audio-level';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Settings, TranscribeOutcome } from '@shared/models';
@@ -116,8 +117,16 @@ export class TranscriptionService implements JobHandler {
       const totalMs = Math.max(1, recording.durationMs);
       const language = job.language === 'auto' ? null : job.language;
 
+      const peaks = library.peaks(recording.id);
       for (const chunk of chunks) {
         if (chunk.segments) continue;
+        // A silent piece is never sent: it costs quota, and Whisper answers silence with invented text
+        // (seen: "Thank you." 80 times for a 43-minute recording from a silent microphone).
+        if (isSilent(peaks, chunk.startMs / totalMs, chunk.endMs / totalMs)) {
+          jobs.saveChunk(job.id, chunk.idx, [], null);
+          chunk.segments = [];
+          continue;
+        }
         const doneMs = chunks.filter((c) => c.segments).reduce((sum, c) => sum + (c.endMs - c.startMs), 0);
         jobs.setRunning(job.id, chunks.length > 1 ? `Transcribing part ${chunk.idx + 1} of ${chunks.length}` : 'Transcribing', doneMs / totalMs);
         this.deps.changed();
@@ -141,7 +150,11 @@ export class TranscriptionService implements JobHandler {
 
       const segments = mergeChunks(chunks.map((c) => ({ startMs: c.startMs, segments: c.segments ?? [] })));
       if (segments.length === 0) {
-        jobs.setFailed(job.id, 'No speech was found in this recording.', false);
+        jobs.setFailed(
+          job.id,
+          isSilent(peaks) ? 'This recording has no sound, so nothing was sent for transcription. The microphone may have been muted, or a different one was selected.' : 'No speech was found in this recording.',
+          false,
+        );
         return;
       }
       transcripts.addOriginal(recording.id, job.provider, job.model, chunks.find((c) => c.language)?.language ?? language, segments);

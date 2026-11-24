@@ -8,6 +8,18 @@ interface VerboseSegment {
   end?: unknown;
   text?: unknown;
   avg_logprob?: unknown;
+  no_speech_prob?: unknown;
+}
+
+/**
+ * Whisper's own test for a line it heard in silence: it thinks there was probably no speech, and it is not
+ * confident in the words. (The thresholds are OpenAI Whisper's defaults.) Such lines are the classic
+ * silence hallucinations: "Thank you.", "Thanks for watching!".
+ */
+function likelyNoSpeech(s: VerboseSegment): boolean {
+  const noSpeech = num(s.no_speech_prob);
+  const logprob = num(s.avg_logprob);
+  return noSpeech !== null && logprob !== null && noSpeech > 0.6 && logprob < -1;
 }
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -18,14 +30,20 @@ export function parseVerboseJson(body: unknown, durationMs: number): { language:
   const data = body as { text?: unknown; language?: unknown; segments?: unknown };
   const language = typeof data.language === 'string' ? data.language : null;
   if (Array.isArray(data.segments)) {
+    let noSpeech = 0;
     const segments = (data.segments as VerboseSegment[]).flatMap((s): ChunkSegment[] => {
       const start = num(s.start);
       const end = num(s.end);
       if (start === null || end === null || typeof s.text !== 'string') return [];
+      if (likelyNoSpeech(s)) {
+        noSpeech++;
+        return [];
+      }
       const logprob = num(s.avg_logprob);
       return [{ startMs: start * 1000, endMs: end * 1000, text: s.text, speaker: null, confidence: logprob === null ? null : Math.exp(logprob) }];
     });
-    if (segments.length || (data.segments as unknown[]).length === 0) return { language, segments };
+    // Lines dropped as "no speech" must not come back through the plain-text fallback below.
+    if (segments.length || noSpeech || (data.segments as unknown[]).length === 0) return { language, segments };
   }
   // Some compatible services return only text. The transcript is real but has one timestamp.
   if (typeof data.text === 'string') {

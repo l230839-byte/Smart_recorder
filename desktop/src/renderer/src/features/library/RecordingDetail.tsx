@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Archive, ArchiveRestore, Bookmark, CheckSquare, Package, Download, FileAudio, FileText, FolderInput, Maximize2, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
+import { Archive, ArchiveRestore, Bookmark, CheckSquare, Package, Download, FileAudio, FileText, FolderInput, Maximize2, MicOff, MoreVertical, Pause, Pencil, Play, Plus, RotateCcw, Scissors, Star, Trash2, X } from 'lucide-react';
 import { formatBytes, formatDateTime, formatDuration } from '@shared/format';
 import { clampPosition } from '@shared/media';
 import { TRANSCRIPT_LANGUAGES } from '@shared/providers';
@@ -216,6 +216,18 @@ export function RecordingDetail({ id, startMs }: { id: string; startMs?: number 
           <Button size="sm" icon={RotateCcw} onClick={() => void api.restoreRecordings([id])}>
             Restore
           </Button>
+        </div>
+      )}
+
+      {recording.silent && !inTrash && (
+        <div className="notice warning" role="alert">
+          <MicOff size={18} aria-hidden />
+          <span className="grow">
+            <strong>No sound was captured in this recording.</strong> The microphone was probably muted, or a different one was selected.
+            {recording.hasTranscript
+              ? ' Its transcript was made from silence, so its words are likely invented by the transcription service and should not be trusted.'
+              : ' EchoMind will not send it for transcription. Check the microphone on the Record screen before your next recording.'}
+          </span>
         </div>
       )}
 

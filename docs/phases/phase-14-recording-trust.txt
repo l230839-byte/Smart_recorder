@@ -1,0 +1,97 @@
+ECHOMIND DESKTOP: PHASE 14, RECORDINGS YOU CAN TRUST          (version 0.2.0)
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §4 recording reliability; §5 transcription; §22 reliability
+Date:        2026-11-24
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+The owner recorded a 43:31 lecture and found no sound on playback. Make a silent
+recording impossible to miss, before, during and after recording, and stop silence from
+turning into an invented transcript.
+
+
+2. WHAT WAS FOUND (READ ONLY, BEFORE ANY CHANGE)
+--------------------------------------------------------------------------------
+- The file was a valid 43:31 Opus recording, but near-silent throughout: average
+  -75 dBFS, loudest moment -44 dBFS (speech is around -20). Playback worked; the
+  microphone delivered nothing.
+- Windows privacy allowed the microphone. EchoMind recorded from a specific saved device,
+  not the system default; the machine has Bluetooth headsets (soundcore, Pixel phone)
+  that come and go.
+- EchoMind's only safeguard was a small "No sound for 30 seconds" line on the Record
+  screen, and nothing elsewhere.
+- Groq's Whisper "transcribed" the silence as "Thank you." 80 times, every 30 seconds:
+  a known Whisper hallucination, saved as a real transcript.
+
+
+3. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+Before recording
+- The Record screen shows "Microphone check: <device name>" with a live level bar.
+- If nothing comes through for 3 seconds: "No sound from <device>. It may be muted,
+  switched off, or not the microphone you mean. A recording now would be silent." with
+  "Use system default" when a specific microphone is chosen.
+- A saved microphone that is not connected falls back to the default, and says so.
+
+While recording
+- "Recording from <device>" under the waveform.
+- After 10 seconds of silence: a red banner "EchoMind cannot hear anything", with
+  "Stop and choose another microphone" (what was captured is saved); on any other
+  screen a toast with "Open recorder"; the sidebar indicator turns solid red with
+  "No sound". After a minute, if the window is hidden, a Windows notification.
+- All of it clears by itself when sound returns.
+
+After recording
+- Recordings with no sound are badged "No sound" in the Library, and their page
+  explains why and says whether an existing transcript should be trusted. The owner's
+  43-minute recording now shows this.
+- Transcription never sends silent stretches: no quota is spent and nothing can be
+  invented. A recording silent throughout fails with "This recording has no sound… the
+  microphone may have been muted, or a different one was selected."
+- Whisper lines that Whisper itself rates as probably not speech are dropped.
+
+
+4. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Silence is judged from the waveform EchoMind already stores (800 peaks per
+    recording), so no migration and no re-reading of audio: a stretch is silent when
+    under 2% of its buckets reach -38 dBFS. Checked against the owner's library: the
+    silent lecture is 0.0% audible, a normal 52-minute recording 100%.
+D2  Ten seconds before warning (it was thirty): short enough to save a lecture, long
+    enough to ignore a pause. A single click does not count as sound.
+D3  The microphone check reads levels only and closes the device when the screen closes;
+    the screen says nothing is recorded until Start.
+D4  The Whisper filter uses OpenAI Whisper's own thresholds (no_speech_prob > 0.6 and
+    avg_logprob < -1), so confident short replies ("Yes.") are kept; and lines dropped as
+    silence can never come back through the plain-text fallback.
+D5  The old transcript of the silent recording is not deleted automatically; its page
+    says it was made from silence. The owner decides.
+
+
+5. TESTS
+--------------------------------------------------------------------------------
+- Unit (294 passing; new: silence from waveforms including late starts and single
+  clicks, Whisper no-speech filtering, a silent recording never sent, only the silent
+  piece of a late-starting lecture skipped).
+- End to end, new recording-safety.spec.ts: Chromium plays a silent WAV as the
+  microphone; the pre-record warning, the toast and red sidebar on another screen, the
+  banner, the "No sound" badge and notice, and transcription refusing to send all
+  appear. A working microphone passes the check; a missing saved one falls back.
+- Full end-to-end suite: 52 passing, 1 skipped (as before). It caught one duplicate: with
+  the microphone blocked, the recorder and the new check both showed the same alert; the
+  check now steps aside when the recorder already explains the problem.
+
+
+6. REVIEW
+--------------------------------------------------------------------------------
+Designer: the warning escalates with the stakes (meter, then banner, toast and red
+indicator, then a system notification) and always offers the next step.
+Developer: one silence definition (shared/audio-level.ts) used by the Library, the
+recording page, transcription and the recorder; the microphone is opened by one shared
+function, so the check and the recorder always use the same device.
+Cause of the owner's silence: most likely the saved device was a Bluetooth headset that
+delivered no audio (the recording used a specific saved device, and Windows privacy
+allowed the microphone). The new check would have shown "No sound from <name>" before
+recording began.

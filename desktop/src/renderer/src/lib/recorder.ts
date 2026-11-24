@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { SILENCE_AMPLITUDE } from '@shared/audio-level';
 import { AUDIO_QUALITY, type RecordingMode, type Settings } from '@shared/models';
 import { api, errorMessage } from './api';
 
@@ -15,6 +16,10 @@ export interface RecorderState {
   /** Recent levels for the live waveform, oldest first. */
   levels: number[];
   bookmarkCount: number;
+  /** The microphone actually in use, as Windows names it. */
+  deviceLabel: string;
+  /** No sound has come through for a while: the microphone is muted, off or the wrong one. */
+  silent: boolean;
   warning: string | null;
   error: string | null;
   lastSavedId: string | null;
@@ -22,8 +27,11 @@ export interface RecorderState {
 
 const CHUNK_MS = 1000;
 const LEVEL_HISTORY = 160;
-const SILENCE_WARNING_MS = 30_000;
-const SILENCE_LEVEL = 0.012;
+/** Soon enough to save a lecture, long enough to ignore a pause. */
+const SILENCE_WARNING_MS = 10_000;
+/** If the window is hidden, Windows is asked to show a notification after this long. */
+const SILENCE_NOTIFY_MS = 60_000;
+const SILENCE_LEVEL = SILENCE_AMPLITUDE;
 const LOW_DISK_BYTES = 500 * 1024 * 1024;
 const CRITICAL_DISK_BYTES = 50 * 1024 * 1024;
 const DISK_CHECK_MS = 30_000;
@@ -38,10 +46,49 @@ const INITIAL: RecorderState = {
   level: 0,
   levels: [],
   bookmarkCount: 0,
+  deviceLabel: '',
+  silent: false,
   warning: null,
   error: null,
   lastSavedId: null,
 };
+
+export function micConstraints(settings: Pick<Settings, 'noiseSuppression' | 'echoCancellation' | 'autoGain'>, deviceId: string | null): MediaStreamConstraints {
+  return {
+    audio: {
+      deviceId: deviceId ? { exact: deviceId } : undefined,
+      noiseSuppression: settings.noiseSuppression,
+      echoCancellation: settings.echoCancellation,
+      autoGainControl: settings.autoGain,
+    },
+  };
+}
+
+/** A saved microphone that is unplugged or gone; the default one is used instead. */
+function isMissingDevice(e: unknown): boolean {
+  return e instanceof DOMException && ['OverconstrainedError', 'NotFoundError', 'NotReadableError'].includes(e.name);
+}
+
+/**
+ * Opens the chosen microphone, or the default if the chosen one is not available, and says which. Shared
+ * by the microphone check and the recorder, so both always use the same device.
+ */
+export async function openMicrophone(settings: Settings): Promise<{ stream: MediaStream; fallback: boolean }> {
+  try {
+    return { stream: await navigator.mediaDevices.getUserMedia(micConstraints(settings, settings.inputDeviceId)), fallback: false };
+  } catch (e) {
+    if (!settings.inputDeviceId || !isMissingDevice(e)) throw e;
+    return { stream: await navigator.mediaDevices.getUserMedia(micConstraints(settings, null)), fallback: true };
+  }
+}
+
+export function deviceName(stream: MediaStream | null): string {
+  return stream?.getAudioTracks()[0]?.label || 'the microphone';
+}
+
+export function silenceWarning(label: string): string {
+  return `No sound is coming from ${label}. Check that it is switched on, not muted, and is the microphone you mean to use.`;
+}
 
 export function micErrorMessage(e: unknown): string {
   const name = e instanceof DOMException ? e.name : '';
@@ -65,6 +112,7 @@ class Recorder {
   private accumulatedMs = 0;
   private runningSince = 0;
   private silentSince = 0;
+  private notified = false;
   private bytesWritten = 0;
   private failedWrite = false;
   private pendingChunks: Promise<unknown> = Promise.resolve();
@@ -96,14 +144,9 @@ class Recorder {
       const free = await api.getFreeSpace();
       if (free < CRITICAL_DISK_BYTES) throw new Error('There is not enough free disk space to record.');
 
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: settings.inputDeviceId ? { exact: settings.inputDeviceId } : undefined,
-          noiseSuppression: settings.noiseSuppression,
-          echoCancellation: settings.echoCancellation,
-          autoGainControl: settings.autoGain,
-        },
-      });
+      const opened = await openMicrophone(settings);
+      this.stream = opened.stream;
+      const label = deviceName(this.stream);
       const sessionId = await api.beginRecording(title, mode);
 
       this.media = new MediaRecorder(this.stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: AUDIO_QUALITY[settings.audioQuality].bitrate });
@@ -120,7 +163,17 @@ class Recorder {
       this.failedWrite = false;
       this.pendingChunks = Promise.resolve();
       this.media.start(CHUNK_MS);
-      this.set({ status: 'recording', sessionId, warning: free < LOW_DISK_BYTES ? 'Disk space is low. Recording will stop safely if it runs out.' : null });
+      this.notified = false;
+      this.set({
+        status: 'recording',
+        sessionId,
+        deviceLabel: label,
+        warning: opened.fallback
+          ? `The selected microphone is not available, so ${label} is being used.`
+          : free < LOW_DISK_BYTES
+            ? 'Disk space is low. Recording will stop safely if it runs out.'
+            : null,
+      });
       this.diskTimer = setInterval(() => void this.checkDisk(), DISK_CHECK_MS);
     } catch (e) {
       this.releaseDevices();
@@ -159,9 +212,19 @@ class Recorder {
       const now = performance.now();
       if (peak > SILENCE_LEVEL) {
         this.silentSince = now;
-        if (this.state.warning?.startsWith('No sound')) this.set({ warning: null });
-      } else if (now - this.silentSince > SILENCE_WARNING_MS && !this.state.warning) {
-        this.set({ warning: 'No sound for 30 seconds. Check that the right microphone is selected and not muted.' });
+        this.notified = false;
+        if (this.state.silent) this.set({ silent: false, warning: this.state.warning === silenceWarning(this.state.deviceLabel) ? null : this.state.warning });
+      } else if (now - this.silentSince > SILENCE_WARNING_MS) {
+        if (!this.state.silent) this.set({ silent: true, warning: silenceWarning(this.state.deviceLabel) });
+        // A hidden window cannot show its banner, so Windows is asked to say it instead.
+        if (now - this.silentSince > SILENCE_NOTIFY_MS && !this.notified && (document.hidden || !document.hasFocus())) {
+          this.notified = true;
+          try {
+            new Notification('EchoMind cannot hear anything', { body: `Recording, but ${this.state.deviceLabel} has given no sound for a minute.` });
+          } catch {
+            /* notifications unavailable: the banner and sidebar still say it */
+          }
+        }
       }
       const level = Math.min(1, Math.sqrt(peak));
       const levels = ++tick % 2 === 0 ? [...this.state.levels.slice(1 - LEVEL_HISTORY), level] : this.state.levels;

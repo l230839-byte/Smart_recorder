@@ -9,6 +9,7 @@ import { openDatabase, type Db } from '../../src/main/db/database';
 import { LibraryRepository } from '../../src/main/db/library';
 import { ConsentRepository, JobRepository, SecretStore, TranscriptRepository, UsageRepository, type Cipher } from '../../src/main/db/transcripts';
 import { backoffMs, keyName, TranscriptionService } from '../../src/main/services/transcription';
+import { isSilent } from '../../src/shared/audio-level';
 import { DEFAULT_SETTINGS, type Settings } from '../../src/shared/models';
 import { validateBaseUrl } from '../../src/shared/providers';
 import { activeBlockIndex, cleanText, findMatches, hasQuestions, mergeChunks, planChunks, toBlocks, toSrt, toVtt, type Segment } from '../../src/shared/transcript';
@@ -316,7 +317,7 @@ describe('transcription queue', () => {
     });
 
   const addRecording = (durationMs = 1000) =>
-    library.insertRecording({ title: 'A lecture', mode: 'lecture', source: 'picker', format: 'OGG', codec: 'Opus', durationMs, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: `${Math.random()}.ogg`, mime: 'audio/ogg', peaks: new Uint8Array(800) });
+    library.insertRecording({ title: 'A lecture', mode: 'lecture', source: 'picker', format: 'OGG', codec: 'Opus', durationMs, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: `${Math.random()}.ogg`, mime: 'audio/ogg', peaks: new Uint8Array(800).fill(150) });
 
   /**
    * Runs until the queue is idle: no job running or queued. A fixed pause was not enough when the machine
@@ -500,6 +501,39 @@ describe('transcription queue', () => {
     s.retry(jobId);
     await settle();
     expect(jobs.get(jobId)!.status).toBe('done');
+  });
+
+  it('a silent recording is never sent anywhere, and the reason says to check the microphone', async () => {
+    const id = library.insertRecording({ title: 'Lecture', mode: 'lecture', source: 'native', format: 'OGG', codec: 'Opus', durationMs: 43 * 60_000, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: `${Math.random()}.ogg`, mime: 'audio/ogg', peaks: new Uint8Array(800).fill(19) });
+    const s = service();
+    const { jobId } = s.request(id) as { jobId: string };
+    await settle();
+    expect(calls).toHaveLength(0);
+    expect(prepared).toBe(0);
+    expect(jobs.get(jobId)).toMatchObject({ status: 'failed', retryable: false });
+    expect(jobs.get(jobId)!.error).toMatch(/no sound.*microphone/i);
+    expect(library.getRecording(id)!.silent).toBe(true);
+  });
+
+  it('only the silent parts of a real recording are skipped', async () => {
+    // 30 minutes: the first 10 silent (before the lecture began), then speech.
+    const peaks = Uint8Array.from({ length: 800 }, (_, i) => (i < 267 ? 10 : 150));
+    const id = library.insertRecording({ title: 'Late start', mode: 'lecture', source: 'native', format: 'OGG', codec: 'Opus', durationMs: 30 * 60_000, sizeBytes: 1, sampleRate: 48000, channels: 1, fileName: `${Math.random()}.ogg`, mime: 'audio/ogg', peaks });
+    const s = service();
+    const { jobId } = s.request(id) as { jobId: string };
+    for (let i = 0; i < 5 && jobs.get(jobId)!.status !== 'done'; i++) {
+      await settle();
+      s.pump();
+    }
+    expect(jobs.get(jobId)!.status).toBe('done');
+    // Pieces are cut at the quietest moment near each 10-minute mark, so the first cut falls inside the
+    // silence: that piece is skipped, every piece with speech is sent.
+    const plan = planChunks(30 * 60_000, peaks, 600_000);
+    const silentPieces = plan.filter((p) => isSilent(peaks, p.startMs / (30 * 60_000), p.endMs / (30 * 60_000))).length;
+    expect(silentPieces).toBe(1);
+    expect(calls).toHaveLength(plan.length - silentPieces);
+    expect(calls.every((c) => c.durationMs > 0)).toBe(true);
+    expect(library.getRecording(id)!.silent).toBe(false);
   });
 
   it('offline Whisper needs no key, consent or internet, but waits for its model; its pieces are 16 kHz WAV', async () => {

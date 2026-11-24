@@ -4,6 +4,7 @@ import { formatDuration, plural } from '@shared/format';
 import { AUDIO_QUALITY, MODE_INFO, RECORDING_MODES, type AudioQuality, type RecordingMode } from '@shared/models';
 import { Button, Card, ConfirmDialog, Dialog, Loading, PageHeader, Segmented, type IconType } from '../../design/components';
 import { LiveWaveform } from '../../design/Waveform';
+import { MicCheck } from './MicCheck';
 import { api, useQuery } from '../../lib/api';
 import { player } from '../../lib/player';
 import { recorder, useRecorder } from '../../lib/recorder';
@@ -113,6 +114,8 @@ function ModeSelection() {
               ))}
           </select>
         </div>
+        {/* When the recorder already explains a microphone problem above, the check would only repeat it. */}
+        {!error && <MicCheck settings={s} onUseDefault={() => void api.updateSettings({ inputDeviceId: null })} />}
         <div className="field">
           <span className="field-label">Quality</span>
           <Segmented label="Recording quality" options={QUALITY_OPTIONS} value={s.audioQuality} onChange={(audioQuality) => void api.updateSettings({ audioQuality })} />
@@ -149,6 +152,9 @@ function ActiveRecording() {
       if (id) go({ name: 'recording', id });
     });
   };
+
+  // What was captured is saved; the Record screen then shows the microphone check to pick another.
+  const stopAndChooseMic = () => void recorder.stop();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -188,12 +194,25 @@ function ActiveRecording() {
 
       <LiveWaveform levels={state.levels} active={!paused} />
 
-      {state.warning && (
-        <div className="notice warning" role="status">
-          {state.warning.startsWith('No sound') ? <MicOff size={18} aria-hidden /> : <CircleAlert size={18} aria-hidden />}
-          <span className="grow">{state.warning}</span>
+      {state.silent ? (
+        <div className="notice error silence-banner" role="alert">
+          <MicOff size={22} aria-hidden />
+          <span className="grow">
+            <strong>EchoMind cannot hear anything.</strong> {state.warning}
+          </span>
+          <Button size="sm" onClick={stopAndChooseMic} disabled={saving}>
+            Stop and choose another microphone
+          </Button>
         </div>
+      ) : (
+        state.warning && (
+          <div className="notice warning" role="status">
+            <CircleAlert size={18} aria-hidden />
+            <span className="grow">{state.warning}</span>
+          </div>
+        )
       )}
+      {!state.silent && state.deviceLabel && <span className="muted small">Recording from {state.deviceLabel}</span>}
 
       <div className="record-controls">
         {paused ? (

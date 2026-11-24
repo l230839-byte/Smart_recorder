@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { FileUp, Loader2, Pause, Play, X } from 'lucide-react';
+import { FileUp, Loader2, MicOff, Pause, Play, X } from 'lucide-react';
 import { formatDuration, plural } from '@shared/format';
 import { IconButton } from '../design/components';
 import { Waveform } from '../design/Waveform';
 import { api, onEvent, useQuery } from '../lib/api';
 import { player, usePlayer } from '../lib/player';
-import { recorder, useRecorder } from '../lib/recorder';
+import { recorder, silenceWarning, useRecorder } from '../lib/recorder';
 import { useRouter } from '../lib/router';
 import { useToast } from '../lib/toast';
 
@@ -56,8 +56,14 @@ export function RecordingIndicator() {
         </button>
       )}
       {recording && (
-      <button type="button" className="rec-pill" aria-label={`Recording, ${formatDuration(state.elapsedMs)}. Open recorder`} onClick={() => section !== 'record' && switchTo({ name: 'record' })}>
-        <span className={`record-dot ${state.status === 'paused' ? 'paused' : ''}`} aria-hidden />
+      <button
+        type="button"
+        className={`rec-pill ${state.silent ? 'silent' : ''}`}
+        aria-label={state.silent ? `Recording, but no sound is coming through. Open recorder` : `Recording, ${formatDuration(state.elapsedMs)}. Open recorder`}
+        onClick={() => section !== 'record' && switchTo({ name: 'record' })}
+      >
+        {state.silent ? <MicOff size={14} aria-hidden /> : <span className={`record-dot ${state.status === 'paused' ? 'paused' : ''}`} aria-hidden />}
+        {state.silent && <span className="small">No sound</span>}
         <span className="grow tabular" style={{ textAlign: 'left' }}>
           {state.status === 'saving' ? 'Saving…' : state.status === 'paused' ? `Paused ${formatDuration(state.elapsedMs)}` : formatDuration(state.elapsedMs)}
         </span>
@@ -125,9 +131,9 @@ export function DropTarget() {
 
 /** Reacts to things that happen outside any one screen. */
 export function GlobalEvents() {
-  const { go, route } = useRouter();
+  const { go, route, switchTo } = useRouter();
   const toast = useToast();
-  const { warning, error, lastSavedId, status } = useRecorder();
+  const { warning, error, lastSavedId, status, silent, deviceLabel } = useRecorder();
 
   useEffect(() => onEvent('imports:opened', () => go({ name: 'import' })), [go]);
   useEffect(() => onEvent('recording:open', (id) => go({ name: 'recording', id })), [go]);
@@ -172,6 +178,14 @@ export function GlobalEvents() {
       }),
     [],
   );
+
+  // Silence while recording must be seen on whatever screen is open, not only on the Record screen.
+  // Once each time the silence starts, not on every screen change; taken back as soon as it ends.
+  useEffect(() => {
+    if (!silent || route.name === 'record') return;
+    const id = toast.show(silenceWarning(deviceLabel), { label: 'Open recorder', run: () => switchTo({ name: 'record' }) });
+    return () => toast.dismiss(id);
+  }, [silent]);
 
   // A stop the user did not ask for (unplugged mic, full disk) must be seen on whatever screen is open.
   useEffect(() => {

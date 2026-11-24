@@ -1,4 +1,4 @@
-import { Check, Star } from 'lucide-react';
+import { Check, MicOff, Star } from 'lucide-react';
 import { formatDuration, formatRelative } from '@shared/format';
 import { MODE_INFO, SOURCE_LABEL, type Recording } from '@shared/models';
 import { MODE_ICON } from '../record/RecordScreen';
@@ -62,6 +62,11 @@ export function RecordingRow({
             <span aria-hidden>·</span>
             <span>{MODE_INFO[recording.mode].label}</span>
             {imported && <span className="badge">{SOURCE_LABEL[recording.source]}</span>}
+            {recording.silent && (
+              <span className="badge badge-warning" title="No sound was captured: the microphone was probably muted or not the one selected.">
+                <MicOff size={11} aria-hidden /> No sound
+              </span>
+            )}
             {recording.hasTranscript && <span className="badge badge-teal">Transcript</span>}
             {recording.tags.slice(0, 3).map((t) => (
               <span key={t.id} className="rec-tag">

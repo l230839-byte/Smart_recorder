@@ -11,6 +11,10 @@ your computer, works with free AI services using your own key, and sends nothing
 2. **Turn off Offline only** in Settings > Privacy when you are ready to use a cloud provider. EchoMind asks for your agreement before the first upload to each one.
 3. **Record or import.** Record from the Record tab, or import files from your phone's recorder, WhatsApp voice notes or videos (Home > Import, or drag files onto the window). Every recording gets the same features, however it arrived.
 
+## Before you record
+
+The Record screen shows a microphone check: the name of the microphone in use and a live level bar. If it says "No sound from…", the microphone is muted, switched off or not the one you mean; choose another or "Use system default" before starting. If a recording goes silent, EchoMind says so within ten seconds on any screen.
+
 ## Every recording
 
 - **Transcribe** on the recording's page. Edit any line; the original is kept.

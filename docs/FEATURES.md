@@ -7,6 +7,7 @@ Only what is implemented and verified is listed as **Working**.
 | Onboarding, local profile, privacy choice, key step | Working |
 | Themes: light, dark or system; six accent colours; high contrast (or follow Windows) | Working |
 | Recording with modes, bookmarks, notes, live waveform | Working (tested with a simulated microphone) |
+| Microphone check before recording, silence watchdog while recording, fallback from a missing microphone, "No sound" recordings flagged | Working (tested with a simulated silent microphone) |
 | Crash recovery: recordings, jobs and a crashed window; diagnostics log of starts, quits and crashes | Working |
 | Import: MP3, WAV, M4A, AAC, OGG, Opus, FLAC, WebM; audio from video | Working |
 | Import: AMR, WMA and others through the FFmpeg add-on | Working (verified 2026-11-10; needs `npm run fetch:ffmpeg` once) |

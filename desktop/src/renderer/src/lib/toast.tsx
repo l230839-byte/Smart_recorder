@@ -9,8 +9,10 @@ interface Toast {
 }
 
 interface ToastValue {
-  show: (text: string, action?: Toast['action']) => void;
+  /** Shows a message; the id lets a message that stops being true be taken back early. */
+  show: (text: string, action?: Toast['action']) => number;
   showError: (e: unknown) => void;
+  dismiss: (id: number) => void;
 }
 
 const ToastContext = createContext<ToastValue | null>(null);
@@ -19,15 +21,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const next = useRef(1);
 
-  const push = useCallback((text: string, error: boolean, action?: Toast['action']) => {
-    const id = next.current++;
-    setToasts((t) => [...t.slice(-2), { id, text, error, action }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), error || action ? 7000 : 3500);
-  }, []);
+  const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+
+  const push = useCallback(
+    (text: string, error: boolean, action?: Toast['action']) => {
+      const id = next.current++;
+      setToasts((t) => [...t.slice(-2), { id, text, error, action }]);
+      setTimeout(() => dismiss(id), error || action ? 7000 : 3500);
+      return id;
+    },
+    [dismiss],
+  );
 
   const value = useMemo<ToastValue>(
-    () => ({ show: (text, action) => push(text, false, action), showError: (e) => push(errorMessage(e), true) }),
-    [push],
+    () => ({
+      show: (text, action) => push(text, false, action),
+      showError: (e) => void push(errorMessage(e), true),
+      dismiss,
+    }),
+    [push, dismiss],
   );
 
   return (

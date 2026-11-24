@@ -1,3 +1,4 @@
+import { isSilent } from '@shared/audio-level';
 import { randomUUID } from 'node:crypto';
 import type { Bookmark, Collection, ImportJob, ImportStatus, LibraryQuery, LibraryStats, Recording, RecordingMode, RecordingSource, Tag } from '@shared/models';
 import { transaction, type Db } from './database';
@@ -27,6 +28,7 @@ interface RecordingRow {
   updated_at: number;
   tags_json: string;
   has_transcript: number;
+  peaks: Uint8Array | null;
 }
 
 const RECORDING_SELECT = `
@@ -35,7 +37,8 @@ const RECORDING_SELECT = `
     FROM recording_tags rt JOIN tags t ON t.id = rt.tag_id
     WHERE rt.recording_id = r.id
   ) AS tags_json,
-  EXISTS (SELECT 1 FROM transcript_versions v WHERE v.recording_id = r.id) AS has_transcript
+  EXISTS (SELECT 1 FROM transcript_versions v WHERE v.recording_id = r.id) AS has_transcript,
+  (SELECT w.peaks FROM waveforms w WHERE w.recording_id = r.id) AS peaks
   FROM recordings r`;
 
 function toRecording(row: RecordingRow): Recording {
@@ -62,6 +65,8 @@ function toRecording(row: RecordingRow): Recording {
     updatedAt: row.updated_at,
     tags: tags.sort((a, b) => a.name.localeCompare(b.name)),
     hasTranscript: row.has_transcript === 1,
+    // From the stored waveform (800 bytes), so the Library can flag a recording with no sound.
+    silent: isSilent(row.peaks ? new Uint8Array(row.peaks) : null),
   };
 }
 

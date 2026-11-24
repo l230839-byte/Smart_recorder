@@ -57,6 +57,8 @@ export interface Recording {
   updatedAt: number;
   tags: Tag[];
   hasTranscript: boolean;
+  /** Essentially no sound in the whole recording, such as a muted or wrong microphone. */
+  silent: boolean;
 }
 
 export interface Bookmark {

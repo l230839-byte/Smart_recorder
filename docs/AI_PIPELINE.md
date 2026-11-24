@@ -26,6 +26,10 @@ The "On this computer" provider runs whisper.cpp's `whisper-cli` on each piece, 
 
 Gemini 3.5 Transcribe is reached through the Gemini API's Interactions endpoint (`/v1beta/interactions`), with each piece sent inline as Ogg/Opus and `transcription_config.mode` asking for verbatim text, speaker diarization and word timestamps. `parseGeminiTranscript` builds lines from the words: a new line at a change of speaker, at a sentence end after a pause of 0.7 s or more, at any sentence end past 20 s, and in any case past 40 s. Times are clamped to the piece. Speakers become "Speaker A", "Speaker B"… Gemini's labels restart with every request, so Gemini gets 25-minute pieces (`maxChunkMs`) instead of the usual 10. Silence returns no text and is reported as "speech not found", as for Whisper.
 
+### Silence
+
+Every recording has a waveform of 800 peak values. `isSilent` in `shared/audio-level.ts` calls a stretch silent when under 2% of its buckets reach −38 dBFS (a silent microphone measured −44 dBFS at its loudest). Silent pieces are never sent; a recording that is silent throughout fails with a message about the microphone instead of "no speech". From Whisper services, lines with `no_speech_prob` above 0.6 and `avg_logprob` below −1 (OpenAI Whisper's own thresholds) are dropped as silence hallucinations.
+
 ## What happens when something fails
 
 | Failure | Behavior |

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 0.2.0, Phase 14: Recordings you can trust
+
+- A live microphone check on the Record screen names the device in use and warns, before recording, when no sound comes through.
+- While recording, ten seconds of silence brings a red banner, a toast on any other screen, a red "No sound" sidebar indicator, and after a minute a Windows notification if the window is hidden. "Stop and choose another microphone" keeps what was captured.
+- A saved microphone that is no longer connected falls back to the default, and says so.
+- Recordings with no sound are flagged "No sound" in the Library and explained on their page.
+- Silent stretches are never sent for transcription (no quota spent, nothing invented); Whisper lines it rates as probably not speech are dropped. Found live: a 43-minute recording from a silent microphone had been "transcribed" as "Thank you." 80 times.
+
 ### Phase 13: Offline transcription
 
 - "On this computer (offline Whisper)": transcription with no internet and no key, through whisper.cpp (MIT). Works with Offline only on.

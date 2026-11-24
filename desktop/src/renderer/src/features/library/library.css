@@ -355,6 +355,11 @@
   font: 620 13px/1 var(--font);
   cursor: pointer;
 }
+/* Recording, but nothing is coming through: the strongest colour the theme has, so it is noticed. */
+.rec-pill.silent {
+  background: var(--record-strong);
+  color: #fff;
+}
 
 /* Import */
 .import-drop {
