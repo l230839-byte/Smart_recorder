@@ -17,7 +17,8 @@ async function transcribedAll(page: Page, names: string[]): Promise<Recording[]>
   const recs = await call<Recording[]>(page, 'listRecordings', { view: 'all', sort: 'newest' });
   for (const r of recs) await call(page, 'requestTranscription', r.id);
   await expect.poll(async () => (await call<Recording[]>(page, 'listRecordings', { view: 'all', sort: 'newest' })).every((r) => r.hasTranscript), { timeout: 30_000 }).toBe(true);
-  return recs;
+  // In the order asked for: imports run side by side, so "newest" depends on which finished first.
+  return names.map((name) => recs.find((r) => r.originalName === name)!);
 }
 
 test('chat: ask a recording, citations play, sources, follow-ups, not found, many recordings, privacy on delete', async () => {

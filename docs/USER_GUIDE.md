@@ -18,6 +18,8 @@ The Record screen shows a microphone check: the name of the microphone in use an
 
 ## Every recording
 
+- **Label speakers** (on a recording's page) finds who spoke when, on your computer, and labels each transcript line Speaker A, Speaker B and so on, for the whole recording. Choose the number of people if you know it. Rename speakers in the transcript. The first time, 32 MB of models are downloaded.
+
 - **Transcribe** on the recording's page. Edit any line; the original is kept.
 - **Summaries**: choose a format, length, tone and language. Make as many as you like; nothing is transcribed again.
 - **Ask AI**: questions answered from the recording, with times you can play. If it is not in the recording, EchoMind says so.

@@ -9,6 +9,7 @@ npm install
 npm run fetch:ffmpeg     # optional: the LGPL FFmpeg add-on for AMR, WMA and other formats
 npm run fetch:whisper    # whisper.cpp (MIT) for offline transcription; models are downloaded by users in the app
 npm run fetch:llama      # llama.cpp (MIT) for offline writing; models are downloaded by users in the app
+npm run fetch:sherpa     # sherpa-onnx (Apache-2.0) for offline speaker labels; models are downloaded by users in the app
 npm run check            # types, lint, unit tests, licences
 npm run test:e2e         # the real app, end to end, including §29 acceptance and accessibility
 npm run dist             # builds dist/EchoMind-Setup-<version>.exe

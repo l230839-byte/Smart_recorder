@@ -3,7 +3,7 @@ import { CircleCheck, ExternalLink, KeyRound, Trash2 } from 'lucide-react';
 import { formatDateTime, formatDurationLong } from '@shared/format';
 import type { AiPurpose } from '@shared/models';
 import { LLM_PROVIDER_INFO, LLM_PROVIDERS, LOCAL_LLM_MODELS, LOCAL_MODELS, PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES, TRANSCRIPTION_PROVIDERS, type LlmProviderId, type LocalLlmModelId, type LocalModelId, type TranscriptionProviderId } from '@shared/providers';
-import { Button, Card, Loading, PageHeader } from '../../design/components';
+import { Button, Card, Loading, PageHeader, SwitchRow } from '../../design/components';
 import { api, errorMessage, useQuery } from '../../lib/api';
 import { useToast } from '../../lib/toast';
 import { ModelsCard, OfflineCard, WHISPER, WRITING } from './LocalModels';
@@ -233,6 +233,12 @@ export function ProvidersScreen() {
         {(provider === 'local' || s.offlineOnly) && <ModelsCard kind={WHISPER} value={s.offlineTranscriptionModel} fallback="small" offlineOnly={s.offlineOnly} onChange={(offlineTranscriptionModel) => update({ offlineTranscriptionModel })} />}
         <Card>
           {provider !== 'local' && <ModelField id="model" provider={provider} purpose="audio" models={info.models} value={s.transcriptionModel} custom={provider === 'custom'} onChange={(transcriptionModel) => update({ transcriptionModel })} />}
+          <SwitchRow
+            title="Label speakers automatically"
+            subtitle="After each transcript, find who spoke when, on this computer. Needs the speaker models (32 MB), which Label speakers on a recording downloads once."
+            checked={s.autoSpeakers}
+            onChange={(autoSpeakers) => update({ autoSpeakers })}
+          />
           <div className="setting-line">
             <label className="grow" htmlFor="default-language">
               Default language

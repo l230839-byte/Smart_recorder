@@ -131,7 +131,7 @@ export interface ImportJob {
 
 export type JobStatus = 'queued' | 'running' | 'waiting' | 'done' | 'failed' | 'canceled';
 
-export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest' | 'document' | 'studio';
+export type JobKind = 'transcribe' | 'summarize' | 'chapters' | 'suggest' | 'document' | 'studio' | 'diarize';
 
 export const JOB_KIND_LABEL: Record<JobKind, string> = {
   transcribe: 'Transcript',
@@ -140,6 +140,7 @@ export const JOB_KIND_LABEL: Record<JobKind, string> = {
   suggest: 'Title and tags',
   document: 'Document',
   studio: 'AI Studio',
+  diarize: 'Speakers',
 };
 
 export interface Summary {
@@ -319,6 +320,8 @@ export interface Settings {
   /** The models used on this computer: when "On this computer" is chosen, and whenever Offline only is on. */
   offlineTranscriptionModel: string;
   offlineLlmModel: string;
+  /** Label speakers on this computer after every transcription, once the speaker models are downloaded. */
+  autoSpeakers: boolean;
   llmBaseUrl: string | null;
   /** Start EchoMind, minimized, when Windows starts, so task reminders appear on time. */
   openAtLogin: boolean;
@@ -361,6 +364,7 @@ export const DEFAULT_SETTINGS: Settings = {
   llmModel: null,
   offlineTranscriptionModel: 'small',
   offlineLlmModel: 'qwen3-4b',
+  autoSpeakers: false,
   llmBaseUrl: null,
   openAtLogin: false,
   lastBackupAt: null,

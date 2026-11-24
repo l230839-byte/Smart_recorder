@@ -21,6 +21,7 @@ Only what is implemented and verified is listed as **Working**.
 | Transcription on live Groq | Working (live-checked 2026-11-20 and on a 3-hour recording 2026-11-22: all facts found, under 1 s timing drift, resumes after a kill) |
 | Recordings of 1 to 3 hours: transcription, summaries, chapters, titles, minutes, quizzes, tasks and chat | Working (3-hour meeting live-checked 2026-11-22 and 23; free Groq limits mean waits, handled automatically; see FREE_STACK.md) |
 | Transcript viewer: six views, editing with preserved original, versions, find, synced playback, export to TXT, SRT, VTT | Working |
+| Speaker labels on this computer (sherpa-onnx), for any transcript, consistent across the whole recording | Working (live-checked 2026-11-24: two voices 100%; one voice kept one label for a whole hour). About a quarter of an hour per recorded hour on the development computer. |
 | Speaker labels | Working with Gemini 3.5 Transcribe: turns between voices told apart (live 2026-11-23: 100% on a short meeting). Across a long recording the same person can change label (once in 60 minutes in the live check), and labels restart every 25 minutes. Whisper providers supply none. |
 | Transcription on live Gemini 3.5 Transcribe, with word timings from the audio | Working (live-checked 2026-11-23: all 12 facts, turns within 0.1 s of Whisper) |
 | Model choice: tested models first, then every suitable model the service offers today; an overloaded model hands the request to another | Working |

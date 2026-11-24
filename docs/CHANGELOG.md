@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### 0.4.0, Phase 16: Speaker labels on this computer
+
+- "Label speakers" on any recording: sherpa-onnx (Apache-2.0) finds who spoke when, offline, over the whole recording at once, so each voice keeps one label from start to end. Works with any transcript (Groq, Gemini, offline Whisper).
+- Optional number of speakers, an optional "label automatically after transcribing" setting, and a new transcript version that keeps the previous one.
+- Live: two voices 100% correct fully offline; over a one-hour, ten-session meeting the same voice kept one label in 10 of 10 sessions.
+- Fixed a flaky chat test that assumed which of two imports finished first.
+
 ### 0.3.0, Phase 15: Every AI feature offline
 
 - "On this computer (offline)" for writing: summaries, chapters, titles, chat, documents and AI Studio run on llama.cpp (MIT) with Qwen3 4B (2.4 GB) or Qwen3 1.7B (1.1 GB), both Apache-2.0, served only on 127.0.0.1.

@@ -76,6 +76,22 @@ export class TranscriptRepository {
     return id;
   }
 
+  /**
+   * The current transcript with speaker labels found on this computer, as a new version. The version it
+   * came from (original or edited) stays as it was, one click away.
+   */
+  addWithSpeakers(recordingId: string, from: TranscriptVersion, segments: Segment[]): string {
+    const id = randomUUID();
+    transaction(this.db, () => {
+      this.db
+        .prepare("INSERT INTO transcript_versions (id, recording_id, version, kind, provider, model, language, is_current, created_at) VALUES (?, ?, ?, 'edited', ?, ?, ?, 0, ?)")
+        .run(id, recordingId, this.nextVersion(recordingId), 'sherpa-onnx', 'pyannote-3.0 + eres2net', from.language, this.now());
+      this.insertSegments(id, segments);
+      this.makeCurrent(recordingId, id);
+    });
+    return id;
+  }
+
   current(recordingId: string): TranscriptVersion | null {
     const row = this.db.prepare('SELECT * FROM transcript_versions WHERE recording_id = ? AND is_current = 1').get(recordingId) as VersionRow | undefined;
     return row ? toVersion(row) : null;

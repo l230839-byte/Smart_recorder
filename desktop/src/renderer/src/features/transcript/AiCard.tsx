@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckSquare, CircleAlert, Clock, FileText, Heading, LayoutGrid, ListTree, MessagesSquare, RotateCcw, Sparkles, Tag, Type, X } from 'lucide-react';
+import { CheckSquare, CircleAlert, Clock, FileText, Heading, LayoutGrid, ListTree, MessagesSquare, RotateCcw, Sparkles, Tag, Type, Users, X } from 'lucide-react';
 import { formatDuration } from '@shared/format';
 import type { ProcessingJob, Recording } from '@shared/models';
 import { llmChoice, PROVIDER_INFO, providerLabel, TRANSCRIPT_LANGUAGES, transcriptionChoice } from '@shared/providers';
@@ -11,6 +11,7 @@ import { useToast } from '../../lib/toast';
 import '../summary/summary.css';
 import { DEFAULT_STUDIO_OPTIONS } from '@shared/studio';
 import { useTranscribe } from './ai-gate';
+import { SpeakersDialog } from './SpeakersDialog';
 
 export function formatRetryTime(at: number | null): string {
   if (!at) return '';
@@ -58,6 +59,8 @@ export function AiCard({ recording }: { recording: Recording }) {
   const job = useQuery(() => api.latestJob(recording.id, 'transcribe'), [recording.id], ['jobs']);
   const chapterJob = useQuery(() => api.latestJob(recording.id, 'chapters'), [recording.id], ['jobs']);
   const suggestJob = useQuery(() => api.latestJob(recording.id, 'suggest'), [recording.id], ['jobs']);
+  const speakerJob = useQuery(() => api.latestJob(recording.id, 'diarize'), [recording.id], ['jobs']);
+  const [labelSpeakers, setLabelSpeakers] = useState(false);
   const settings = useQuery(() => api.getSettings(), [], ['settings']);
   const usage = useQuery(() => api.getUsage(), [], ['jobs']);
   const chapters = useQuery(() => api.listChapters(recording.id), [recording.id], ['summaries']);
@@ -145,6 +148,9 @@ export function AiCard({ recording }: { recording: Recording }) {
             <Button size="sm" icon={CheckSquare} onClick={() => startText(() => api.startStudio({ kind: 'tasks', recordingIds: [recording.id], options: DEFAULT_STUDIO_OPTIONS }), (out) => go({ name: 'studio-output', id: out.outputId }))}>
               Find action items
             </Button>
+            <Button size="sm" icon={Users} onClick={() => setLabelSpeakers(true)}>
+              Label speakers
+            </Button>
             <Button size="sm" icon={LayoutGrid} onClick={() => go({ name: 'studio', recordingId: recording.id })}>
               More in AI Studio
             </Button>
@@ -152,7 +158,9 @@ export function AiCard({ recording }: { recording: Recording }) {
         )}
         {chapterJob.data && chapterJob.data.status !== 'done' && chapterJob.data.status !== 'canceled' && <JobStatus job={chapterJob.data} />}
         {suggestJob.data && suggestJob.data.status !== 'done' && suggestJob.data.status !== 'canceled' && <JobStatus job={suggestJob.data} />}
+        {speakerJob.data && speakerJob.data.status !== 'done' && speakerJob.data.status !== 'canceled' && <JobStatus job={speakerJob.data} />}
         {dialogs}
+        {labelSpeakers && <SpeakersDialog recordingId={recording.id} offlineOnly={settings.data?.offlineOnly ?? true} onClose={() => setLabelSpeakers(false)} />}
       </Card>
 
       {suggested && (

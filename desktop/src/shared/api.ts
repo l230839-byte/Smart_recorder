@@ -27,7 +27,7 @@ import type {
   Transcript,
   UsageSummary,
 } from './models';
-import type { LlmProviderId, LocalLlmModelId, LocalModelId, LocalModelStatus, TranscriptionProviderId } from './providers';
+import type { LlmProviderId, LocalLlmModelId, LocalModelId, LocalModelStatus, SpeakerModelId, TranscriptionProviderId } from './providers';
 import type { ChatDetail, ChatScope, ChatThread } from './chat';
 import type { DocumentSettings, ExportFormat } from './documents';
 import type { SearchQuery, SearchResult } from './search';
@@ -119,6 +119,13 @@ export interface EchoApi {
   downloadLocalModel(id: LocalModelId): Promise<void>;
   cancelLocalModelDownload(id: LocalModelId): void;
   deleteLocalModel(id: LocalModelId): Promise<void>;
+  /** Offline speaker labels (sherpa-onnx): its two small models, and whether the tool is installed. */
+  listSpeakerModels(): { models: { id: SpeakerModelId; installed: boolean; downloading: { received: number; total: number } | null; partialBytes: number }[]; installed: boolean };
+  downloadSpeakerModels(): Promise<void>;
+  cancelSpeakerModelsDownload(): void;
+  deleteSpeakerModels(): Promise<void>;
+  /** Labels the current transcript's speakers on this computer. `speakers` is the count, if known. */
+  requestSpeakers(recordingId: string, speakers: number | null): { ok: true; jobId: string } | { ok: false; reason: 'needs-transcript' | 'needs-setup' };
   /** Offline writing models (llama.cpp): which are on this computer, and any download in progress. */
   listWritingModels(): { models: { id: LocalLlmModelId; installed: boolean; downloading: { received: number; total: number } | null; partialBytes: number }[]; installed: boolean };
   downloadWritingModel(id: LocalLlmModelId): Promise<void>;

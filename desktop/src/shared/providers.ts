@@ -284,8 +284,35 @@ export function llmChoice(s: { offlineOnly: boolean; llmProvider: LlmProviderId;
   return { provider, model: s.llmModel ?? LLM_PROVIDER_INFO[provider].models[0]! };
 }
 
+/**
+ * The two models sherpa-onnx (Apache-2.0) uses to tell speakers apart on this computer: pyannote's
+ * segmentation 3.0 (MIT), which finds where each voice speaks, and 3D-Speaker's ERes2Net (Apache-2.0),
+ * which recognises the same voice again across the whole recording. Hashes checked after download.
+ */
+export const SPEAKER_MODELS = {
+  segmentation: {
+    label: 'Speech segmentation (pyannote 3.0)',
+    file: 'pyannote-segmentation-3.0.onnx',
+    sizeMb: 6,
+    sha256: '220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079',
+    url: 'https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/main/model.onnx',
+  },
+  voices: {
+    label: 'Voice recognition (3D-Speaker ERes2Net)',
+    file: '3dspeaker-eres2net-voxceleb-16k.onnx',
+    sizeMb: 26,
+    sha256: 'c4947caf150b8502fdd75bbe4089b971ab1ec42e90ee3ba547faca2cde44d9ee',
+    url: 'https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx',
+  },
+} as const;
+export type SpeakerModelId = keyof typeof SPEAKER_MODELS;
+
+/** Transcript versions whose speaker labels were found on this computer. */
+export const SPEAKERS_PROVIDER = 'sherpa-onnx';
+
 /** Any provider's display name, for screens that list jobs from every kind. */
 export function providerLabel(id: string): string {
+  if (id === SPEAKERS_PROVIDER) return 'Speakers found on this computer';
   return (PROVIDER_INFO as Record<string, { label: string }>)[id]?.label ?? (LLM_PROVIDER_INFO as Record<string, { label: string }>)[id]?.label ?? id;
 }
 

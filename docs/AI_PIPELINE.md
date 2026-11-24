@@ -18,6 +18,10 @@ Every source joins at ingestion, so nothing downstream depends on where audio ca
 5. **Merge.** `mergeChunks` shifts timestamps onto the recording's timeline and saves an `original` version.
 6. **Index.** The current version goes into `transcript_search`, so the Library can find it.
 
+### Speaker labels on this computer
+
+"Label speakers" (or the automatic setting after each transcript) is a `diarize` job (`services/speakers.ts`). The media worker writes the whole recording as 16 kHz WAV; sherpa-onnx's offline speaker diarization (pyannote segmentation 3.0 for where voices speak, 3D-Speaker ERes2Net to recognise the same voice again) reads it in one pass, so each voice keeps one label for the entire recording, whatever made the transcript and however it was split. `assignSpeakers` gives each line the voice that speaks longest during it, names voices "Speaker A", "Speaker B" in order of first appearance, lets a line in a short pause take a turn within two seconds, and otherwise leaves it unlabelled rather than guessing. The result is a new transcript version; the one it came from is kept. A known number of speakers can be given, which helps most.
+
 ### Offline writing
 
 "On this computer (offline)" (`local-llm`) runs llama.cpp's `llama-server` from `LocalLlmServer` (`main/ai/local-llm.ts`): bound to 127.0.0.1 on a free port, one model at a time, started when first needed, reloaded if the model changes, and stopped after ten minutes unused or when EchoMind quits. It speaks the same OpenAI-compatible protocol, so `ChatHttpProvider` and every summary, chapter, chat, document and Studio path work unchanged, with longer time limits. Thinking is off (`--reasoning off` and `enable_thinking: false`), so answers are not spent on hidden reasoning. Pieces are 14,000 characters, so each step takes a minute or two on a CPU.

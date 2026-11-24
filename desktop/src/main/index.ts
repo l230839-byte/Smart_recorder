@@ -11,7 +11,7 @@ import { BundleService } from './services/bundles';
 import type { EchoApi, EchoEvents } from '@shared/api';
 import { JOB_KIND_LABEL, type AiPurpose } from '@shared/models';
 import { markdownToClipboard } from '@shared/markdown';
-import { LLM_PROVIDER_INFO, LOCAL_LLM_MODELS, LOCAL_MODELS, PROVIDER_INFO, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type LocalLlmModelId, type LocalModelId, type TranscriptionProviderId } from '@shared/providers';
+import { LLM_PROVIDER_INFO, LOCAL_LLM_MODELS, LOCAL_MODELS, PROVIDER_INFO, SPEAKER_MODELS, SPEECH_BITRATE, reasoningOptions, validateBaseUrl, type LlmProviderId, type LocalLlmModelId, type LocalModelId, type SpeakerModelId, type TranscriptionProviderId } from '@shared/providers';
 import { availableParallelism } from 'node:os';
 import { toPlainText, toSrt, toVtt } from '@shared/transcript';
 import { EXPORT_FORMATS, transcriptToCsv } from '@shared/documents';
@@ -31,6 +31,7 @@ import { initLogFile, logError, logEvent } from './log';
 import { GeminiTranscribeProvider } from './ai/gemini-transcribe';
 import { LocalWhisperProvider } from './ai/local-whisper';
 import { LocalLlmProvider, LocalLlmServer } from './ai/local-llm';
+import { SpeakerService } from './services/speakers';
 import { LocalModelStore } from './services/local-models';
 import { Ffmpeg } from './services/ffmpeg';
 import { ImportService } from './services/imports';
@@ -229,12 +230,37 @@ async function start(): Promise<void> {
       emit('data:changed', 'transcripts');
       libraryChanged();
       notifyReady(recordingId, title, 'Transcript');
+      // Speakers can be labelled straight after, on this computer, if the person asked for that.
+      if (settings.get().autoSpeakers && speakerService.ready()) speakerService.request(recordingId, null);
     },
     queue,
   });
 
   /** Model lists per provider and purpose, kept ten minutes so Settings does not ask on every visit. */
   const modelLists = new Map<string, { at: number; models: string[] }>();
+
+  // Offline speaker labels: sherpa-onnx beside the other tools, its two small models in the data folder.
+  const speakerModels = new LocalModelStore<SpeakerModelId>(join(dataDir, 'models'), () => emit('data:changed', 'settings'), fetch, SPEAKER_MODELS);
+  const speakerService = new SpeakerService({
+    jobs,
+    queue,
+    transcripts,
+    library,
+    exe: join(app.isPackaged ? join(process.resourcesPath, 'bin') : join(app.getAppPath(), 'resources', 'bin'), 'sherpa', 'sherpa-onnx-offline-speaker-diarization.exe'),
+    models: () => (speakerModels.installed('segmentation') && speakerModels.installed('voices') ? { segmentation: speakerModels.path('segmentation'), voices: speakerModels.path('voices') } : null),
+    threads: whisperThreads,
+    prepareAudio: async (recordingId, _durationMs, outputPath) => {
+      const file = library.mediaFile(recordingId);
+      if (!file) throw new Error('The audio for this recording is missing.');
+      await media.convert(join(mediaDir, file.fileName), outputPath, { container: 'wav', transcode: true, pcm16k: true });
+    },
+    tempDir,
+    changed: jobsChanged,
+    speakersReady: (recordingId, title) => {
+      emit('data:changed', 'transcripts');
+      notifyReady(recordingId, title, 'Speaker labels');
+    },
+  });
 
   const makeChatProvider = (id: LlmProviderId) => {
     if (id === 'fake') return new FakeChatProvider();
@@ -645,6 +671,20 @@ async function start(): Promise<void> {
     downloadLocalModel: (id) => localModels.download(id),
     cancelLocalModelDownload: (id) => localModels.cancel(id),
     deleteLocalModel: (id) => localModels.remove(id),
+    listSpeakerModels: () => ({ models: speakerModels.list(), installed: speakerService.installed() }),
+    downloadSpeakerModels: async () => {
+      await speakerModels.download('segmentation');
+      await speakerModels.download('voices');
+    },
+    cancelSpeakerModelsDownload: () => {
+      speakerModels.cancel('segmentation');
+      speakerModels.cancel('voices');
+    },
+    deleteSpeakerModels: async () => {
+      await speakerModels.remove('segmentation');
+      await speakerModels.remove('voices');
+    },
+    requestSpeakers: (recordingId, speakers) => speakerService.request(recordingId, speakers),
     listWritingModels: () => ({ models: writingModels.list(), installed: localLlm.installed }),
     downloadWritingModel: (id) => writingModels.download(id),
     cancelWritingModelDownload: (id) => writingModels.cancel(id),

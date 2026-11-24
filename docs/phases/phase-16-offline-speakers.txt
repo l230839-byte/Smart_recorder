@@ -1,0 +1,64 @@
+ECHOMIND DESKTOP: PHASE 16, SPEAKER LABELS ON THIS COMPUTER    (version 0.4.0)
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §5 transcription (speaker identification); §0 local-first
+Date:        2026-11-24
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+The owner asked for offline speaker labels with sherpa-onnx. Gemini's labels (Phase 12)
+need the internet and restart with every 25-minute piece, and in a live hour-long test
+one voice changed label within the first piece. Label speakers on this computer, for
+any transcript, with one label per voice for the whole recording.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+- "Label speakers" on every recording's page: choose the number of people if known
+  (otherwise automatic). The first time, 32 MB of models download, checked; with
+  Offline only on, the dialog says this is the one moment the internet is used.
+- Each transcript line gets "Speaker A", "Speaker B"... (in order of first appearance),
+  as a new transcript version; the previous version stays. Renaming speakers works as
+  before.
+- Settings > AI providers: "Label speakers automatically" after each transcript.
+- The recording page shows the job's progress; a notification says when it is done.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  The whole recording is read at once (16 kHz WAV from the media worker), not piece
+    by piece, which is what keeps labels consistent for the full length.
+D2  sherpa-onnx's own diarization tool as a separate process (like whisper.cpp and
+    llama.cpp): pyannote segmentation 3.0 (MIT) to find voice turns, 3D-Speaker
+    ERes2Net (Apache-2.0) to recognise the same voice again.
+D3  Each line takes the voice that speaks longest during it; a line in a short pause
+    takes a turn within two seconds; otherwise it is left unlabelled, never guessed.
+D4  The segmentation model is fetched as a plain file from the project's Hugging Face
+    mirror (byte-identical to the GitHub archive, checked), so EchoMind never unpacks
+    archives at run time.
+D5  Labels are a new transcript version of kind "edited", provider "sherpa-onnx", shown
+    as "Speakers found on this computer".
+
+
+4. TESTS
+--------------------------------------------------------------------------------
+- Unit (306 passing): reading the tool's output; longest-speaker assignment, straddling
+  lines, short pauses, nothing guessed far from speech, everything else on a line kept.
+- End to end: full suite passing. It also exposed a flaky chat test that assumed which
+  of two side-by-side imports finished first; fixed.
+- Live, two-voice meeting, fully offline (Whisper Small, Offline only on), models
+  downloaded through the app: 100% correct, automatic count and with 2.
+- Live, one-hour meeting of ten sessions (transcribed by Gemini, labelled offline): two
+  speakers found; the announcer kept the same label in 10 of 10 sessions. Labelling
+  the hour took 18.4 minutes on the development computer.
+
+
+5. REVIEW
+--------------------------------------------------------------------------------
+Designer: one button, one optional choice (how many people), and an honest note on
+time and the one-off download.
+Developer: pure, tested logic (parse, assign) around a separate process; no new npm
+dependency; the queue gives cancel, progress and resume for free.
+Limits: about a quarter of an hour per recorded hour on this computer; very similar
+voices or heavy crosstalk can still be mixed up; choosing the number of speakers helps.
