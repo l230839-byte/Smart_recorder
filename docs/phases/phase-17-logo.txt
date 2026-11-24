@@ -1,0 +1,45 @@
+ECHOMIND DESKTOP: PHASE 17, A NEW ECHOMIND MARK                (version 0.5.0)
+================================================================================
+Status:      COMPLETE.
+Prompt refs: §18 design (brand)
+Date:        2026-11-24
+
+
+1. OBJECTIVE
+--------------------------------------------------------------------------------
+The owner asked for a better logo and chose to keep the name EchoMind. Find a mark that
+comes from the name itself and stays clear from the taskbar to the installer.
+
+
+2. WHAT CHANGED (AS A USER SEES IT)
+--------------------------------------------------------------------------------
+- The "echo quote": a bold quotation mark followed by its fainter echo. What was said,
+  and what EchoMind keeps of it.
+- In the sidebar, welcome and lock screens it takes the accent colour (and black and
+  white in high contrast); the app icon, taskbar, Start menu and installer use indigo.
+
+
+3. KEY DECISIONS
+--------------------------------------------------------------------------------
+D1  Three new concepts (Echo quote, Ripple e, Mind wave) were rendered beside the
+    current Level E at 150, 64, 32, 24 and 16 px, light and dark, and shown to the owner
+    before anything changed. The owner chose the Echo quote.
+D2  Its shapes are solid, not thin strokes, so every icon size renders cleanly from the
+    one drawing; the hand-placed pixel versions the Level E needed are gone. Below 32 px
+    the mark is drawn 12% larger to use the few pixels well (checked enlarged).
+D3  One drawing (QUOTE_PATH in Shell.tsx, the same path in scripts/make-icon.mjs).
+
+
+4. TESTS
+--------------------------------------------------------------------------------
+- Icon sizes extracted from icon.ico and checked enlarged at 16, 20, 24, 32 and 48 px.
+- The mark checked in the app: light, dark, rose accent, high contrast, welcome screen.
+- Accessibility (every accent and high contrast) and foundation tests pass; unit tests,
+  type check and lint pass; the installer is rebuilt and its packaged test passes.
+
+
+5. REVIEW
+--------------------------------------------------------------------------------
+Designer: the mark reads as speech before anyone sees the name, and the echo ties it to
+the name; it has no lookalike among common recorder or chat icons.
+Developer: one path, no pixel tables to keep in step.

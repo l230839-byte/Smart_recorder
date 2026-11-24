@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 0.5.0, Phase 17: A new EchoMind mark
+
+- The "echo quote": a quotation mark (what was said) and its fainter echo (what EchoMind keeps), chosen by the owner from three new concepts and the previous Level E. Clearer at 16 px than the E, and drawn from the name itself.
+- In the app it follows the accent colour and high contrast; the app icon, taskbar and installer use the indigo original.
+
 ### 0.4.0, Phase 16: Speaker labels on this computer
 
 - "Label speakers" on any recording: sherpa-onnx (Apache-2.0) finds who spoke when, offline, over the whole recording at once, so each voice keeps one label from start to end. Works with any transcript (Groq, Gemini, offline Whisper).

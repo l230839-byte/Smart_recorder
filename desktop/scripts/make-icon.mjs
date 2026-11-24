@@ -1,7 +1,6 @@
-// Renders the EchoMind mark (the "Level E": an E of three audio-level bars with an echo dot, the same
-// drawing as the app's BrandMark) to build/icon.png and a multi-size build/icon.ico for Windows.
-// Every size is drawn at its own pixel size, and the smallest get heavier strokes, so the taskbar and
-// Explorer show a sharp icon instead of a blurred downscale.
+// Renders the EchoMind mark (the "echo quote": a quotation mark and its fainter echo, the same drawing as the
+// app's BrandMark) to build/icon.png and a multi-size build/icon.ico for Windows. Every size is drawn at its
+// own pixel size, so the taskbar and Explorer show a sharp icon instead of a blurred downscale.
 // Run with: node scripts/run.mjs electron scripts/make-icon.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,31 +10,18 @@ const ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256];
 
 const GRADIENT = '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5146e5"/><stop offset="1" stop-color="#3a2fb8"/></linearGradient></defs>';
 
-/**
- * Hand-placed versions for the smallest sizes, in whole pixels: a scaled drawing puts every bar between
- * two pixels and the E turns grey. [x, y, width, height] for the spine, three bars and the dot.
- */
-const PIXEL_MARKS = {
-  16: { radius: 3.5, bars: [[4, 3, 2, 10], [4, 3, 7, 2], [4, 7, 5, 2], [4, 11, 6, 2]], dot: [11, 7, 2, 2] },
-  20: { radius: 4.5, bars: [[5, 4, 2, 12], [5, 4, 9, 2], [5, 9, 6, 2], [5, 14, 8, 2]], dot: [13, 9, 2, 2] },
-  24: { radius: 5, bars: [[6, 5, 3, 15], [6, 5, 11, 3], [6, 11, 8, 3], [6, 17, 10, 3]], dot: [16, 11, 3, 3] },
-  32: { radius: 8, bars: [[9, 8, 3, 17], [9, 8, 13, 3], [9, 15, 9, 3], [9, 22, 12, 3]], dot: [21, 15, 3, 3] },
-};
+/** One quotation mark: a round head and a curved tail (the same path as QUOTE_PATH in Shell.tsx). */
+const QUOTE = 'M21 19.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zM28.5 27c0 10.5-5.6 17-14 19.5l-1.4-4.2c5-1.9 7.9-5.6 8.4-10.8z';
 
 function svg(size) {
-  const pixel = PIXEL_MARKS[size];
-  if (pixel) {
-    const rect = ([x, y, w, h], fill) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${GRADIENT}
-  <rect width="${size}" height="${size}" rx="${pixel.radius}" fill="url(#g)"/>
-  <g shape-rendering="crispEdges">${pixel.bars.map((b) => rect(b, '#fff')).join('')}${rect(pixel.dot, '#c9c5ff')}</g>
-</svg>`;
-  }
-  const stroke = 5.5;
+  // Below 32 px the marks are drawn a little larger, so they keep their shape in so few pixels.
+  const grow = size < 32 ? 'transform="translate(32 33) scale(1.12) translate(-32 -33)"' : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 64 64">${GRADIENT}
-  <rect width="64" height="64" rx="16" fill="url(#g)"/>
-  <path d="M20 17v30M20 17h24M20 32h15M20 47h21" fill="none" stroke="#fff" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="45" cy="32" r="3.2" fill="#c9c5ff"/>
+  <rect width="64" height="64" rx="${size < 32 ? 14 : 16}" fill="url(#g)"/>
+  <g ${grow}>
+    <path d="${QUOTE}" fill="#fff"/>
+    <path d="${QUOTE}" fill="#c9c5ff" opacity="0.8" transform="translate(20 0)"/>
+  </g>
 </svg>`;
 }
 

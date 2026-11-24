@@ -13,17 +13,18 @@ const SECTIONS: { key: TopLevel; label: string; icon: IconType; route: Route }[]
 ];
 
 /**
- * The EchoMind mark: an E built from three audio-level bars, with an echo dot. The same drawing as the
- * app icon (scripts/make-icon.mjs), but in the theme's accent so it follows the person's colour choice.
+ * The EchoMind mark, the "echo quote": a quotation mark (what was said) followed by its fainter echo (what
+ * EchoMind keeps). The same drawing as the app icon (scripts/make-icon.mjs), but in the theme's accent so
+ * it follows the person's colour choice.
  */
-export const BRAND_PATH = 'M20 17v30M20 17h24M20 32h15M20 47h21';
+export const QUOTE_PATH = 'M21 19.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15zM28.5 27c0 10.5-5.6 17-14 19.5l-1.4-4.2c5-1.9 7.9-5.6 8.4-10.8z';
 
 export function BrandMark({ size = 26 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden className="brand-mark">
       <rect width="64" height="64" rx="16" fill="var(--primary)" />
-      <path d={BRAND_PATH} fill="none" stroke="var(--on-primary)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="45" cy="32" r="3.2" fill="var(--on-primary)" opacity="0.72" />
+      <path d={QUOTE_PATH} fill="var(--on-primary)" />
+      <path d={QUOTE_PATH} fill="var(--on-primary)" opacity="0.6" transform="translate(20 0)" />
     </svg>
   );
 }
