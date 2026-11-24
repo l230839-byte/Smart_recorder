@@ -336,7 +336,7 @@ export const SETTING_CHOICES: Partial<Record<keyof Settings, readonly string[]>>
   contrast: ['system', 'standard', 'high'],
   audioQuality: ['voice', 'standard', 'high'],
   offlineTranscriptionModel: ['tiny', 'base', 'small', 'medium', 'large-v3-turbo'],
-  offlineLlmModel: ['qwen3-4b', 'qwen3-1.7b'],
+  offlineLlmModel: ['qwen3-4b', 'qwen3.5-4b', 'qwen3-1.7b'],
 };
 
 export const DEFAULT_SETTINGS: Settings = {

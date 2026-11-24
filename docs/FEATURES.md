@@ -16,7 +16,7 @@ Only what is implemented and verified is listed as **Working**.
 | Player: speed, skip silence, voice boost, bookmarks, trim | Working |
 | Storage management | Working |
 | Transcription: job queue, chunking, retry, resume, consent, encrypted keys | Working (tested with a local server following Groq's format) |
-| Offline summaries, chapters, titles, chat, documents and AI Studio (llama.cpp with Qwen3 4B or 1.7B); Offline only uses them for everything | Working (live-checked 2026-11-24 with Offline only on; see the Phase 15 report for speed and quality per model) |
+| Offline summaries, chapters, titles, chat, documents and AI Studio (llama.cpp with Qwen3 4B, Qwen3.5 4B or Qwen3 1.7B); Offline only uses them for everything | Working (live-checked 2026-11-24 and 2026-11-25 with Offline only on; see the Phase 15 and 18 reports for speed and quality per model) |
 | Offline transcription on this computer (whisper.cpp): five models from 31 MB to 547 MB, downloaded once in Settings, checked by SHA-256, resumable; works with Offline only on | Working (live-checked 2026-11-23: Tiny 11.5x and Small 2.2x real time, 11 of 12 facts each). Needs `npm run fetch:whisper` in a development copy. |
 | Transcription on live Groq | Working (live-checked 2026-11-20 and on a 3-hour recording 2026-11-22: all facts found, under 1 s timing drift, resumes after a kill) |
 | Recordings of 1 to 3 hours: transcription, summaries, chapters, titles, minutes, quizzes, tasks and chat | Working (3-hour meeting live-checked 2026-11-22 and 23; free Groq limits mean waits, handled automatically; see FREE_STACK.md) |

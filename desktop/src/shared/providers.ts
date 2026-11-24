@@ -237,15 +237,18 @@ export const LLM_PROVIDER_INFO: Record<LlmProviderId, LlmProviderInfo> = {
  */
 export function reasoningOptions(provider: LlmProviderId, model: string): Record<string, unknown> {
   if (provider === 'groq' && model.startsWith('openai/gpt-oss')) return { reasoning_effort: 'low' };
-  // Qwen3 1.7B thinks before answering unless told not to (the server also starts with reasoning off).
+  // Qwen3 1.7B and every Qwen3.5 model think before answering unless told not to (the server also starts
+  // with reasoning off). Thinking would make each summary many times slower on a laptop.
   if (provider === 'local-llm') return { chat_template_kwargs: { enable_thinking: false } };
   if (provider === 'gemini' && /^gemini-(2\.5|[3-9])/.test(model)) return { reasoning_effort: 'low' };
   return {};
 }
 
 /**
- * Writing models that run on this computer through llama.cpp (MIT). Both Apache-2.0, quantized to 4 bits.
- * Hashes are the files' published SHA-256 on Hugging Face, checked after every download.
+ * Writing models that run on this computer through llama.cpp (MIT). All Apache-2.0, quantized to 4 bits.
+ * Hashes are the files' published SHA-256 on Hugging Face, checked after every download. Qwen3 4B stays
+ * the recommendation: in the same live test (Phase 18) it beat the newer Qwen3.5 4B, and Qwen3.5 9B left
+ * its summary without citations while taking 1.7 times as long, so 9B is not offered.
  */
 export const LOCAL_LLM_MODELS = {
   'qwen3-4b': {
@@ -255,6 +258,14 @@ export const LOCAL_LLM_MODELS = {
     sha256: '3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597',
     url: 'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
     hint: 'Recommended. Good summaries and answers; needs about 4 GB of free memory.',
+  },
+  'qwen3.5-4b': {
+    label: 'Qwen3.5 4B',
+    file: 'Qwen3.5-4B-Q4_K_M.gguf',
+    sizeMb: 2614,
+    sha256: '00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4',
+    url: 'https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf',
+    hint: 'Newer (2026), but in testing it missed an action item, found fewer chapters and was a little slower. Needs about 5 GB of free memory.',
   },
   'qwen3-1.7b': {
     label: 'Qwen3 1.7B',

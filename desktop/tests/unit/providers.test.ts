@@ -6,7 +6,8 @@ import { ChatHttpProvider } from '../../src/main/ai/chat-http';
 import { ModelFallbackProvider, pickModel } from '../../src/main/ai/model-fallback';
 import { ProviderError, type ChatProvider, type ChatRequest, type ChatResult } from '../../src/main/ai/types';
 import { toProviderError, WhisperHttpProvider } from '../../src/main/ai/whisper-http';
-import { llmChoice, reasoningOptions, transcriptionChoice } from '../../src/shared/providers';
+import { DEFAULT_SETTINGS, SETTING_CHOICES } from '../../src/shared/models';
+import { llmChoice, LOCAL_LLM_MODELS, reasoningOptions, transcriptionChoice } from '../../src/shared/providers';
 
 const response = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -352,5 +353,16 @@ describe('Offline only uses this computer instead of switching AI off', () => {
     expect(llmChoice({ ...base, offlineOnly: true, llmProvider: 'fake', llmModel: null })).toEqual({ provider: 'fake', model: 'demo' });
     expect(transcriptionChoice({ ...base, offlineOnly: true, transcriptionProvider: 'local', offlineTranscriptionModel: 'base' })).toEqual({ provider: 'local', model: 'base' });
     expect(reasoningOptions('local-llm', 'qwen3-1.7b')).toEqual({ chat_template_kwargs: { enable_thinking: false } });
+    // Qwen3.5 thinks by default too; thinking stays off for every offline model.
+    expect(reasoningOptions('local-llm', 'qwen3.5-4b')).toEqual({ chat_template_kwargs: { enable_thinking: false } });
+  });
+
+  it('every offline writing model can be chosen, is checked by hash, and the default is one of them', () => {
+    expect([...SETTING_CHOICES.offlineLlmModel!].sort()).toEqual(Object.keys(LOCAL_LLM_MODELS).sort());
+    expect(DEFAULT_SETTINGS.offlineLlmModel in LOCAL_LLM_MODELS).toBe(true);
+    for (const m of Object.values(LOCAL_LLM_MODELS)) {
+      expect(m.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(m.url).toMatch(new RegExp(`^https://huggingface\\.co/.+/resolve/main/${m.file.replace(/\./g, '\\.')}$`));
+    }
   });
 });

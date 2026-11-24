@@ -19,7 +19,7 @@ EchoMind uses free and open-source software only. `npm run check:licenses` fails
 | FFmpeg, optional add-on | Reads formats the built-in decoders cannot, such as AMR and WMA | LGPL (BtbN shared build) |
 | whisper.cpp (with ggml) | Offline transcription on this computer | MIT. Its Windows build also carries SDL2.dll (zlib licence). |
 | llama.cpp (with ggml) | Offline summaries, chat, documents and AI Studio, run by EchoMind on this computer only | MIT. Its Windows build also carries libomp.dll (LLVM OpenMP: Apache-2.0 with LLVM exception). |
-| Qwen3 4B Instruct, Qwen3 1.7B (GGUF, 4-bit) | The offline writing models, downloaded by the person when they choose | Apache-2.0 |
+| Qwen3.5 4B, Qwen3 4B Instruct, Qwen3 1.7B (GGUF, 4-bit, quantized by Unsloth) | The offline writing models, downloaded by the person when they choose | Apache-2.0 |
 | sherpa-onnx (with onnxruntime) | Offline speaker labels | Apache-2.0 (onnxruntime: MIT) |
 | pyannote segmentation 3.0, 3D-Speaker ERes2Net | The two speaker models (6 MB and 26 MB), downloaded by the person when first used | MIT and Apache-2.0 |
 | Whisper models (ggml files) | The offline models, downloaded by the person when they choose | MIT (OpenAI Whisper weights), converted by the whisper.cpp project |
@@ -44,7 +44,7 @@ Measured on 2026-11-23 on the development computer (70 seconds of two-voice meet
 
 ### llama.cpp notes
 
-`npm run fetch:llama` downloads the official Windows CPU build of llama.cpp release b12193 (published 2026-11-07, pinned), checks it against the SHA-256 GitHub publishes, keeps `llama-server.exe` and the libraries beside it, saves the MIT licence and confirms the options EchoMind uses. Models are not bundled: the person downloads one in Settings (1.06 GB or 2.38 GB) from Hugging Face, checked against its published SHA-256. Chosen for licence first: Llama and Gemma models carry use restrictions, Qwen3 is Apache-2.0.
+`npm run fetch:llama` downloads the official Windows CPU build of llama.cpp release b12193 (published 2026-11-07, pinned), checks it against the SHA-256 GitHub publishes, keeps `llama-server.exe` and the libraries beside it, saves the MIT licence and confirms the options EchoMind uses. Models are not bundled: the person downloads one in Settings (1.06 to 2.6 GB) from Hugging Face, checked against its published SHA-256. Chosen for licence first: Llama and Gemma models carry use restrictions, Qwen3 and Qwen3.5 are Apache-2.0. Larger open models (DeepSeek V3, GLM-4.6, Kimi K2, gpt-oss-120b) need tens to hundreds of GB of memory and do not fit a 16 GB laptop.
 
 Measured on the development computer (7 CPU threads): Qwen3 1.7B loads in about 23 seconds the first time, reads a transcript at about 110 tokens a second and writes at about 19.
 

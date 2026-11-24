@@ -25,7 +25,7 @@ export const FACTS: [name: string, pattern: RegExp][] = [
   ['Ahmed: payment screen by Friday', /ahmed[^.]*payment[^.]*friday|payment[^.]*ahmed[^.]*friday/i],
   ['Lina tests on Monday', /lina[^.]*(test|monday)/i],
   ['budget $12,000 per month', /12,?000|twelve thousand/i],
-  ['budget not increased', /not (to )?increase|no increase|unchanged|stays|remain/i],
+  ['budget not increased', /not (be |to )?increased?|no increase|unchanged|stays|remain/i],
   ['dark mode approved', /dark mode[^.]*(approved|next sprint)/i],
   ['offline sync postponed', /offline sync[^.]*(postponed|delayed|deferred)/i],
   ['reason: migration not ready', /migration/i],

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 0.6.0, Phase 18: The best offline writing model for a 16 GB laptop
+
+- Compared the newest small open models with the current one in the same live, fully offline meeting test. Qwen3 4B stays the recommended model: it found 11 of 12 facts with 16 working citations and three good chapters.
+- Qwen3.5 4B (Apache-2.0, March 2026) added as an optional choice. In testing it found 10 of 12 facts, missed an action item, made one chapter instead of three, was a little slower and needed about 5 GB of memory; its description in Settings says so.
+- Qwen3.5 9B was tested and not offered: 11 of 12 facts, but its summary had no clickable citations, and it took 1.7 times as long while needing about 7 GB of free memory.
+- DeepSeek, GLM, Kimi and the larger gpt-oss models were ruled out: they need tens to hundreds of GB of memory.
+- The live fact check now accepts "will not be increased".
+
 ### 0.5.0, Phase 17: A new EchoMind mark
 
 - The "echo quote": a quotation mark (what was said) and its fainter echo (what EchoMind keeps), chosen by the owner from three new concepts and the previous Level E. Clearer at 16 px than the E, and drawn from the name itself.
